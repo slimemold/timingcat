@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 
+import logging
 import os
 import shutil
 import sys
 import unittest
+
+logger = logging.getLogger(__name__)
 
 def runtests(suite, verbosity=1, failfast=False):
     runner = unittest.TextTestRunner(verbosity=verbosity, failfast=failfast)

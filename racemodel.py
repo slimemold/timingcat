@@ -1,5 +1,8 @@
+import logging
 import sys
 from peewee import *
+
+logger = logging.getLogger(__name__)
 
 database_proxy = Proxy()
 

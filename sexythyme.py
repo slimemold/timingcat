@@ -1,7 +1,10 @@
 #!/usr/bin/env python3
 
+import logger
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget
+
+logger = logging.getLogger(__name__)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)

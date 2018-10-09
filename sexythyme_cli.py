@@ -4,12 +4,15 @@ VERSION='1.0'
 
 import argparse
 import cmd
-import os
-import peewee
 import importlib
+import os
+import logging
+import peewee
 import re
 import sys
 from racemodel import *
+
+logger = logging.getLogger(__name__)
 
 def race_show(args):
     with database_proxy.atomic():
@@ -45,10 +48,10 @@ def field_show(args):
 
 def field_add(args):
     with database_proxy.atomic():
-        try:
-            field = Field.create(name=args.name)
-        except IntegrityError:
-            print('A field named ' + args.name + ' already exists.')
+#        try:
+            field = Field.create(name=args.name, data="")
+#        except IntegrityError:
+#            print('A field named ' + args.name + ' already exists.')
 
 def field_rename(args):
     with database_proxy.atomic():
@@ -85,12 +88,12 @@ def racer_add(args):
         try:
             field = Field.get(Field.name == args.field)
         except DoesNotExist:
-            print('A field named ' + args.name + ' does not exist.')
+            print('A field named ' + args.field + ' does not exist.')
             return
 
         try:
             racer = Racer.create(bib=args.bib, name=args.name, team=args.team,
-                                 field=field)
+                                 field=field, data="")
         except IntegrityError:
             print('A racer with bib ' + args.bib + ' already exists.')
 
