@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-import logger
+import logging
 import sys
 from PyQt5.QtWidgets import QApplication, QWidget
 

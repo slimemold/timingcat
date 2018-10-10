@@ -4,6 +4,7 @@ import logging
 import os
 import shutil
 import sys
+import tests
 import unittest
 
 logger = logging.getLogger(__name__)
