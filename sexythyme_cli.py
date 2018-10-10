@@ -4,75 +4,55 @@ VERSION='1.0'
 
 import argparse
 import cmd
-import importlib
 import os
 import logging
-import peewee
 import re
 import sys
-from racemodel import *
+import raceops
 
 logger = logging.getLogger(__name__)
 
-def race_show(args):
-    with database_proxy.atomic():
-        race = Race.get()
+def racer_str(racer):
+    return "%s, %s, %s, %s, %s, %s" % (racer['bib'],
+                                       racer['name'],
+                                       racer['team'],
+                                       racer['field'],
+                                       racer['start'],
+                                       racer['finish'])
 
-    print(race.name)
+def race_show(args):
+    race = race_get()
+
+    print(race['name'])
 
 def race_set(args):
-    with database_proxy.atomic():
-        race = Race.get()
-        race.name = args.name
-        race.save()
+    race = raceops.race_get()
+    race['name'] = args.name
+    raceops.race_modify(race)
 
 def field_list(args):
-    with database_proxy.atomic():
-        query = (Field
-                 .select()
-                 .order_by(Field.name))
+    list = raceops.field_get_list()
 
-        for field in query:
-            print(field.name)
+    for field in list:
+        print(field['name'])
 
 def field_show(args):
-    with database_proxy.atomic():
-        try:
-            field = Field.get(Field.name == args.name)
-        except DoesNotExist:
-            print('A field named ' + args.name + ' does not exist.')
-            return
+    list = raceops.field_get_racer_list(args.name)
 
-        for racer in field.racers.order_by(Racer.bib):
-            print(racer)
+    for racer in list:
+        print(racer_str(racer))
 
 def field_add(args):
-    with database_proxy.atomic():
-#        try:
-            field = Field.create(name=args.name, data="")
-#        except IntegrityError:
-#            print('A field named ' + args.name + ' already exists.')
+    raceops.field_new({'name': args.name,
+                       'data': ""})
 
 def field_rename(args):
-    with database_proxy.atomic():
-        try:
-            field = Field.get(Field.name == args.name)
-        except DoesNotExist:
-            print('A field named ' + args.name + ' does not exist.')
-            return
+    field = raceops.field_get(args.name)
 
-        field.name = args.new_name
-        field.save()
+    raceops.field_rename(field['name'], args.new_name)
 
 def field_rm(args):
-    with database_proxy.atomic():
-        try:
-            field = Field.get(Field.name == args.name)
-        except DoesNotExist:
-            print('A field named ' + args.name + ' does not exist.')
-            return
-
-        field.delete_instance()
+    raceops.field_delete(args.name)
 
 def racer_list(args):
     with database_proxy.atomic():
@@ -308,14 +288,7 @@ if __name__ == '__main__':
     parser = make_parser()
     args = parser.parse_args()
 
-    database_filename = args.racefile
-
-    database = peewee.SqliteDatabase(database_filename,
-                                     pragmas={'foreign_keys': 1})
-    database_proxy.initialize(database)
-
-    # Create the database tables if it is a new file.
-    create_racefile()
+    raceops.race_init(args.racefile)
 
     if hasattr(args, 'func'):
         args.func(args)
@@ -323,4 +296,4 @@ if __name__ == '__main__':
         shell = Shell(parser)
         shell.cmdloop()
 
-    database_proxy.close()
+    raceops.race_cleanup()

@@ -71,7 +71,7 @@ class TempRacer(Racer):
     scratch_text = TextField()
     finish = TimeField
 
-def create_racefile():
+def create_tables():
     with database_proxy:
         database_proxy.create_tables([Race, Field, Racer, TempRacer])
 
