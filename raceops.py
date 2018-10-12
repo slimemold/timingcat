@@ -28,7 +28,7 @@ from racemodel import *
 
 DEFAULT_RACE_NAME = '(needs description)'
 DEFAULT_DATA = json.dumps({})
-DEFAULT_TIME = peewee.TimeField(time(hour=0, minute=0, second=0, microsecond=0))
+DEFAULT_TIME = time(hour=0, minute=0, second=0, microsecond=0)
 DEFAULT_RESULT_SCRATCHPAD = ''
 
 def race_init(racefile):
@@ -356,7 +356,7 @@ def result_get_list():
     with database_proxy.atomic():
         query = (Result
                  .select()
-                 .order_by(Result.bib))
+                 .order_by(Result.id))
 
         for result_model in query:
             list.append({'id': result_model.id,

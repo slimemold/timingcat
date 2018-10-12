@@ -10,6 +10,7 @@ import sys
 import raceops
 
 from common import VERSION, ask_yes_no
+from datetime import time
 
 logger = logging.getLogger(__name__)
 
@@ -34,11 +35,21 @@ def racer_str(args, racer):
                                          racer['name'],
                                          racer['team'],
                                          racer['field'],
-                                         racer['start'],
-                                         racer['finish'])
+                                         time.strftime(racer['start']),
+                                         time.strftime(racer['finish']))
 
     if args.showdata:
         string += ', %s' % (racer['data'])
+
+    return string
+
+def result_str(args, result):
+    string = '%s, "%s", %s' % (result['id'],
+                               result['scratchpad'],
+                               time.strftime(result['finish']))
+
+    if args.showdata:
+        string += ', %s' % (result['data'])
 
     return string
 
@@ -101,7 +112,7 @@ def field_rm(args):
         print(str(e))
 
 def field_rmempty(args):
-    if not ask_yes_no('Remove all empty fields?', default='no'):
+    if not ask_yes_no('Remove all empty field(s)?', default='no'):
         print('Aborted')
         return
 
@@ -119,7 +130,7 @@ def racer_list(args):
 
 def racer_add(args):
     try:
-        raceops.aacer_new({'bib': args.bib,
+        raceops.racer_new({'bib': args.bib,
                            'name': args.name,
                            'team': args.team,
                            'field': args.field})
@@ -167,7 +178,7 @@ def racer_rm(args):
 
 def racer_fieldrmall(args):
     count = raceops.field_get_racer_count(args.name)
-    if not ask_yes_no('Remove all %s racers from field "%s"?' % (count, args.name), default='no'):
+    if not ask_yes_no('Remove all %s racer(s) from field "%s"?' % (count, args.name), default='no'):
         print('Aborted')
         return
 
@@ -179,11 +190,48 @@ def racer_fieldrmall(args):
     print('Removed %s racers' % count)
 
 def racer_rmall(args):
-    if not ask_yes_no('Remove all racers?', default='no'):
+    count = raceops.racer_get_count()
+    if not ask_yes_no('Remove all %s racer(s)?' % (count), default='no'):
         print('Aborted')
         return
 
     raceops.racer_delete_all()
+
+def result_list(args):
+    list = raceops.result_get_list()
+
+    for result in list:
+        print(result_str(args, result))
+
+    print('Total: ' + str(raceops.result_get_count()))
+
+def result_add(args):
+    try:
+        result = {}
+        if args.scratchpad:
+            result['scratchpad'] = args.scratchpad
+        if args.finish:
+            result['finish'] =  time.strptime(args.finish)
+        raceops.result_new(result)
+    except (LookupError, ValueError) as e:
+        print(str(e))
+
+def result_rescratchpad(args):
+    pass
+
+def result_refinish(args):
+    pass
+
+def result_rm(args):
+    pass
+
+def result_rmall(args):
+    count = raceops.result_get_count()
+    if not ask_yes_no('Remove all %s result(s)?' % (count), default='no'):
+        print('Aborted')
+        return
+
+    raceops.result_delete_all()
 
 def import_bikereg(args):
     if not os.path.isfile(args.csvfile):
@@ -322,6 +370,41 @@ def make_parser():
     subparser = racer_subparsers.add_parser('rmall')
     subparser.set_defaults(func=racer_rmall)
 
+    # Create the parser for the "result" command.
+    result_parser = subparsers.add_parser('result')
+    result_subparsers = result_parser.add_subparsers(help='result command help')
+
+    # Create the parser for the "result list" command.
+    subparser = result_subparsers.add_parser('list')
+    subparser.set_defaults(func=result_list)
+
+    # Create the parser for the "result add" command.
+    subparser = result_subparsers.add_parser('add')
+    subparser.add_argument('scratchpad', nargs='?', help='bib scratchpad')
+    subparser.add_argument('finish', nargs='?', help='result\'s full name')
+    subparser.set_defaults(func=result_add)
+
+    # Create the parser for the "result rescratchpad" command.
+    subparser = result_subparsers.add_parser('rescratchpad')
+    subparser.add_argument('id', help='used to identify the result')
+    subparser.add_argument('new_scratchpad', help='new scratchpad')
+    subparser.set_defaults(func=result_rescratchpad)
+
+    # Create the parser for the "result refinish" command.
+    subparser = result_subparsers.add_parser('refinish')
+    subparser.add_argument('id', help='used to identify the result')
+    subparser.add_argument('new_finish', help='new finish')
+    subparser.set_defaults(func=result_refinish)
+
+    # Create the parser for the "result rm" command.
+    subparser = result_subparsers.add_parser('rm')
+    subparser.add_argument('id', help='used to identify the result')
+    subparser.set_defaults(func=result_rm)
+
+    # Create the parser for the "result rmall" command.
+    subparser = result_subparsers.add_parser('rmall')
+    subparser.set_defaults(func=result_rmall)
+
     # Create the parser for the "import" command.
     import_parser = subparsers.add_parser('import')
     import_subparsers = import_parser.add_subparsers(help='import command help')
@@ -376,6 +459,9 @@ class Shell(cmd.Cmd):
 
     def do_racer(self, arg):
         self.handle_command(self.showdata + self.racefile + ' racer ' + arg)
+
+    def do_result(self, arg):
+        self.handle_command(self.showdata + self.racefile + ' result ' + arg)
 
     def do_import(self, arg):
         self.handle_command(self.showdata + self.racefile + ' import ' + arg)

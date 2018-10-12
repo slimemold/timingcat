@@ -38,6 +38,6 @@ class BikeRegRaceImporter(FileRaceImporter):
                 raceops.field_new({'name': field})
 
             raceops.racer_new({'bib': bib,
-                       'name': name,
-                       'team': team,
-                       'field': field})
+                               'name': name,
+                               'team': team,
+                               'field': field})
