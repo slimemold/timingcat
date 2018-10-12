@@ -21,7 +21,7 @@ def racer_str(racer):
                                        racer['finish'])
 
 def race_show(args):
-    race = race_get()
+    race = raceops.race_get()
 
     print(race['name'])
 
