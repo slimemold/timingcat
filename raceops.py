@@ -205,7 +205,6 @@ def racer_get(bib):
 
 # Adds a Racer model.
 def racer_new(racer):
-    print(racer['name'])
     with database_proxy.atomic():
         # Racer model's specified field does not exist.
         try:
@@ -216,9 +215,6 @@ def racer_new(racer):
 
         # Probably duplicate bib.
         try:
-            print(racer.get('bib', DEFAULT_DATA))
-            print(racer.get('data', DEFAULT_DATA))
-            print(racer.get('team', DEFAULT_DATA))
             racer_model = Racer.create(bib=racer['bib'],
                                        name=racer['name'],
                                        team=racer['team'],
@@ -226,7 +222,6 @@ def racer_new(racer):
                                        start=racer.get('start', DEFAULT_TIME),
                                        finish=racer.get('finish', DEFAULT_TIME),
                                        data=racer.get('data', DEFAULT_DATA))
-            print(racer['bib'])
         except IntegrityError:
             raise ValueError('Racer with bib ' + racer['bib'] +
                              ' already exists.')
