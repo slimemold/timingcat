@@ -10,9 +10,11 @@ import sys
 import raceops
 
 from common import VERSION, ask_yes_no
-from datetime import time
+from datetime import datetime, time
 
 logger = logging.getLogger(__name__)
+
+TIME_FORMAT='%H:%M:%S:%f'
 
 def race_str(args, race):
     string = '%s' % (race['name'])
@@ -35,8 +37,10 @@ def racer_str(args, racer):
                                          racer['name'],
                                          racer['team'],
                                          racer['field'],
-                                         time.strftime(racer['start']),
-                                         time.strftime(racer['finish']))
+                                         time.strftime(racer['start'],
+                                                       TIME_FORMAT),
+                                         time.strftime(racer['finish'],
+                                                       TIME_FORMAT))
 
     if args.showdata:
         string += ', %s' % (racer['data'])
@@ -46,7 +50,7 @@ def racer_str(args, racer):
 def result_str(args, result):
     string = '%s, "%s", %s' % (result['id'],
                                result['scratchpad'],
-                               time.strftime(result['finish']))
+                               time.strftime(result['finish'], TIME_FORMAT))
 
     if args.showdata:
         string += ', %s' % (result['data'])
@@ -170,6 +174,26 @@ def racer_refield(args):
     except LookupError as e:
         print(str(e))
 
+def racer_restart(args):
+    try:
+        racer = raceops.racer_get(args.bib)
+
+        racer['start'] = datetime.time(datetime.strptime(args.new_start,
+                                                         TIME_FORMAT))
+        raceops.racer_modify(racer)
+    except LookupError as e:
+        print(str(e))
+
+def racer_refinish(args):
+    try:
+        racer = raceops.racer_get(args.bib)
+
+        racer['finish'] = datetime.time(datetime.strptime(args.new_finish,
+                                                          TIME_FORMAT))
+        raceops.racer_modify(racer)
+    except LookupError as e:
+        print(str(e))
+
 def racer_rm(args):
     try:
         raceops.racer_delete(args.bib)
@@ -211,19 +235,36 @@ def result_add(args):
         if args.scratchpad:
             result['scratchpad'] = args.scratchpad
         if args.finish:
-            result['finish'] =  time.strptime(args.finish)
+            result['finish'] = datetime.time(datetime.strptime(args.finish,
+                                                               TIME_FORMAT))
         raceops.result_new(result)
     except (LookupError, ValueError) as e:
         print(str(e))
 
 def result_rescratchpad(args):
-    pass
+    try:
+        result = raceops.result_get(args.id)
+
+        result['scratchpad'] = args.new_scratchpad
+        raceops.result_modify(result)
+    except LookupError as e:
+        print(str(e))
 
 def result_refinish(args):
-    pass
+    try:
+        result = raceops.result_get(args.id)
+
+        result['finish'] = datetime.time(datetime.strptime(args.new_finish,
+                                                           TIME_FORMAT))
+        raceops.result_modify(result)
+    except LookupError as e:
+        print(str(e))
 
 def result_rm(args):
-    pass
+    try:
+        raceops.result_delete(args.id)
+    except LookupError as e:
+        print(str(e))
 
 def result_rmall(args):
     count = raceops.result_get_count()
@@ -355,6 +396,18 @@ def make_parser():
     subparser.add_argument('bib', help='used to identify the racer')
     subparser.add_argument('new_field', help='new field name')
     subparser.set_defaults(func=racer_refield)
+
+    # Create the parser for the "racer restart" command.
+    subparser = racer_subparsers.add_parser('restart')
+    subparser.add_argument('bib', help='used to identify the racer')
+    subparser.add_argument('new_start', help='new start time')
+    subparser.set_defaults(func=racer_restart)
+
+    # Create the parser for the "racer refinish" command.
+    subparser = racer_subparsers.add_parser('refinish')
+    subparser.add_argument('bib', help='used to identify the racer')
+    subparser.add_argument('new_finish', help='new finish time')
+    subparser.set_defaults(func=racer_refinish)
 
     # Create the parser for the "racer rm" command.
     subparser = racer_subparsers.add_parser('rm')
