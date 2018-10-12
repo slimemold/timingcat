@@ -41,36 +41,3 @@ class BikeRegRaceImporter(FileRaceImporter):
                        'name': name,
                        'team': team,
                        'field': field})
-
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='SexyThyme race importer tool')
-    parser.add_argument('--version', action='version',
-                        version='%(prog)s ' + VERSION)
-    parser.add_argument('racefile', help='race file to import into')
-    parser.add_argument('--bikeregfile', help='file to import from')
-
-    args = parser.parse_args()
-
-    if os.path.isfile(args.racefile):
-        if ask_yes_no('Race file %s already exists. Overwrite?' %
-                         (args.racefile), default="no"):
-            os.remove(args.racefile)
-        else:
-            sys.exit(0)
-
-    if args.bikeregfile:
-        importer = BikeRegRaceImporter()
-        import_filename = args.bikeregfile
-
-    if not os.path.isfile(import_filename):
-        print('File %s does not exist' % (args.bikeregfile))
-        usage()
-
-    if not importer:
-        print('No importer found. Need one of --bikeregfile')
-        usage()
-
-    with open(import_filename) as import_file:
-        raceops.race_init(args.racefile)
-        importer.read(import_file)
-        raceops.race_cleanup()
