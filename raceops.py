@@ -2,7 +2,7 @@
 
 import json
 import peewee
-from datetime import time, timedelta
+from datetime import datetime, time, timedelta
 from racemodel import *
 
 # This module hides the database queries behind a set of simple functions.
@@ -29,6 +29,7 @@ from racemodel import *
 DEFAULT_RACE_NAME = '(needs description)'
 DEFAULT_DATA = json.dumps({})
 DEFAULT_TIME = peewee.TimeField(time(hour=0, minute=0, second=0, microsecond=0))
+DEFAULT_RESULT_SCRATCHPAD = ''
 
 def race_init(racefile):
     # Initialize the database proxy for our peewee models.
@@ -73,7 +74,7 @@ def race_modify(race):
     with database_proxy.atomic():
         race_model = Race.get()
         race_model.name = race['name']
-        race_model.data = race.get('data', DEFAULT_DATA)
+        race_model.data = race['data']
         race_model.save()
 
 # Gets a list of Field models.
@@ -295,9 +296,9 @@ def racer_modify(racer):
         racer_model.name = racer['name']
         racer_model.team = racer['team']
         racer_model.field = field_model
-        racer_model.start = racer.get('start', DEFAULT_TIME)
-        racer_model.finish = racer.get('finish', DEFAULT_TIME)
-        racer_model.data = racer.get('data', DEFAULT_DATA)
+        racer_model.start = racer['start']
+        racer_model.finish = racer['finish']
+        racer_model.data = racer['data']
         racer_model.save()
 
 def racer_rebib(old_bib, new_bib):
@@ -346,5 +347,89 @@ def racer_delete_all_from_field(name):
 def racer_delete_all():
     with database_proxy.atomic():
         (Racer
+         .delete()
+         .execute())
+
+def result_get_list():
+    list = []
+
+    with database_proxy.atomic():
+        query = (Result
+                 .select()
+                 .order_by(Result.bib))
+
+        for result_model in query:
+            list.append({'id': result_model.id,
+                         'finish': result_model.finish,
+                         'scratchpad': result_model.scratchpad,
+                         'data': result_model.data})
+
+    return list
+
+# Fast way to get a result count if we don't need the list of results.
+def result_get_count():
+    with database_proxy.atomic():
+        return (Result
+                .select()
+                .count())
+
+def result_get(id):
+    with database_proxy.atomic():
+        # Result model is not found.
+        try:
+            result_model = Result.get(Result.id == id)
+        except DoesNotExist:
+            raise LookupError('Result with id ' + id + ' does not exist.')
+
+    return {'id': result_model.id,
+            'finish': result_model.finish,
+            'scratchpad': result_model.scratchpad,
+            'data': result_model.data}
+
+def result_new(result):
+    with database_proxy.atomic():
+        # This create should normally succeed, since there is no chance of 
+        # a unique key collision (we don't care about the value of the primary
+        # key "id", and so we don't expose it to the caller of this API, and
+        # instead just let peewee manage it under the hood.
+        #
+        # If no scratchpad text is given, we just make it blank.
+        #
+        # Also, if we try to create a result without specifying the finish
+        # time, use the current time (now).
+        #
+        # In other words, it seems that you don't need to feed anything into
+        # making a result.
+        result_model = Result.create(finish=result.get('finish', datetime.time(datetime.now())),
+                                     scratchpad=result.get('scratchpad', DEFAULT_RESULT_SCRATCHPAD),
+                                     data=result.get('data', DEFAULT_DATA))
+
+def result_modify(result):
+    with database_proxy.atomic():
+        # Result model is not found.
+        try:
+            result_model = Result.get(Result.id == result['id'])
+        except DoesNotExist:
+            raise LookupError('Result with id ' + result['id'] +
+                              ' does not exist.')
+
+        result_model.finish = result['finish']
+        result_model.scratchpad = result['scratchpad']
+        result_model.data = result['data']
+        result_model.save()
+
+def result_delete(id):
+    with database_proxy.atomic():
+        # Result model is not found.
+        try:
+            result_model = Result.get(Result.id == id)
+        except DoesNotExist:
+            raise LookupError('A result with id ' + id + ' does not exist.')
+
+        result_model.delete_instance()
+
+def result_delete_all():
+    with database_proxy.atomic():
+        (Result
          .delete()
          .execute())
