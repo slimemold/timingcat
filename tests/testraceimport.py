@@ -23,5 +23,11 @@ class TestRaceImport(TestBase):
         field_list = raceops.field_get_list()
         self.assertEqual(len(field_list), self.TOTAL_FIELDS)
 
+        field_count = raceops.field_get_count()
+        self.assertEqual(field_count, self.TOTAL_FIELDS)
+
         racer_list = raceops.racer_get_list()
         self.assertEqual(len(racer_list), self.TOTAL_RACERS)  
+
+        racer_count = raceops.racer_get_count()
+        self.assertEqual(racer_count, self.TOTAL_RACERS)
