@@ -74,10 +74,3 @@ class TempRacer(Racer):
 def create_tables():
     with database_proxy:
         database_proxy.create_tables([Race, Field, Racer, TempRacer])
-
-    database_proxy.connect()
-
-    if Race.get_or_none() is None:
-        with database_proxy.atomic():
-            Race.create(name='(needs description)', data="{}")
-

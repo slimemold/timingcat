@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 
-VERSION='1.0'
-
 import argparse
 import cmd
 import os
@@ -10,20 +8,43 @@ import re
 import sys
 import raceops
 
+from common import VERSION
+
 logger = logging.getLogger(__name__)
 
-def racer_str(racer):
-    return "%s, %s, %s, %s, %s, %s" % (racer['bib'],
-                                       racer['name'],
-                                       racer['team'],
-                                       racer['field'],
-                                       racer['start'],
-                                       racer['finish'])
+def race_str(args, race):
+    string = '%s' % (race['name'])
+
+    if args.showdata:
+        string += ', %s' % (race['data'])
+
+    return string
+
+def field_str(args, field):
+    string = '%s' % (field['name'])
+
+    if args.showdata:
+        string += ', %s' % (field['data'])
+
+    return string
+
+def racer_str(args, racer):
+    string = '%s, %s, %s, %s, %s, %s' % (racer['bib'],
+                                         racer['name'],
+                                         racer['team'],
+                                         racer['field'],
+                                         racer['start'],
+                                         racer['finish'])
+
+    if args.showdata:
+        string += ', %s' % (racer['data'])
+
+    return string
 
 def race_show(args):
     race = raceops.race_get()
 
-    print(race['name'])
+    print(race_str(args, race))
 
 def race_set(args):
     race = raceops.race_get()
@@ -34,116 +55,65 @@ def field_list(args):
     list = raceops.field_get_list()
 
     for field in list:
-        print(field['name'])
+        print(field_str(args, field))
 
 def field_show(args):
     list = raceops.field_get_racer_list(args.name)
 
     for racer in list:
-        print(racer_str(racer))
+        print(racer_str(args, racer))
 
 def field_add(args):
-    raceops.field_new({'name': args.name,
-                       'data': ""})
+    raceops.field_new({'name': args.name})
 
 def field_rename(args):
-    field = raceops.field_get(args.name)
-
-    raceops.field_rename(field['name'], args.new_name)
+    raceops.field_rename(args.name, args.new_name)
 
 def field_rm(args):
     raceops.field_delete(args.name)
 
 def racer_list(args):
-    with database_proxy.atomic():
-        query = (Racer
-                 .select()
-                 .order_by(Racer.bib))
+    list = raceops.racer_get_list()
 
-        for racer in query:
-            print(racer)
+    for racer in list:
+        print(racer_str(args, racer))
 
 def racer_add(args):
-    with database_proxy.atomic():
-        try:
-            field = Field.get(Field.name == args.field)
-        except DoesNotExist:
-            print('A field named ' + args.field + ' does not exist.')
-            return
-
-        try:
-            racer = Racer.create(bib=args.bib, name=args.name, team=args.team,
-                                 field=field, data="")
-        except IntegrityError:
-            print('A racer with bib ' + args.bib + ' already exists.')
+    raceops.racer_new({'bib': args.bib,
+                       'name': args.name,
+                       'team': args.team,
+                       'field': args.field})
 
 def racer_rebib(args):
-    with database_proxy.atomic():
-        try:
-            racer = Racer.get(Racer.bib == args.bib)
-        except DoesNotExist:
-            print('A racer with bib ' + args.bib + ' does not exist.')
-            return
-
-        try:
-            racer.bib = args.new_bib
-            racer.save()
-        except IntegrityError:
-            print('A racer with bib ' + args.new_bib + ' already exists.')
+    raceops.racer_rebib(args.bib, args.new_bib)
 
 def racer_rename(args):
-    with database_proxy.atomic():
-        try:
-            racer = Racer.get(Racer.bib == args.bib)
-        except DoesNotExist:
-            print('A racer with bib ' + args.bib + ' does not exist.')
-            return
+    racer = raceops.racer_get(args.bib)
 
-        racer.name = args.new_name
-        racer.save()
+    racer['name'] = args.new_name
+    raceops.racer_modify(racer)
 
 def racer_reteam(args):
-    with database_proxy.atomic():
-        try:
-            racer = Racer.get(Racer.bib == args.bib)
-        except DoesNotExist:
-            print('A racer with bib ' + args.bib + ' does not exist.')
-            return
+    racer = raceops.racer_get(args.bib)
 
-        racer.team = args.new_team
-        racer.save()
+    racer['team'] = args.new_team
+    raceops.racer_modify(racer)
 
 def racer_refield(args):
-    with database_proxy.atomic():
-        try:
-            racer = Racer.get(Racer.bib == args.bib)
-        except DoesNotExist:
-            print('A racer with bib ' + args.bib + ' does not exist.')
-            return
+    racer = raceops.racer_get(args.bib)
 
-        try:
-            field = Field.get(Field.name == args.new_field)
-        except DoesNotExist:
-            print('A field named ' + args.name + ' does not exist.')
-            return
-
-        racer.field = field
-        racer.save()
+    racer['field'] = args.new_field
+    raceops.racer_modify(racer)
 
 def racer_rm(args):
-    with database_proxy.atomic():
-        try:
-            racer = Racer.get(Racer.name == args.name)
-        except DoesNotExist:
-            print('A racer named ' + args.name + ' does not exist.')
-            return
-
-        racer.delete_instance()
+    raceops.racer_delete(args.bib)
 
 def make_parser():
     parser = argparse.ArgumentParser(description='SexyThyme, a race tracking program')
     parser.add_argument('--version', action='version',
                         version='%(prog)s ' + VERSION)
+    parser.add_argument('--showdata', action='store_true',
+                        help='show model instance data')
     parser.add_argument('racefile', help='use the specified race file')
     subparsers = parser.add_subparsers(help='command help')
 
@@ -241,6 +211,7 @@ class Shell(cmd.Cmd):
     intro = 'SexyThyme: Type help or ? to list commands.\n'
     prompt = '(sexythyme) '
     parser = None
+    showdata = ''
 
     def __init__(self, parser):
         super().__init__()
@@ -270,13 +241,21 @@ class Shell(cmd.Cmd):
             pass
 
     def do_race(self, arg):
-        self.handle_command('racefile race ' + arg)
+        self.handle_command(self.showdata + 'racefile race ' + arg)
 
     def do_field(self, arg):
-        self.handle_command('racefile field ' + arg)
+        self.handle_command(self.showdata + 'racefile field ' + arg)
 
     def do_racer(self, arg):
-        self.handle_command('racefile racer ' + arg)
+        self.handle_command(self.showdata + 'racefile racer ' + arg)
+
+    def do_toggledata(self, arg):
+        if self.showdata == '':
+            print('showing model data')
+            self.showdata = '--showdata '
+        else:
+            print('hiding model data')
+            self.showdata = ''
 
     def do_exit(self, arg):
         return True

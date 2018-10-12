@@ -1,6 +1,8 @@
 #!/usr/bin/env python3
 
+import json
 import peewee
+from datetime import time, timedelta
 from racemodel import *
 
 # This module hides the database queries behind a set of simple functions.
@@ -24,6 +26,9 @@ from racemodel import *
 # racemodel are named ending in _model, to avoid collision with raceops object
 # names, which are named in the plain.
 
+DEFAULT_DATA = json.dumps({})
+DEFAULT_TIME = peewee.TimeField(time(hour=0, minute=0, second=0, microsecond=0))
+
 def race_init(racefile):
     # Initialize the database proxy for our peewee models.
     database = peewee.SqliteDatabase(racefile,
@@ -33,16 +38,14 @@ def race_init(racefile):
     # Create the database tables if it is a new file.
     create_tables()
 
+    database_proxy.connect()
+
+    if Race.get_or_none() is None:
+        with database_proxy.atomic():
+            Race.create(name='(needs description)', data="{}")
+
 def race_cleanup():
     database_proxy.close()
-
-# Sanity check a Race model.
-def race_check(race):
-    # Race model is incomplete.
-    if not race['name']:
-        raise KeyError('Race is missing name')
-    if not race['data']:
-        raise KeyError('Race is missing data')
 
 # Returns a Race model
 def race_get():
@@ -54,21 +57,11 @@ def race_get():
 
 # Modifies the existing Race model.
 def race_modify(race):
-    race_check(race)
-
     with database_proxy.atomic():
         race_model = Race.get()
         race_model.name = race['name']
-        race_model.data = race['data']
+        race_model.data = race.get('data', DEFAULT_DATA)
         race_model.save()
-
-# Sanity check a Field model.
-def field_check(field):
-    # Field model is incomplete.
-    if not field['name']:
-        raise KeyError('Field is missing name')
-    if not field['data']:
-        raise KeyError('Field is missing data')
 
 # Gets a list of Field models.
 def field_get_list():
@@ -92,19 +85,18 @@ def field_get(name):
         try:
             field_model = Field.get(Field.name == name)
         except DoesNotExist:
-            raise LookupError('Field with name ' + name + ' does not exist.')
+            return None
 
     return {'name': field_model.name,
             'data': field_model.data}
 
 # Adds a Field model.
 def field_new(field):
-    field_check(field)
-
     with database_proxy.atomic():
         # Probably duplicate name.
         try:
-            field_model = Field.create(name=field['name'], data=field['data'])
+            field_model = Field.create(name=field['name'],
+                                       data=field.get('data', DEFAULT_DATA))
         except IntegrityError:
             raise ValueError('Field with name ' + field['name'] +
                              ' already exists.')
@@ -131,8 +123,6 @@ def field_get_racer_list(name):
 
 # Modifies a Field model.
 def field_modify(field):
-    field_check(field)
-
     with database_proxy.atomic():
         # Field model is not found.
         try:
@@ -176,21 +166,6 @@ def field_delete(name):
 
         field_model.delete_instance()
 
-# Sanity check a Racer model.
-def racer_check(racer):
-    # Racer model is incomplete.
-    # Note that start and finish can be absent.
-    if not racer['bib']:
-        raise KeyError('Racer is missing bib')
-    if not racer['name']:
-        raise KeyError('Racer is missing name')
-    if not racer['team']:
-        raise KeyError('Racer is missing team')
-    if not racer['field']:
-        raise KeyError('Racer is missing field')
-    if not racer['data']:
-        raise KeyError('Racer is missing data')
-
 # Gets a list of Field models.
 def racer_get_list():
     list = []
@@ -230,8 +205,7 @@ def racer_get():
 
 # Adds a Racer model.
 def racer_new(racer):
-    racer_check(racer)
-
+    print(racer['name'])
     with database_proxy.atomic():
         # Racer model's specified field does not exist.
         try:
@@ -242,20 +216,22 @@ def racer_new(racer):
 
         # Probably duplicate bib.
         try:
+            print(racer.get('bib', DEFAULT_DATA))
+            print(racer.get('data', DEFAULT_DATA))
+            print(racer.get('team', DEFAULT_DATA))
             racer_model = Racer.create(bib=racer['bib'],
                                        name=racer['name'],
                                        team=racer['team'],
                                        field=field_model,
-                                       start=racer['start'],
-                                       finish=racer['finish'],
-                                       data=racer['data'])
+                                       start=racer.get('start', DEFAULT_TIME),
+                                       finish=racer.get('finish', DEFAULT_TIME),
+                                       data=racer.get('data', DEFAULT_DATA))
+            print(racer['bib'])
         except IntegrityError:
             raise ValueError('Racer with bib ' + racer['bib'] +
                              ' already exists.')
 
 def racer_modify(racer):
-    racer_check(racer)
-
     with database_proxy.atomic():
         # Racer model's specified field does not exist.
         try:
@@ -274,9 +250,9 @@ def racer_modify(racer):
         racer.name = racer['name']
         racer.team = racer['team']
         racer.field = field
-        racer.start = racer['start']
-        racer.finish = racer['finish']
-        racer.data = racer['data']
+        racer.start = racer.get('start', DEFAULT_TIME)
+        racer.finish = racer('finish', DEFAULT_TIME)
+        racer.data = racer.get('data', DEFAULT_DATA)
         racer.save()
 
 def racer_rebib(old_bib, new_bib):
