@@ -26,6 +26,7 @@ from racemodel import *
 # racemodel are named ending in _model, to avoid collision with raceops object
 # names, which are named in the plain.
 
+DEFAULT_RACE_NAME = '(needs description)'
 DEFAULT_DATA = json.dumps({})
 DEFAULT_TIME = peewee.TimeField(time(hour=0, minute=0, second=0, microsecond=0))
 
@@ -42,7 +43,19 @@ def race_init(racefile):
 
     if Race.get_or_none() is None:
         with database_proxy.atomic():
-            Race.create(name='(needs description)', data="{}")
+            Race.create(name=DEFAULT_RACE_NAME, data=DEFAULT_DATA)
+
+def race_clear():
+    with database_proxy.atomic():
+        racers_deleted = racer_delete_all()
+        fields_deleted = field_delete_all()
+
+        race_model = Race.get()
+        race_model.name = DEFAULT_RACE_NAME
+        race_model.data = DEFAULT_DATA
+        race_model.save()
+
+    return (racers_deleted, fields_deleted)
 
 def race_cleanup():
     database_proxy.close()
@@ -77,6 +90,13 @@ def field_get_list():
                          'data': field_model.data})
 
     return list
+
+# Fast way to get a field count if we don't need the list of fields.
+def field_get_count():
+    with database_proxy.atomic():
+        return (Field
+                .select()
+                .count())
 
 # Gets a Field model, given a field name.
 def field_get(name):
@@ -120,6 +140,18 @@ def field_get_racer_list(name):
                          'data': racer_model.data})
 
     return list
+
+# Fast way to get a field's racer count if we don't need the list of racers.
+def field_get_racer_count(name):
+    with database_proxy.atomic():
+        try:
+            field_model = Field.get(Field.name == name)
+        except DoesNotExist:
+            raise LookupError('Field with name ' + name + ' does not exist.')
+
+        return (field_model.racers
+                .select()
+                .count())
 
 # Modifies a Field model.
 def field_modify(field):
@@ -166,6 +198,17 @@ def field_delete(name):
 
         field_model.delete_instance()
 
+def field_delete_empty():
+    field_list = field_get_list()
+    field_count = field_get_count()
+
+    for field in field_list:
+        if field_get_racer_count(field['name']) == 0:
+            field_delete(field['name'])
+            field_count -= 1
+
+    return field_count
+
 # Gets a list of Field models.
 def racer_get_list():
     list = []
@@ -185,6 +228,13 @@ def racer_get_list():
                          'data': racer_model.data})
 
     return list
+
+# Fast way to get a racer count if we don't need the list of racers.
+def racer_get_count():
+    with database_proxy.atomic():
+        return (Racer
+                .select()
+                .count())
 
 # Gets a Racer model, given a racer bib.
 def racer_get(bib):
@@ -275,3 +325,21 @@ def racer_delete(bib):
 
         racer_model.delete_instance()
 
+def racer_delete_all_from_field(name):
+    with database_proxy.atomic():
+        # Field model is not found.
+        try:
+            field_model = Field.get(Field.name == name)
+        except DoesNotExist:
+            raise LookupError('Field with name ' + name + ' does not exist.')
+
+        (Racer
+         .delete()
+         .where(Racer.field == field_model)
+         .execute())
+
+def racer_delete_all():
+    with database_proxy.atomic():
+        (Racer
+         .delete()
+         .execute())

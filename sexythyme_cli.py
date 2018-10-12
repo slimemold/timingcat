@@ -4,11 +4,12 @@ import argparse
 import cmd
 import os
 import logging
+import raceimport
 import re
 import sys
 import raceops
 
-from common import VERSION
+from common import VERSION, ask_yes_no
 
 logger = logging.getLogger(__name__)
 
@@ -57,7 +58,7 @@ def field_list(args):
     for field in list:
         print(field_str(args, field))
 
-    print('Total: ' + str(len(list)))
+    print('Total: ' + str(raceops.field_get_count()))
 
 def field_show(args):
     try:
@@ -68,7 +69,7 @@ def field_show(args):
     for racer in list:
         print(racer_str(args, racer))
 
-    print('Total: ' + str(len(list)))
+    print('Total: ' + str(raceops.field_get_racer_count(args.name)))
 
 def field_add(args):
     try:
@@ -88,13 +89,18 @@ def field_rm(args):
     except(LookupError, RuntimeError) as e:
         print(str(e))
 
+def field_rmempty(args):
+    fields_not_deleted = raceops.field_delete_empty()
+
+    print('%s fields not deleted (not empty)' % (fields_not_deleted))
+
 def racer_list(args):
     list = raceops.racer_get_list()
 
     for racer in list:
         print(racer_str(args, racer))
 
-    print('Total: ' + str(len(list)))
+    print('Total: ' + str(raceops.racer_get_count()))
 
 def racer_add(args):
     try:
@@ -143,6 +149,29 @@ def racer_rm(args):
         raceops.racer_delete(args.bib)
     except LookupError as e:
         print(str(e))
+
+def racer_fieldrmall(args):
+    raceops.racer_delete_all_from_field(args.name)
+
+def racer_rmall(args):
+    raceops.racer_delete_all()
+
+def import_bikereg(args):
+    if not os.path.isfile(args.csvfile):
+        print('File %s does not exist' % (args.csvfile))
+        return
+
+    if ask_yes_no('Overwrite race file %s with import data?' % (args.racefile),
+                  default='no'):
+        raceops.race_cleanup()
+        os.remove(args.racefile)
+        raceops.race_init(args.racefile)
+
+        importer = raceimport.BikeRegRaceImporter()
+        with open(args.csvfile) as import_file:
+            importer.read(import_file)
+    else:
+        print('Aborted')
 
 def make_parser():
     parser = argparse.ArgumentParser(description='SexyThyme, a race tracking program')
@@ -196,6 +225,16 @@ def make_parser():
     subparser.add_argument('name', help='used to identify the field')
     subparser.set_defaults(func=field_rm)
 
+    # Create the parser for the "field rmempty" command.
+    subparser = field_subparsers.add_parser('rmempty')
+    subparser.set_defaults(func=field_rmempty)
+
+    # Create the parser for the "field racerrmall" command.
+    # Note this is the same as "racer fieldrmall".
+    subparser = field_subparsers.add_parser('racerrmall')
+    subparser.add_argument('name', help='used to identify the field')
+    subparser.set_defaults(func=racer_fieldrmall)
+
     # Create the parser for the "racer" command.
     racer_parser = subparsers.add_parser('racer')
     racer_subparsers = racer_parser.add_subparsers(help='racer command help')
@@ -241,17 +280,37 @@ def make_parser():
     subparser.add_argument('name', help='used to identify the racer')
     subparser.set_defaults(func=racer_rm)
 
+    # Create the parser for the "racer fieldrmall" command.
+    subparser = racer_subparsers.add_parser('fieldrmall')
+    subparser.add_argument('name', help='used to identify the field')
+    subparser.set_defaults(func=racer_fieldrmall)
+
+    # Create the parser for the "racer rmall" command.
+    subparser = racer_subparsers.add_parser('rmall')
+    subparser.set_defaults(func=racer_rmall)
+
+    # Create the parser for the "import" command.
+    import_parser = subparsers.add_parser('import')
+    import_subparsers = import_parser.add_subparsers(help='import command help')
+
+    # Create the parser for the "import bikereg" command.
+    subparser = import_subparsers.add_parser('bikereg')
+    subparser.add_argument('csvfile', help='bikereg csv file')
+    subparser.set_defaults(func=import_bikereg)
+
     return parser
 
 class Shell(cmd.Cmd):
     intro = 'SexyThyme: Type help or ? to list commands.\n'
     prompt = '(sexythyme) '
     parser = None
+    racefile = None
     showdata = ''
 
-    def __init__(self, parser):
+    def __init__(self, parser, racefile):
         super().__init__()
         self.parser = parser
+        self.racefile = racefile
         self.parser.usage = 'Fish!'
 
     def handle_command(self, command):
@@ -277,13 +336,16 @@ class Shell(cmd.Cmd):
             pass
 
     def do_race(self, arg):
-        self.handle_command(self.showdata + 'racefile race ' + arg)
+        self.handle_command(self.showdata + self.racefile + ' race ' + arg)
 
     def do_field(self, arg):
-        self.handle_command(self.showdata + 'racefile field ' + arg)
+        self.handle_command(self.showdata + self.racefile + ' field ' + arg)
 
     def do_racer(self, arg):
-        self.handle_command(self.showdata + 'racefile racer ' + arg)
+        self.handle_command(self.showdata + self.racefile + ' racer ' + arg)
+
+    def do_import(self, arg):
+        self.handle_command(self.showdata + self.racefile + ' import ' + arg)
 
     def do_toggledata(self, arg):
         if self.showdata == '':
@@ -308,7 +370,7 @@ if __name__ == '__main__':
     if hasattr(args, 'func'):
         args.func(args)
     else:
-        shell = Shell(parser)
+        shell = Shell(parser, args.racefile)
         shell.cmdloop()
 
     raceops.race_cleanup()
