@@ -57,6 +57,8 @@ def field_list(args):
     for field in list:
         print(field_str(args, field))
 
+    print('Total: ' + str(len(list)))
+
 def field_show(args):
     try:
         list = raceops.field_get_racer_list(args.name)
@@ -65,6 +67,8 @@ def field_show(args):
 
     for racer in list:
         print(racer_str(args, racer))
+
+    print('Total: ' + str(len(list)))
 
 def field_add(args):
     try:
@@ -89,6 +93,8 @@ def racer_list(args):
 
     for racer in list:
         print(racer_str(args, racer))
+
+    print('Total: ' + str(len(list)))
 
 def racer_add(args):
     try:
