@@ -187,7 +187,7 @@ def racer_get_list():
     return list
 
 # Gets a Racer model, given a racer bib.
-def racer_get():
+def racer_get(bib):
     with database_proxy.atomic():
         # Racer model is not found.
         try:
@@ -247,13 +247,13 @@ def racer_modify(racer):
             raise LookupError('Racer with bib ' + racer['bib'] +
                               ' does not exist.')
 
-        racer.name = racer['name']
-        racer.team = racer['team']
-        racer.field = field
-        racer.start = racer.get('start', DEFAULT_TIME)
-        racer.finish = racer('finish', DEFAULT_TIME)
-        racer.data = racer.get('data', DEFAULT_DATA)
-        racer.save()
+        racer_model.name = racer['name']
+        racer_model.team = racer['team']
+        racer_model.field = field_model
+        racer_model.start = racer.get('start', DEFAULT_TIME)
+        racer_model.finish = racer.get('finish', DEFAULT_TIME)
+        racer_model.data = racer.get('data', DEFAULT_DATA)
+        racer_model.save()
 
 def racer_rebib(old_bib, new_bib):
     with database_proxy.atomic():
@@ -268,7 +268,7 @@ def racer_rebib(old_bib, new_bib):
             raise ValueError('New bib ' + new_bib + ' is used by other racer.')
 
         racer_model.bib = new_bib
-        racer.save()
+        racer_model.save()
 
 def racer_delete(bib):
     with database_proxy.atomic():

@@ -58,19 +58,31 @@ def field_list(args):
         print(field_str(args, field))
 
 def field_show(args):
-    list = raceops.field_get_racer_list(args.name)
+    try:
+        list = raceops.field_get_racer_list(args.name)
+    except LookupError as e:
+        print(str(e))
 
     for racer in list:
         print(racer_str(args, racer))
 
 def field_add(args):
-    raceops.field_new({'name': args.name})
+    try:
+        raceops.field_new({'name': args.name})
+    except ValueError as e:
+        print(str(e))
 
 def field_rename(args):
-    raceops.field_rename(args.name, args.new_name)
+    try:
+        raceops.field_rename(args.name, args.new_name)
+    except (LookupError, ValueError) as e:
+        print(str(e))
 
 def field_rm(args):
-    raceops.field_delete(args.name)
+    try:
+        raceops.field_delete(args.name)
+    except(LookupError, RuntimeError) as e:
+        print(str(e))
 
 def racer_list(args):
     list = raceops.racer_get_list()
@@ -79,34 +91,52 @@ def racer_list(args):
         print(racer_str(args, racer))
 
 def racer_add(args):
-    raceops.racer_new({'bib': args.bib,
-                       'name': args.name,
-                       'team': args.team,
-                       'field': args.field})
+    try:
+        raceops.aacer_new({'bib': args.bib,
+                           'name': args.name,
+                           'team': args.team,
+                           'field': args.field})
+    except (LookupError, ValueError) as e:
+        print(str(e))
 
 def racer_rebib(args):
-    raceops.racer_rebib(args.bib, args.new_bib)
+    try:
+        raceops.racer_rebib(args.bib, args.new_bib)
+    except (LookupError, ValueError) as e:
+        print(str(e))
 
 def racer_rename(args):
-    racer = raceops.racer_get(args.bib)
+    try:
+        racer = raceops.racer_get(args.bib)
 
-    racer['name'] = args.new_name
-    raceops.racer_modify(racer)
+        racer['name'] = args.new_name
+        raceops.racer_modify(racer)
+    except LookupError as e:
+        print(str(e))
 
 def racer_reteam(args):
-    racer = raceops.racer_get(args.bib)
+    try:
+        racer = raceops.racer_get(args.bib)
 
-    racer['team'] = args.new_team
-    raceops.racer_modify(racer)
+        racer['team'] = args.new_team
+        raceops.racer_modify(racer)
+    except LookupError as e:
+        print(str(e))
 
 def racer_refield(args):
-    racer = raceops.racer_get(args.bib)
+    try:
+        racer = raceops.racer_get(args.bib)
 
-    racer['field'] = args.new_field
-    raceops.racer_modify(racer)
+        racer['field'] = args.new_field
+        raceops.racer_modify(racer)
+    except LookupError as e:
+        print(str(e))
 
 def racer_rm(args):
-    raceops.racer_delete(args.bib)
+    try:
+        raceops.racer_delete(args.bib)
+    except LookupError as e:
+        print(str(e))
 
 def make_parser():
     parser = argparse.ArgumentParser(description='SexyThyme, a race tracking program')
