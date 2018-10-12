@@ -45,10 +45,10 @@ def race_init(racefile):
         with database_proxy.atomic():
             Race.create(name=DEFAULT_RACE_NAME, data=DEFAULT_DATA)
 
-def race_clear():
+def race_reset():
     with database_proxy.atomic():
         racers_deleted = racer_delete_all()
-        fields_deleted = field_delete_all()
+        fields_deleted = field_delete_empty()
 
         race_model = Race.get()
         race_model.name = DEFAULT_RACE_NAME
@@ -333,10 +333,15 @@ def racer_delete_all_from_field(name):
         except DoesNotExist:
             raise LookupError('Field with name ' + name + ' does not exist.')
 
+        count = (field_model.racers
+                 .select()
+                 .count())
         (Racer
          .delete()
          .where(Racer.field == field_model)
          .execute())
+
+    return count
 
 def racer_delete_all():
     with database_proxy.atomic():

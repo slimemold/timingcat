@@ -45,12 +45,23 @@ def racer_str(args, racer):
 def race_show(args):
     race = raceops.race_get()
 
+    print('Fields: %s' % (raceops.field_get_count()))
+    print('Racers: %s' % (raceops.racer_get_count()))
     print(race_str(args, race))
 
 def race_set(args):
     race = raceops.race_get()
     race['name'] = args.name
     raceops.race_modify(race)
+
+def race_reset(args):
+    print('This operation will delete %s fields and %s racers.' %
+          (raceops.field_get_count(), raceops.racer_get_count()))
+    if not ask_yes_no('Delete everything and start over?', default='no'):
+        print('Aborted')
+        return
+
+    raceops.race_reset()
 
 def field_list(args):
     list = raceops.field_get_list()
@@ -90,6 +101,10 @@ def field_rm(args):
         print(str(e))
 
 def field_rmempty(args):
+    if not ask_yes_no('Remove all empty fields?', default='no'):
+        print('Aborted')
+        return
+
     fields_not_deleted = raceops.field_delete_empty()
 
     print('%s fields not deleted (not empty)' % (fields_not_deleted))
@@ -151,9 +166,23 @@ def racer_rm(args):
         print(str(e))
 
 def racer_fieldrmall(args):
-    raceops.racer_delete_all_from_field(args.name)
+    count = raceops.field_get_racer_count(args.name)
+    if not ask_yes_no('Remove all %s racers from field "%s"?' % (count, args.name), default='no'):
+        print('Aborted')
+        return
+
+    try:
+        count = raceops.racer_delete_all_from_field(args.name)
+    except LookupError as e:
+        print(str(e))
+
+    print('Removed %s racers' % count)
 
 def racer_rmall(args):
+    if not ask_yes_no('Remove all racers?', default='no'):
+        print('Aborted')
+        return
+
     raceops.racer_delete_all()
 
 def import_bikereg(args):
@@ -161,17 +190,17 @@ def import_bikereg(args):
         print('File %s does not exist' % (args.csvfile))
         return
 
-    if ask_yes_no('Overwrite race file %s with import data?' % (args.racefile),
-                  default='no'):
-        raceops.race_cleanup()
-        os.remove(args.racefile)
-        raceops.race_init(args.racefile)
-
-        importer = raceimport.BikeRegRaceImporter()
-        with open(args.csvfile) as import_file:
-            importer.read(import_file)
-    else:
+    if not ask_yes_no('Overwrite race file %s with import data?' % (args.racefile), default='no'):
         print('Aborted')
+        return
+
+    raceops.race_cleanup()
+    os.remove(args.racefile)
+    raceops.race_init(args.racefile)
+
+    importer = raceimport.BikeRegRaceImporter()
+    with open(args.csvfile) as import_file:
+        importer.read(import_file)
 
 def make_parser():
     parser = argparse.ArgumentParser(description='SexyThyme, a race tracking program')
@@ -195,6 +224,10 @@ def make_parser():
     subparser.add_argument('name',
                            help='long, descriptive name')
     subparser.set_defaults(func=race_set)
+
+    # Create the parser for the "race reset" command.
+    subparser = race_subparsers.add_parser('reset')
+    subparser.set_defaults(func=race_reset)
 
     # Create the parser for the "field" command.
     field_parser = subparsers.add_parser('field')
