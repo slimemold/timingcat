@@ -41,8 +41,8 @@ class Racer(BaseModel):
 
     field = ForeignKeyField(Field, backref='racers')
 
-    start = TimeField
-    finish = TimeField
+    start = TimeField()
+    finish = TimeField()
 
     # JSON for miscellaneous data (has no meaning for our model)..
     data = TextField()
@@ -59,7 +59,7 @@ class Racer(BaseModel):
         self.finish = self.start + result
 
 class Result(BaseModel):
-    finish = TimeField
+    finish = TimeField()
 
     # This ends up being used as a bib (way to identify the racer), but until
     # it is applied to a racer, it can be anything (hence, it's a scratchpad).
