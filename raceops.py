@@ -42,8 +42,8 @@ def race_init(racefile):
 
     database_proxy.connect()
 
-    if Race.get_or_none() is None:
-        with database_proxy.atomic():
+    with database_proxy.atomic():
+        if Race.get_or_none() is None:
             Race.create(name=DEFAULT_RACE_NAME, data=DEFAULT_DATA)
 
 def race_reset():
@@ -56,7 +56,7 @@ def race_reset():
         race_model.data = DEFAULT_DATA
         race_model.save()
 
-    return (racers_deleted, fields_deleted)
+        return (racers_deleted, fields_deleted)
 
 def race_cleanup():
     database_proxy.close()
@@ -66,8 +66,8 @@ def race_get():
     with database_proxy.atomic():
         race_model = Race.get()
 
-    return {'name': race_model.name,
-            'data': race_model.data}
+        return {'name': race_model.name,
+                'data': race_model.data}
 
 # Modifies the existing Race model.
 def race_modify(race):
@@ -79,9 +79,9 @@ def race_modify(race):
 
 # Gets a list of Field models.
 def field_get_list():
-    list = []
-
     with database_proxy.atomic():
+        list = []
+
         query = (Field
                  .select()
                  .order_by(Field.name))
@@ -90,7 +90,7 @@ def field_get_list():
             list.append({'name': field_model.name,
                          'data': field_model.data})
 
-    return list
+        return list
 
 # Fast way to get a field count if we don't need the list of fields.
 def field_get_count():
@@ -108,8 +108,8 @@ def field_get(name):
         except DoesNotExist:
             return None
 
-    return {'name': field_model.name,
-            'data': field_model.data}
+        return {'name': field_model.name,
+                'data': field_model.data}
 
 # Adds a Field model.
 def field_new(field):
@@ -123,9 +123,9 @@ def field_new(field):
                              ' already exists.')
 
 def field_get_racer_list(name):
-    list = []
-
     with database_proxy.atomic():
+        list = []
+
         try:
             field_model = Field.get(Field.name == name)
         except DoesNotExist:
@@ -140,7 +140,7 @@ def field_get_racer_list(name):
                          'finish': racer_model.finish,
                          'data': racer_model.data})
 
-    return list
+        return list
 
 # Fast way to get a field's racer count if we don't need the list of racers.
 def field_get_racer_count(name):
@@ -200,21 +200,22 @@ def field_delete(name):
         field_model.delete_instance()
 
 def field_delete_empty():
-    field_list = field_get_list()
-    field_count = field_get_count()
+    with database_proxy.atomic():
+        field_list = field_get_list()
+        field_count = field_get_count()
 
-    for field in field_list:
-        if field_get_racer_count(field['name']) == 0:
-            field_delete(field['name'])
-            field_count -= 1
+        for field in field_list:
+            if field_get_racer_count(field['name']) == 0:
+                field_delete(field['name'])
+                field_count -= 1
 
-    return field_count
+        return field_count
 
 # Gets a list of Field models.
 def racer_get_list():
-    list = []
-
     with database_proxy.atomic():
+        list = []
+
         query = (Racer
                  .select()
                  .order_by(Racer.bib))
@@ -228,7 +229,7 @@ def racer_get_list():
                          'finish': racer_model.finish,
                          'data': racer_model.data})
 
-    return list
+        return list
 
 # Fast way to get a racer count if we don't need the list of racers.
 def racer_get_count():
@@ -246,13 +247,13 @@ def racer_get(bib):
         except DoesNotExist:
             raise LookupError('Racer with bib ' + bib + ' does not exist.')
 
-    return {'bib': racer_model.bib,
-            'name': racer_model.name,
-            'team': racer_model.team,
-            'field': racer_model.field.name,
-            'start': racer_model.start,
-            'finish': racer_model.finish,
-            'data': racer_model.data}
+        return {'bib': racer_model.bib,
+                'name': racer_model.name,
+                'team': racer_model.team,
+                'field': racer_model.field.name,
+                'start': racer_model.start,
+                'finish': racer_model.finish,
+                'data': racer_model.data}
 
 # Adds a Racer model.
 def racer_new(racer):
@@ -342,7 +343,7 @@ def racer_delete_all_from_field(name):
          .where(Racer.field == field_model)
          .execute())
 
-    return count
+        return count
 
 def racer_delete_all():
     with database_proxy.atomic():
@@ -351,9 +352,9 @@ def racer_delete_all():
          .execute())
 
 def result_get_list():
-    list = []
-
     with database_proxy.atomic():
+        list = []
+
         query = (Result
                  .select()
                  .order_by(Result.id))
@@ -364,7 +365,7 @@ def result_get_list():
                          'scratchpad': result_model.scratchpad,
                          'data': result_model.data})
 
-    return list
+        return list
 
 # Fast way to get a result count if we don't need the list of results.
 def result_get_count():
@@ -381,10 +382,10 @@ def result_get(id):
         except DoesNotExist:
             raise LookupError('Result with id ' + id + ' does not exist.')
 
-    return {'id': result_model.id,
-            'finish': result_model.finish,
-            'scratchpad': result_model.scratchpad,
-            'data': result_model.data}
+        return {'id': result_model.id,
+                'finish': result_model.finish,
+                'scratchpad': result_model.scratchpad,
+                'data': result_model.data}
 
 def result_new(result):
     with database_proxy.atomic():
