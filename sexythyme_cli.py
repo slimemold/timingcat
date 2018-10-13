@@ -213,6 +213,34 @@ def racer_fieldrmall(args):
 
     print('Removed %s racers' % count)
 
+def racer_fieldrestart(args):
+    count = raceops.field_get_racer_count(args.name)
+    if not ask_yes_no('Set start time %s for all %s racer(s) from field "%s"?' % (args.new_start, count, args.name), default='no'):
+        print('Aborted')
+        return
+
+    try:
+        raceops.racer_set_start_from_field(args.name,
+                                           datetime.time(datetime.strptime(args.new_start, TIME_FORMAT)))
+    except LookupError as e:
+        print(str(e))
+
+    print('Set start time %s for %s racers' % (args.new_start, count))
+
+def racer_fieldrefinish(args):
+    count = raceops.field_get_racer_count(args.name)
+    if not ask_yes_no('Set finish time %s for all %s racer(s) from field "%s"?' % (args.new_finish, count, args.name), default='no'):
+        print('Aborted')
+        return
+
+    try:
+        raceops.racer_set_finish_from_field(args.name,
+                                            datetime.time(datetime.strptime(args.new_finish, TIME_FORMAT)))
+    except LookupError as e:
+        print(str(e))
+
+    print('Set finish time %s for %s racers' % (args.new_finish, count))
+
 def racer_rmall(args):
     count = raceops.racer_get_count()
     if not ask_yes_no('Remove all %s racer(s)?' % (count), default='no'):
@@ -274,6 +302,12 @@ def result_rmall(args):
 
     raceops.result_delete_all()
 
+def result_commit(args):
+    try:
+        raceops.result_commit(args.id)
+    except (LookupError, ValueError) as e:
+        print(str(e))
+
 def import_bikereg(args):
     if not os.path.isfile(args.csvfile):
         print('File %s does not exist' % (args.csvfile))
@@ -302,6 +336,7 @@ def make_parser():
 
     # Create the parser for the "race" command.
     race_parser = subparsers.add_parser('race')
+    race_parser.set_defaults(func=race_show)
     race_subparsers = race_parser.add_subparsers(help='race command help')
 
     # Create the parser for the "race show" command.
@@ -310,9 +345,8 @@ def make_parser():
 
     # Create the parser for the "race set" command.
     subparser = race_subparsers.add_parser('set')
-    subparser.add_argument('name',
-                           help='long, descriptive name')
     subparser.set_defaults(func=race_set)
+    subparser.add_argument('name', help='long, descriptive name')
 
     # Create the parser for the "race reset" command.
     subparser = race_subparsers.add_parser('reset')
@@ -320,6 +354,7 @@ def make_parser():
 
     # Create the parser for the "field" command.
     field_parser = subparsers.add_parser('field')
+    field_parser.set_defaults(func=field_list)
     field_subparsers = field_parser.add_subparsers(help='field command help')
 
     # Create the parser for the "field list" command.
@@ -328,24 +363,24 @@ def make_parser():
 
     # Create the parser for the "field show" command.
     subparser = field_subparsers.add_parser('show')
-    subparser.add_argument('name', help='used to identify the field')
     subparser.set_defaults(func=field_show)
+    subparser.add_argument('name', help='used to identify the field')
 
     # Create the parser for the "field add" command.
     subparser = field_subparsers.add_parser('add')
-    subparser.add_argument('name', help='used to identify the field')
     subparser.set_defaults(func=field_add)
+    subparser.add_argument('name', help='used to identify the field')
 
     # Create the parser for the "field rename" command.
     subparser = field_subparsers.add_parser('rename')
+    subparser.set_defaults(func=field_rename)
     subparser.add_argument('name', help='used to identify the field')
     subparser.add_argument('new_name', help='new name')
-    subparser.set_defaults(func=field_rename)
 
     # Create the parser for the "field rm" command.
     subparser = field_subparsers.add_parser('rm')
-    subparser.add_argument('name', help='used to identify the field')
     subparser.set_defaults(func=field_rm)
+    subparser.add_argument('name', help='used to identify the field')
 
     # Create the parser for the "field rmempty" command.
     subparser = field_subparsers.add_parser('rmempty')
@@ -354,11 +389,26 @@ def make_parser():
     # Create the parser for the "field racerrmall" command.
     # Note this is the same as "racer fieldrmall".
     subparser = field_subparsers.add_parser('racerrmall')
-    subparser.add_argument('name', help='used to identify the field')
     subparser.set_defaults(func=racer_fieldrmall)
+    subparser.add_argument('name', help='used to identify the field')
+
+    # Create the parser for the "field racerrestart" command.
+    # Note this is the same as "racer fieldrestart".
+    subparser = field_subparsers.add_parser('racerrestart')
+    subparser.set_defaults(func=racer_fieldrestart)
+    subparser.add_argument('name', help='used to identify the field')
+    subparser.add_argument('new_start', help='new start time')
+
+    # Create the parser for the "field racerrefinish" command.
+    # Note this is the same as "racer fieldrefinish".
+    subparser = field_subparsers.add_parser('racerrefinish')
+    subparser.set_defaults(func=racer_fieldrefinish)
+    subparser.add_argument('name', help='used to identify the field')
+    subparser.add_argument('new_finish', help='new finish time')
 
     # Create the parser for the "racer" command.
     racer_parser = subparsers.add_parser('racer')
+    racer_parser.set_defaults(func=racer_list)
     racer_subparsers = racer_parser.add_subparsers(help='racer command help')
 
     # Create the parser for the "racer list" command.
@@ -367,57 +417,69 @@ def make_parser():
 
     # Create the parser for the "racer add" command.
     subparser = racer_subparsers.add_parser('add')
+    subparser.set_defaults(func=racer_add)
     subparser.add_argument('bib', help='used to identify the racer')
     subparser.add_argument('name', help='racer\'s full name')
     subparser.add_argument('team', help='racer\'s team name')
     subparser.add_argument('field', help='racer\'s field name')
-    subparser.set_defaults(func=racer_add)
 
     # Create the parser for the "racer rebib" command.
     subparser = racer_subparsers.add_parser('rebib')
+    subparser.set_defaults(func=racer_rebib)
     subparser.add_argument('bib', help='used to identify the racer')
     subparser.add_argument('new_bib', help='new bib')
-    subparser.set_defaults(func=racer_rebib)
 
     # Create the parser for the "racer rename" command.
     subparser = racer_subparsers.add_parser('rename')
+    subparser.set_defaults(func=racer_rename)
     subparser.add_argument('bib', help='used to identify the racer')
     subparser.add_argument('new_name', help='new name')
-    subparser.set_defaults(func=racer_rename)
 
     # Create the parser for the "racer reteam" command.
     subparser = racer_subparsers.add_parser('reteam')
+    subparser.set_defaults(func=racer_reteam)
     subparser.add_argument('bib', help='used to identify the racer')
     subparser.add_argument('new_team', help='new team')
-    subparser.set_defaults(func=racer_reteam)
 
     # Create the parser for the "racer refield" command.
     subparser = racer_subparsers.add_parser('refield')
+    subparser.set_defaults(func=racer_refield)
     subparser.add_argument('bib', help='used to identify the racer')
     subparser.add_argument('new_field', help='new field name')
-    subparser.set_defaults(func=racer_refield)
 
     # Create the parser for the "racer restart" command.
     subparser = racer_subparsers.add_parser('restart')
+    subparser.set_defaults(func=racer_restart)
     subparser.add_argument('bib', help='used to identify the racer')
     subparser.add_argument('new_start', help='new start time')
-    subparser.set_defaults(func=racer_restart)
 
     # Create the parser for the "racer refinish" command.
     subparser = racer_subparsers.add_parser('refinish')
+    subparser.set_defaults(func=racer_refinish)
     subparser.add_argument('bib', help='used to identify the racer')
     subparser.add_argument('new_finish', help='new finish time')
-    subparser.set_defaults(func=racer_refinish)
 
     # Create the parser for the "racer rm" command.
     subparser = racer_subparsers.add_parser('rm')
-    subparser.add_argument('name', help='used to identify the racer')
     subparser.set_defaults(func=racer_rm)
+    subparser.add_argument('name', help='used to identify the racer')
 
     # Create the parser for the "racer fieldrmall" command.
     subparser = racer_subparsers.add_parser('fieldrmall')
-    subparser.add_argument('name', help='used to identify the field')
     subparser.set_defaults(func=racer_fieldrmall)
+    subparser.add_argument('name', help='used to identify the field')
+
+    # Create the parser for the "racer fieldrestartrmall" command.
+    subparser = racer_subparsers.add_parser('fieldrestart')
+    subparser.set_defaults(func=racer_fieldrestart)
+    subparser.add_argument('name', help='used to identify the field')
+    subparser.add_argument('new_start', help='new start time')
+
+    # Create the parser for the "racer fieldrefinishrmall" command.
+    subparser = racer_subparsers.add_parser('fieldrefinish')
+    subparser.set_defaults(func=racer_fieldrefinish)
+    subparser.add_argument('name', help='used to identify the field')
+    subparser.add_argument('new_finish', help='new finish time')
 
     # Create the parser for the "racer rmall" command.
     subparser = racer_subparsers.add_parser('rmall')
@@ -425,6 +487,7 @@ def make_parser():
 
     # Create the parser for the "result" command.
     result_parser = subparsers.add_parser('result')
+    result_parser.set_defaults(func=result_list)
     result_subparsers = result_parser.add_subparsers(help='result command help')
 
     # Create the parser for the "result list" command.
@@ -433,30 +496,35 @@ def make_parser():
 
     # Create the parser for the "result add" command.
     subparser = result_subparsers.add_parser('add')
+    subparser.set_defaults(func=result_add)
     subparser.add_argument('scratchpad', nargs='?', help='bib scratchpad')
     subparser.add_argument('finish', nargs='?', help='result\'s full name')
-    subparser.set_defaults(func=result_add)
 
     # Create the parser for the "result rescratchpad" command.
     subparser = result_subparsers.add_parser('rescratchpad')
+    subparser.set_defaults(func=result_rescratchpad)
     subparser.add_argument('id', help='used to identify the result')
     subparser.add_argument('new_scratchpad', help='new scratchpad')
-    subparser.set_defaults(func=result_rescratchpad)
 
     # Create the parser for the "result refinish" command.
     subparser = result_subparsers.add_parser('refinish')
+    subparser.set_defaults(func=result_refinish)
     subparser.add_argument('id', help='used to identify the result')
     subparser.add_argument('new_finish', help='new finish')
-    subparser.set_defaults(func=result_refinish)
 
     # Create the parser for the "result rm" command.
     subparser = result_subparsers.add_parser('rm')
-    subparser.add_argument('id', help='used to identify the result')
     subparser.set_defaults(func=result_rm)
+    subparser.add_argument('id', help='used to identify the result')
 
     # Create the parser for the "result rmall" command.
     subparser = result_subparsers.add_parser('rmall')
     subparser.set_defaults(func=result_rmall)
+
+    # Create the parser for the "result commit" command.
+    subparser = result_subparsers.add_parser('commit')
+    subparser.set_defaults(func=result_commit)
+    subparser.add_argument('id', help='result id')
 
     # Create the parser for the "import" command.
     import_parser = subparsers.add_parser('import')
@@ -464,8 +532,8 @@ def make_parser():
 
     # Create the parser for the "import bikereg" command.
     subparser = import_subparsers.add_parser('bikereg')
-    subparser.add_argument('csvfile', help='bikereg csv file')
     subparser.set_defaults(func=import_bikereg)
+    subparser.add_argument('csvfile', help='bikereg csv file')
 
     return parser
 

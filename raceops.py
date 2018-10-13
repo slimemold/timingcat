@@ -345,6 +345,32 @@ def racer_delete_all_from_field(name):
 
         return count
 
+def racer_set_start_from_field(name, new_start):
+    with database_proxy.atomic():
+        # Field model is not found.
+        try:
+            field_model = Field.get(Field.name == name)
+        except DoesNotExist:
+            raise LookupError('Field with name ' + name + ' does not exist.')
+
+        (Racer
+         .update(start = new_start)
+         .where(Racer.field == field_model)
+         .execute())
+
+def racer_set_finish_from_field(name, new_finish):
+    with database_proxy.atomic():
+        # Field model is not found.
+        try:
+            field_model = Field.get(Field.name == name)
+        except DoesNotExist:
+            raise LookupError('Field with name ' + name + ' does not exist.')
+
+        (Racer
+         .update(finish = new_finish)
+         .where(Racer.field == field_model)
+         .execute())
+
 def racer_delete_all():
     with database_proxy.atomic():
         (Racer
@@ -434,3 +460,27 @@ def result_delete_all():
         (Result
          .delete()
          .execute())
+
+def result_commit(id):
+    with database_proxy.atomic():
+        # Result model is not found.
+        try:
+            result_model = Result.get(Result.id == id)
+        except DoesNotExist:
+            raise LookupError('Result with id ' + id + ' does not exist.')
+
+        try:
+            bib = int(result_model.scratchpad)
+        except ValueError:
+            raise ValueError(result_model.scratchpad + ' is not a bib number')
+
+        try:
+            racer_model = Racer.get(Racer.bib == result_model.scratchpad)
+        except DoesNotExist:
+            raise LookupError('Racer with bib ' + scratchpad +
+                              ' does not exist.')
+
+        racer_model.finish = result_model.finish
+        racer_model.save()
+
+        result_model.delete_instance()
