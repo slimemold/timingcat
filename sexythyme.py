@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 
-import logging
+from datetime import datetime
 import sys
-from PyQt5.QtCore import pyqtSignal, Qt
-from PyQt5.QtSql import QSqlDatabase, QSqlRelation, QSqlRelationalDelegate, QSqlRelationalTableModel, QSqlTableModel
+from PyQt5.QtCore import pyqtSignal, Qt, QTime
+import PyQt5.QtSql as QtSql
 import PyQt5.QtWidgets as QtWidgets
 
 def open_database(filename):
-    database = QSqlDatabase.addDatabase('QSQLITE')
+    database = QtSql.QSqlDatabase.addDatabase('QSQLITE')
     if not database.isValid():
         raise Exception('Invalid database')
 
@@ -18,34 +18,97 @@ def open_database(filename):
 
     return database
 
+class RaceInfo(QtWidgets.QTableView):
+    def __init__(self, db):
+        super().__init__()
+
+        self.setupModel()
+
+        # Set up our view.
+        self.setItemDelegate(QtSql.QSqlRelationalDelegate())
+        self.horizontalHeader().setVisible(False)
+        self.hideColumn(0) # id
+        self.hideColumn(2) # data
+
+
+    def setupModel(self):
+        self.setModel(QtSql.QSqlRelationalTableModel(db=db))
+        self.model().setTable('Race')
+        self.model().select()
+
+    # Signals.
+    visibleChanged = pyqtSignal(bool)
+
+    # Slots.
+    def toggle(self, checked):
+        if checked:
+            self.show()
+            self.view.show()
+        else:
+            self.hide()
+
+    def closeEvent(self, event):
+        self.visibleChanged.emit(False)
+
 class FieldTable(QtWidgets.QTableView):
     def __init__(self, db):
         super().__init__()
 
+        self.setupModel()
+
         self.setWindowTitle('Fields')
 
-        # Set up our model.
-        self.setModel(QSqlRelationalTableModel(db=db))
-        #self.model().setEditStrategy(QSqlTableModel.OnManualSubmit)
-        self.model().setTable('Field')
-        self.model().select()
-
         # Set up our view.
-        self.setItemDelegate(QSqlRelationalDelegate())
+        self.setItemDelegate(QtSql.QSqlRelationalDelegate())
+        self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
+        self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
         self.sortByColumn(1, Qt.SortOrder.AscendingOrder) # field
         self.verticalHeader().setVisible(False)
         self.model().setHeaderData(1, Qt.Horizontal, 'Field')
         self.hideColumn(0) # id
         self.hideColumn(2) # data
 
+    def setupModel(self):
+        # Set up our model.
+        self.setModel(QtSql.QSqlRelationalTableModel(db=db))
+        self.model().setTable('Field')
+        self.model().select()
+
+    # Signals.
+    visibleChanged = pyqtSignal(bool)
+
+    # Slots.
+    def toggle(self, checked):
+        if checked:
+            self.show()
+        else:
+            self.hide()
+
+    def closeEvent(self, event):
+        self.visibleChanged.emit(False)
+
 class RacerTable(QtWidgets.QTableView):
     def __init__(self, db, field=None):
         super().__init__()
 
+        self.setupModel(field)
+
+        # Set up our view.
+        self.setItemDelegate(QtSql.QSqlRelationalDelegate())
+        self.setAlternatingRowColors(True)
+        self.setSortingEnabled(True) # Allow sorting by column
+        self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
+        self.sortByColumn(1, Qt.SortOrder.AscendingOrder) # bib
+        self.verticalHeader().setVisible(False)
+        self.hideColumn(0) # id
+        self.hideColumn(7) # data
+        if self.model().field:
+            self.hideColumn(4) # field
+
+    def setupModel(self, field):
         # Set up our model.
-        self.setModel(QSqlRelationalTableModel(db=db))
-        #self.model().setEditStrategy(QSqlTableModel.OnManualSubmit)
+        self.setModel(QtSql.QSqlRelationalTableModel(db=db))
 
         self.model().field = field
         if self.model().field:
@@ -56,7 +119,7 @@ class RacerTable(QtWidgets.QTableView):
 
         self.model().setTable('Racer')
         self.model().select()
-        self.model().setRelation(4, QSqlRelation('Field', 'id', 'name'));
+        self.model().setRelation(4, QtSql.QSqlRelation('Field', 'id', 'name'));
         self.model().setHeaderData(1, Qt.Horizontal, 'Bib')
         self.model().setHeaderData(2, Qt.Horizontal, 'Name')
         self.model().setHeaderData(3, Qt.Horizontal, 'Team')
@@ -64,68 +127,127 @@ class RacerTable(QtWidgets.QTableView):
         self.model().setHeaderData(5, Qt.Horizontal, 'Start')
         self.model().setHeaderData(6, Qt.Horizontal, 'Finish')
 
-        # Set up our view.
-        self.setItemDelegate(QSqlRelationalDelegate())
-        self.setSortingEnabled(True) # Allow sorting by column
-        self.sortByColumn(1, Qt.SortOrder.AscendingOrder) # bib
-        self.verticalHeader().setVisible(False)
-        self.hideColumn(0) # id
-        self.hideColumn(7) # data
-        if self.model().field:
-            self.hideColumn(4) # field
 
-    def foreignKeyChange(self):
+    # Signals.
+    visibleChanged = pyqtSignal(bool)
+
+    # Slots.
+    def toggle(self, checked):
+        if checked:
+            self.show()
+        else:
+            self.hide()
+
+    def closeEvent(self, event):
+        self.visibleChanged.emit(False)
+
+    def dataChanged(self):
         self.model().select()
 
 class ButtonDelegate(QtWidgets.QStyledItemDelegate):
     def createEditor(self, parent, option, index):
         editor = QtWidgets.QPushButton()
+        print("Making pushbutton delegate")
         return editor
 
 class ResultTable(QtWidgets.QTableView):
     def __init__(self, db):
         super().__init__()
 
-        self.setWindowTitle('Results Scratchpad')
+        self.setupModel()
 
-        # Set up our model.
-        self.setModel(QSqlRelationalTableModel(db=db))
-        self.model().setTable('Result')
-        self.model().select()
-        self.model().dataChanged.connect(self.dataChanged)
-
-        # Set up our view.
-        self.setItemDelegate(QSqlRelationalDelegate())
-        self.setSortingEnabled(True) # Allow sorting by column
-        self.sortByColumn(2, Qt.SortOrder.AscendingOrder) # finish
+        self.setItemDelegate(QtSql.QSqlRelationalDelegate())
+        self.setAlternatingRowColors(True)
+        self.setSortingEnabled(False) # Don't allow sorting.
+        self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
+        self.sortByColumn(0, Qt.SortOrder.AscendingOrder) # finish
         self.verticalHeader().setVisible(False)
-        self.model().setHeaderData(1, Qt.Horizontal, 'Bib')
-        self.model().setHeaderData(2, Qt.Horizontal, 'Finish')
-        self.model().setHeaderData(4, Qt.Horizontal, 'Commit')
         self.hideColumn(0) # id
         self.hideColumn(3) # data
 
-        # Set up our commit buttons.
-        self.setItemDelegateForColumn(4, ButtonDelegate(self))
-
-    def dataChanged(self):
-        print("dataChanged")
+    def setupModel(self):
+        # Set up our model.
+        self.setModel(QtSql.QSqlRelationalTableModel(db=db))
+        self.model().setTable('Result')
+        self.model().setHeaderData(1, Qt.Horizontal, 'Bib')
+        self.model().setHeaderData(2, Qt.Horizontal, 'Finish')
         self.model().select()
 
 class MainWidget(QtWidgets.QWidget):
     def __init__(self, db):
         super().__init__()
 
+        # Top-level layout. Top to bottom.
         self.setLayout(QtWidgets.QVBoxLayout())
-        self.result_table_view = ResultTable(db)
-        self.layout().addWidget(self.result_table_view)
-        self.result_line_edit = QtWidgets.QLineEdit()
-        self.layout().addWidget(self.result_line_edit)
 
-        buttons = QtWidgets.QWidget()
-        self.layout().addWidget(buttons)
-        buttons.setLayout(QtWidgets.QHBoxLayout())
-        buttons.layout().addWidget(QtWidgets.QPushButton("Commit All"))
+        # Button row for race info, field, racer list.
+        self.button_row = QtWidgets.QWidget()
+        self.button_row.setLayout(QtWidgets.QHBoxLayout())
+
+        # Race Info, Fields, Racers
+        self.button_row.race_button = QtWidgets.QPushButton('Race Info')
+        self.button_row.race_button.setCheckable(True)
+        self.button_row.field_button = QtWidgets.QPushButton('Fields')
+        self.button_row.field_button.setCheckable(True)
+        self.button_row.racer_button = QtWidgets.QPushButton('Racers')
+        self.button_row.racer_button.setCheckable(True)
+
+        # Add to button row.
+        self.button_row.layout().addWidget(self.button_row.race_button)
+        self.button_row.layout().addWidget(self.button_row.field_button)
+        self.button_row.layout().addWidget(self.button_row.racer_button)
+
+        # Result table.
+        self.result_table = ResultTable(db)
+
+        # Result line edit.
+        self.result_input = QtWidgets.QLineEdit()
+        self.result_input.setClearButtonEnabled(True)
+
+        # Commit All button.
+        self.commit_all_button = QtWidgets.QPushButton('Commit All')
+
+        # Add to top-level layout.
+        self.layout().addWidget(self.button_row)
+        self.layout().addWidget(self.result_table)
+        self.layout().addWidget(self.result_input)
+        self.layout().addWidget(self.commit_all_button)
+
+        # Floating windows. Keep then hidden initially.
+        self.race_info = RaceInfo(db)
+        self.field_table = FieldTable(db)
+        self.racer_table = RacerTable(db)
+
+        # Connect signals/slots.
+        self.field_table.model().dataChanged.connect(
+            self.racer_table.dataChanged)
+
+        # Signals/slots for button row toggle buttons.
+        self.button_row.race_button.toggled.connect(self.race_info.setVisible)
+        self.race_info.visibleChanged.connect(self.button_row.race_button.setChecked)
+        self.button_row.field_button.toggled.connect(self.field_table.setVisible)
+        self.field_table.visibleChanged.connect(self.button_row.field_button.setChecked)
+        self.button_row.racer_button.toggled.connect(self.racer_table.setVisible)
+        self.racer_table.visibleChanged.connect(self.button_row.racer_button.setChecked)
+
+        # Signals/slots for result input.
+        self.result_input.returnPressed.connect(self.newResult)
+
+    def newResult(self):
+        model = self.result_table.model()
+        index = self.result_table.model().rowCount()
+
+        record = model.record()
+        record.setValue('scratchpad', self.result_input.text())
+        record.setValue('finish', QTime.currentTime())
+        record.setValue('data', '{}')
+
+        model.insertRecord(index, record)
+        model.select()
+
+        self.result_table.scrollToBottom()
+
+        self.result_input.clear()
 
 class SexyThymeMainWindow(QtWidgets.QMainWindow):
     def __init__(self, db):
@@ -134,8 +256,6 @@ class SexyThymeMainWindow(QtWidgets.QMainWindow):
         self.setWindowTitle('SexyThyme')
         self.setCentralWidget(MainWidget(db))
  
-logger = logging.getLogger(__name__)
-
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
 
@@ -143,14 +263,5 @@ if __name__ == '__main__':
 
     main = SexyThymeMainWindow(db)
     main.show()
-
-    field_table = FieldTable(db)
-    field_table.show()
-
-    racer_table = RacerTable(db)
-    racer_table.show()
-
-    # Connect signals/slots.
-    field_table.model().dataChanged.connect(racer_table.foreignKeyChange)
 
     sys.exit(app.exec_())
