@@ -36,11 +36,11 @@ class Racer(BaseModel):
     data = TextField()
 
 class Result(BaseModel):
-    finish = TimeField()
-
     # This ends up being used as a bib (way to identify the racer), but until
     # it is applied to a racer, it can be anything (hence, it's a scratchpad).
     scratchpad = TextField()
+
+    finish = TimeField()
 
     # JSON for miscellaneous data (has no meaning for our model)..
     data = TextField()
