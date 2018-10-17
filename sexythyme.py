@@ -36,6 +36,12 @@ class RaceInfo(QtWidgets.QTableView):
         self.model().setTable('Race')
         self.model().select()
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
+
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
@@ -74,6 +80,12 @@ class FieldTable(QtWidgets.QTableView):
         self.setModel(QtSql.QSqlRelationalTableModel(db=db))
         self.model().setTable('Field')
         self.model().select()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
 
     # Signals.
     visibleChanged = pyqtSignal(bool)
@@ -127,6 +139,11 @@ class RacerTable(QtWidgets.QTableView):
         self.model().setHeaderData(5, Qt.Horizontal, 'Start')
         self.model().setHeaderData(6, Qt.Horizontal, 'Finish')
 
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
 
     # Signals.
     visibleChanged = pyqtSignal(bool)
@@ -165,6 +182,10 @@ class ResultTable(QtWidgets.QTableView):
         self.hideColumn(0) # id
         self.hideColumn(3) # data
 
+        font = self.font()
+        font.setPointSize(20)
+        self.setFont(font)
+
     def setupModel(self):
         # Set up our model.
         self.setModel(QtSql.QSqlRelationalTableModel(db=db))
@@ -172,6 +193,12 @@ class ResultTable(QtWidgets.QTableView):
         self.model().setHeaderData(1, Qt.Horizontal, 'Bib')
         self.model().setHeaderData(2, Qt.Horizontal, 'Finish')
         self.model().select()
+
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Backspace:
+            print(event.key())
+        else:
+            super().keyPressEvent(event)
 
 class MainWidget(QtWidgets.QWidget):
     def __init__(self, db):
@@ -204,7 +231,7 @@ class MainWidget(QtWidgets.QWidget):
         self.result_input = QtWidgets.QLineEdit()
         self.result_input.setClearButtonEnabled(True)
         font = self.result_input.font()
-        font.setPointSize(40)
+        font.setPointSize(32)
         self.result_input.setFont(font)
 
         # Commit All button.
@@ -253,12 +280,36 @@ class MainWidget(QtWidgets.QWidget):
         self.result_input.clear()
 
 class SexyThymeMainWindow(QtWidgets.QMainWindow):
+    APPLICATION_NAME = 'SexyThyme'
+
     def __init__(self, db):
         super().__init__()
 
-        self.setWindowTitle('SexyThyme')
+        self.setWindowTitle(self.APPLICATION_NAME)
         self.setCentralWidget(MainWidget(db))
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
  
+    def keyPressEvent(self, event):
+        if event.key() == Qt.Key_Escape:
+            self.close()
+        else:
+            super().keyPressEvent(event)
+
+    def closeEvent(self, event):
+        msg_box = QtWidgets.QMessageBox()
+        msg_box.setWindowTitle(self.APPLICATION_NAME)
+        msg_box.setText('You are about to leave %s.' % self.APPLICATION_NAME)
+        msg_box.setInformativeText('Do you really want to quit?')
+        msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok |
+                                   QtWidgets.QMessageBox.Cancel)
+        msg_box.setDefaultButton(QtWidgets.QMessageBox.Cancel)
+        msg_box.setIcon(QtWidgets.QMessageBox.Information)
+
+        if msg_box.exec() == QtWidgets.QMessageBox.Ok:
+            event.accept()
+        else:
+            event.ignore()
+
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
 
