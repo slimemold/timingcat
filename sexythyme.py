@@ -2,12 +2,13 @@
 
 from datetime import datetime
 import sys
-from PyQt5.QtCore import pyqtSignal, Qt, QTime
-import PyQt5.QtSql as QtSql
-import PyQt5.QtWidgets as QtWidgets
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtSql  import *
+from PyQt5.QtWidgets import *
 
 def open_database(filename):
-    database = QtSql.QSqlDatabase.addDatabase('QSQLITE')
+    database = QSqlDatabase.addDatabase('QSQLITE')
     if not database.isValid():
         raise Exception('Invalid database')
 
@@ -18,21 +19,21 @@ def open_database(filename):
 
     return database
 
-class RaceInfo(QtWidgets.QTableView):
+class RaceInfo(QTableView):
     def __init__(self, db):
         super().__init__()
 
         self.setupModel()
 
         # Set up our view.
-        self.setItemDelegate(QtSql.QSqlRelationalDelegate())
+        self.setItemDelegate(QSqlRelationalDelegate())
         self.horizontalHeader().setVisible(False)
         self.hideColumn(0) # id
         self.hideColumn(2) # data
 
 
     def setupModel(self):
-        self.setModel(QtSql.QSqlRelationalTableModel(db=db))
+        self.setModel(QSqlRelationalTableModel(db=db))
         self.model().setTable('Race')
         self.model().select()
 
@@ -56,7 +57,10 @@ class RaceInfo(QtWidgets.QTableView):
     def closeEvent(self, event):
         self.visibleChanged.emit(False)
 
-class FieldTable(QtWidgets.QTableView):
+class FieldProxyModel(QSortFilterProxyModel):
+    pass
+
+class FieldTable(QTableView):
     def __init__(self, db):
         super().__init__()
 
@@ -65,10 +69,10 @@ class FieldTable(QtWidgets.QTableView):
         self.setWindowTitle('Fields')
 
         # Set up our view.
-        self.setItemDelegate(QtSql.QSqlRelationalDelegate())
+        self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
-        self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
+        self.setSelectionBehavior(QTableView.SelectRows)
         self.sortByColumn(1, Qt.SortOrder.AscendingOrder) # field
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
@@ -79,7 +83,7 @@ class FieldTable(QtWidgets.QTableView):
 
     def setupModel(self):
         # Set up our model.
-        self.setModel(QtSql.QSqlRelationalTableModel(db=db))
+        self.setModel(QSqlRelationalTableModel(db=db))
         self.model().setTable('Field')
         self.model().select()
 
@@ -102,17 +106,17 @@ class FieldTable(QtWidgets.QTableView):
     def closeEvent(self, event):
         self.visibleChanged.emit(False)
 
-class RacerTable(QtWidgets.QTableView):
+class RacerTable(QTableView):
     def __init__(self, db, field=None):
         super().__init__()
 
         self.setupModel(field)
 
         # Set up our view.
-        self.setItemDelegate(QtSql.QSqlRelationalDelegate())
+        self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
-        self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
+        self.setSelectionBehavior(QTableView.SelectRows)
         self.sortByColumn(1, Qt.SortOrder.AscendingOrder) # bib
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
@@ -124,7 +128,7 @@ class RacerTable(QtWidgets.QTableView):
 
     def setupModel(self, field):
         # Set up our model.
-        self.setModel(QtSql.QSqlRelationalTableModel(db=db))
+        self.setModel(QSqlRelationalTableModel(db=db))
 
         self.model().field = field
         if self.model().field:
@@ -135,7 +139,7 @@ class RacerTable(QtWidgets.QTableView):
 
         self.model().setTable('Racer')
         self.model().select()
-        self.model().setRelation(4, QtSql.QSqlRelation('Field', 'id', 'name'));
+        self.model().setRelation(4, QSqlRelation('Field', 'id', 'name'));
         self.model().setHeaderData(1, Qt.Horizontal, 'Bib')
         self.model().setHeaderData(2, Qt.Horizontal, 'Name')
         self.model().setHeaderData(3, Qt.Horizontal, 'Team')
@@ -165,22 +169,22 @@ class RacerTable(QtWidgets.QTableView):
     def dataChanged(self):
         self.model().select()
 
-class ButtonDelegate(QtWidgets.QStyledItemDelegate):
+class ButtonDelegate(QStyledItemDelegate):
     def createEditor(self, parent, option, index):
-        editor = QtWidgets.QPushButton()
+        editor = QPushButton()
         print("Making pushbutton delegate")
         return editor
 
-class ResultTable(QtWidgets.QTableView):
+class ResultTable(QTableView):
     def __init__(self, db):
         super().__init__()
 
         self.setupModel()
 
-        self.setItemDelegate(QtSql.QSqlRelationalDelegate())
+        self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(False) # Don't allow sorting.
-        self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
+        self.setSelectionBehavior(QTableView.SelectRows)
         self.sortByColumn(0, Qt.SortOrder.AscendingOrder) # finish
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
@@ -194,7 +198,7 @@ class ResultTable(QtWidgets.QTableView):
 
     def setupModel(self):
         # Set up our model.
-        self.setModel(QtSql.QSqlRelationalTableModel(db=db))
+        self.setModel(QSqlRelationalTableModel(db=db))
         self.model().setTable('Result')
         self.model().setHeaderData(1, Qt.Horizontal, 'Bib')
         self.model().setHeaderData(2, Qt.Horizontal, 'Finish')
@@ -206,23 +210,23 @@ class ResultTable(QtWidgets.QTableView):
         else:
             super().keyPressEvent(event)
 
-class MainWidget(QtWidgets.QWidget):
+class MainWidget(QWidget):
     def __init__(self, db):
         super().__init__()
 
         # Top-level layout. Top to bottom.
-        self.setLayout(QtWidgets.QVBoxLayout())
+        self.setLayout(QVBoxLayout())
 
         # Button row for race info, field, racer list.
-        self.button_row = QtWidgets.QWidget()
-        self.button_row.setLayout(QtWidgets.QHBoxLayout())
+        self.button_row = QWidget()
+        self.button_row.setLayout(QHBoxLayout())
 
         # Race Info, Fields, Racers
-        self.button_row.race_button = QtWidgets.QPushButton('Race Info')
+        self.button_row.race_button = QPushButton('Race Info')
         self.button_row.race_button.setCheckable(True)
-        self.button_row.field_button = QtWidgets.QPushButton('Fields')
+        self.button_row.field_button = QPushButton('Fields')
         self.button_row.field_button.setCheckable(True)
-        self.button_row.racer_button = QtWidgets.QPushButton('Racers')
+        self.button_row.racer_button = QPushButton('Racers')
         self.button_row.racer_button.setCheckable(True)
 
         # Add to button row.
@@ -234,14 +238,14 @@ class MainWidget(QtWidgets.QWidget):
         self.result_table = ResultTable(db)
 
         # Result line edit.
-        self.result_input = QtWidgets.QLineEdit()
+        self.result_input = QLineEdit()
         self.result_input.setClearButtonEnabled(True)
         font = self.result_input.font()
         font.setPointSize(32)
         self.result_input.setFont(font)
 
         # Commit All button.
-        self.commit_all_button = QtWidgets.QPushButton('Commit Selected')
+        self.commit_all_button = QPushButton('Commit Selected')
 
         # Add to top-level layout.
         self.layout().addWidget(self.button_row)
@@ -285,7 +289,7 @@ class MainWidget(QtWidgets.QWidget):
 
         self.result_input.clear()
 
-class SexyThymeMainWindow(QtWidgets.QMainWindow):
+class SexyThymeMainWindow(QMainWindow):
     APPLICATION_NAME = 'SexyThyme'
 
     def __init__(self, db):
@@ -302,22 +306,22 @@ class SexyThymeMainWindow(QtWidgets.QMainWindow):
             super().keyPressEvent(event)
 
     def closeEvent(self, event):
-        msg_box = QtWidgets.QMessageBox()
+        msg_box = QMessageBox()
         msg_box.setWindowTitle(self.APPLICATION_NAME)
         msg_box.setText('You are about to leave %s.' % self.APPLICATION_NAME)
         msg_box.setInformativeText('Do you really want to quit?')
-        msg_box.setStandardButtons(QtWidgets.QMessageBox.Ok |
-                                   QtWidgets.QMessageBox.Cancel)
-        msg_box.setDefaultButton(QtWidgets.QMessageBox.Cancel)
-        msg_box.setIcon(QtWidgets.QMessageBox.Information)
+        msg_box.setStandardButtons(QMessageBox.Ok |
+                                   QMessageBox.Cancel)
+        msg_box.setDefaultButton(QMessageBox.Cancel)
+        msg_box.setIcon(QMessageBox.Information)
 
-        if msg_box.exec() == QtWidgets.QMessageBox.Ok:
+        if msg_box.exec() == QMessageBox.Ok:
             event.accept()
         else:
             event.ignore()
 
 if __name__ == '__main__':
-    app = QtWidgets.QApplication(sys.argv)
+    app = QApplication(sys.argv)
 
     db = open_database('sbhc2018.rce')
 
