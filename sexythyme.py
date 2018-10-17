@@ -203,9 +203,12 @@ class MainWidget(QtWidgets.QWidget):
         # Result line edit.
         self.result_input = QtWidgets.QLineEdit()
         self.result_input.setClearButtonEnabled(True)
+        font = self.result_input.font()
+        font.setPointSize(40)
+        self.result_input.setFont(font)
 
         # Commit All button.
-        self.commit_all_button = QtWidgets.QPushButton('Commit All')
+        self.commit_all_button = QtWidgets.QPushButton('Commit Selected')
 
         # Add to top-level layout.
         self.layout().addWidget(self.button_row)
