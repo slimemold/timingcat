@@ -70,6 +70,8 @@ class FieldTable(QtWidgets.QTableView):
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
         self.sortByColumn(1, Qt.SortOrder.AscendingOrder) # field
+        self.horizontalHeader().setHighlightSections(False)
+        self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
         self.model().setHeaderData(1, Qt.Horizontal, 'Field')
         self.hideColumn(0) # id
@@ -112,6 +114,8 @@ class RacerTable(QtWidgets.QTableView):
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
         self.sortByColumn(1, Qt.SortOrder.AscendingOrder) # bib
+        self.horizontalHeader().setHighlightSections(False)
+        self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(0) # id
         self.hideColumn(7) # data
@@ -178,6 +182,8 @@ class ResultTable(QtWidgets.QTableView):
         self.setSortingEnabled(False) # Don't allow sorting.
         self.setSelectionBehavior(QtWidgets.QTableView.SelectRows)
         self.sortByColumn(0, Qt.SortOrder.AscendingOrder) # finish
+        self.horizontalHeader().setHighlightSections(False)
+        self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(0) # id
         self.hideColumn(3) # data
