@@ -11,21 +11,19 @@ class BaseModel(Model):
         database = database_proxy
 
 class Race(BaseModel):
-    name = CharField()
-
-    # JSON for miscellaneous data (has no meaning for our model)..
-    data = TextField()
+    key = TextField(primary_key=True)
+    value = TextField()
 
 class Field(BaseModel):
-    name = CharField(unique=True)
+    name = TextField(unique=True)
 
     # JSON for miscellaneous data (has no meaning for our model)..
     data = TextField()
 
 class Racer(BaseModel):
     bib = IntegerField(unique=True)
-    name = CharField()
-    team = CharField()
+    name = TextField()
+    team = TextField()
 
     field = ForeignKeyField(Field, backref='racers')
 

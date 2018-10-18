@@ -14,12 +14,13 @@ class TestRaceOpsBasic(TestBase):
     # Test race_get(), race_modify()
     def test_race(self):
         race = raceops.race_get()
-        self.assertEqual(race['name'], '(needs description)')
+        self.assertEqual(race['key'], 'Race name')
+        self.assertEqual(race['value'], '(needs description)')
 
-        race['name'] = TestBase.RACE_NAME
-        race['data'] = TestBase.RACE_DATA
+        race['key'] = TestBase.RACE_KEY
+        race['value'] = TestBase.RACE_VALUE
         raceops.race_modify(race)
 
         race2 = raceops.race_get()
-        self.assertEqual(race2['name'], TestBase.RACE_NAME)
-        self.assertEqual(race2['data'], TestBase.RACE_DATA)
+        self.assertEqual(race2['key'], TestBase.RACE_KEY)
+        self.assertEqual(race2['value'], TestBase.RACE_VALUE)

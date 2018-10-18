@@ -20,8 +20,9 @@ class RaceInfo(QTableView):
         # Set up our view.
         self.setItemDelegate(QSqlRelationalDelegate())
         self.horizontalHeader().setVisible(False)
-        self.hideColumn(0) # id
-        self.hideColumn(2) # data
+        self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setHighlightSections(False)
+        self.verticalHeader().setVisible(False)
 
     def setupModel(self, db):
         self.setModel(QSqlRelationalTableModel(db=db))
@@ -381,15 +382,14 @@ class SexyThymeMainWindow(QMainWindow):
 
         if not query.exec(
             'CREATE TABLE Race' +
-            '(id INTEGER PRIMARY KEY,' +
-             'name VARCHAR,' +
-             'data TEXT);'):
+            '(key TEXT PRIMARY KEY,' +
+             'value TEXT);'):
             raise Exception(query.lastError().text())
 
         if not query.exec(
             'CREATE TABLE Field' +
             '(id INTEGER PRIMARY KEY,' +
-             'name VARCHAR UNIQUE,' +
+             'name TEXT UNIQUE,' +
              'data TEXT);'):
             raise Exception(query.lastError().text())
 
@@ -397,8 +397,8 @@ class SexyThymeMainWindow(QMainWindow):
             'CREATE TABLE Racer' +
             '(id INTEGER PRIMARY KEY,' +
              'bib INTEGER UNIQUE,' +
-             'name VARCHAR,' +
-             'team VARCHAR,' +
+             'name TEXT,' +
+             'team TEXT,' +
              'field_id INTEGER,' +
              'start TEXT,' +
              'finish TEXT,' +

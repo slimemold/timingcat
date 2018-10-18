@@ -17,10 +17,7 @@ logger = logging.getLogger(__name__)
 TIME_FORMAT='%H:%M:%S:%f'
 
 def race_str(args, race):
-    string = '%s' % (race['name'])
-
-    if args.showdata:
-        string += ', %s' % (race['data'])
+    string = '%s, %s' % (race['key'], race['value'])
 
     return string
 
@@ -66,7 +63,8 @@ def race_show(args):
 
 def race_set(args):
     race = raceops.race_get()
-    race['name'] = args.name
+    race['key'] = args.key
+    race['value'] = args.value
     raceops.race_modify(race)
 
 def race_reset(args):
@@ -346,7 +344,8 @@ def make_parser():
     # Create the parser for the "race set" command.
     subparser = race_subparsers.add_parser('set')
     subparser.set_defaults(func=race_set)
-    subparser.add_argument('name', help='long, descriptive name')
+    subparser.add_argument('key', help='name of property')
+    subparser.add_argument('value', help='value of property')
 
     # Create the parser for the "race reset" command.
     subparser = race_subparsers.add_parser('reset')

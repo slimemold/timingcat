@@ -13,8 +13,8 @@ class TestRaceFile(TestBase):
     def test_race_file_modify_race(self):
         TestBase.open_race_file()
         race = raceops.race_get()
-        race['name'] = self.RACE_NAME
-        race['data'] = self.RACE_DATA
+        race['key'] = self.RACE_KEY
+        race['value'] = self.RACE_VALUE
         raceops.race_modify(race)
         TestBase.close_race_file()
 

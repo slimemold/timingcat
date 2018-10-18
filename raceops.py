@@ -44,7 +44,7 @@ def race_init(racefile):
 
     with database_proxy.atomic():
         if Race.get_or_none() is None:
-            Race.create(name=DEFAULT_RACE_NAME, data=DEFAULT_DATA)
+            Race.create(key="Race name", value=DEFAULT_RACE_NAME)
 
 def race_reset():
     with database_proxy.atomic():
@@ -66,15 +66,15 @@ def race_get():
     with database_proxy.atomic():
         race_model = Race.get()
 
-        return {'name': race_model.name,
-                'data': race_model.data}
+        return {'key': race_model.key,
+                'value': race_model.value}
 
 # Modifies the existing Race model.
 def race_modify(race):
     with database_proxy.atomic():
         race_model = Race.get()
-        race_model.name = race['name']
-        race_model.data = race['data']
+        race_model.key = race['key']
+        race_model.value = race['value']
         race_model.save()
 
 # Gets a list of Field models.
