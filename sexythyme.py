@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import csv
 import os
 import sys
 from PyQt5.QtCore import *
@@ -325,8 +326,7 @@ class SexyThymeMainWindow(QMainWindow):
         if not dialog.exec():
             return
 
-        db = self.newDatabase(dialog.selectedFiles()[0])
-        self.setCentralWidget(MainWidget(db))
+        self.newDatabase(dialog.selectedFiles()[0])
 
     def openFile(self):
         dialog = QFileDialog(self)
@@ -339,10 +339,10 @@ class SexyThymeMainWindow(QMainWindow):
         if not dialog.exec():
             return
 
-        db = self.openDatabase(dialog.selectedFiles()[0])
-        self.setCentralWidget(MainWidget(db))
+        self.openDatabase(dialog.selectedFiles()[0])
 
-    def importBikeregFile(self):
+    def importFilePrepare(self):
+        # Pick the import file.
         dialog = QFileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         dialog.setFileMode(QFileDialog.ExistingFile)
@@ -353,8 +353,59 @@ class SexyThymeMainWindow(QMainWindow):
         if not dialog.exec():
             return
 
-        filename = dialog.selectedFiles()[0]
-        print('Import bikereg csv file ' + filename)
+        import_filename = dialog.selectedFiles()[0]
+
+        # If we are not yet initialized, pick a new race file.
+        if not isinstance(self.centralWidget(), MainWidget):
+            self.newFile()
+        # Otherwise, if our current race has stuff in it, confirm to overwrite
+        # before clearing it.
+        else:
+            # Get Field and Racer tables.
+            field_model = self.centralWidget().field_table.model()
+            racer_model = self.centralWidget().racer_table.model()
+
+            if (field_model.rowCount() != 0) or (racer_model.rowCount() != 0):
+                msg_box = QMessageBox()
+                msg_box.setWindowTitle(self.APPLICATION_NAME)
+                msg_box.setText('There are %s fields and %s racers defined.' %
+                                (field_model.rowCount(), racer_model.rowCount()))
+                msg_box.setInformativeText('Do you really want to overwrite this data?')
+                msg_box.setStandardButtons(QMessageBox.Ok |
+                                           QMessageBox.Cancel)
+                msg_box.setDefaultButton(QMessageBox.Cancel)
+                msg_box.setIcon(QMessageBox.Information)
+
+                if msg_box.exec() != QMessageBox.Ok:
+                    return
+
+            db_filename = self.db_filename
+            self.closeDatabase()
+            self.newDatabase(db_filename)
+
+        return import_filename
+
+    def importBikeregFile(self):
+        import_filename = self.importFilePrepare()
+
+        with open(import_filename) as import_file:
+            reader = csv.reader(import_file)
+
+            # Skip the heading row.
+            next(reader)
+
+            for row in reader:
+                _, bib, field, _, first_name, _, last_name, _, team, *_ = row
+                name = first_name + ' ' + last_name
+
+                # BikeReg lists One-day License holders twice, and the second
+                # listing is missing the bib#, and instead has:
+                # "License - 1/1/2018 - One-day License" as the field. Skip over
+                # these entries.
+                if 'One-day License' in field:
+                    continue
+
+                print('Importing %s' % name)
 
     def newDatabase(self, filename):
         # Delete the file, if it exists.
@@ -404,10 +455,13 @@ class SexyThymeMainWindow(QMainWindow):
             raise Exception(query.lastError().text())
 
         if not query.exec(
-            'INSERT INTO Race VALUES(0, "(race name here)", "{}");'):
+            'INSERT INTO Race VALUES("Race name", "(race name here)");'):
             raise Exception(query.lastError().text())
 
-        return db
+        self.db = db
+        self.db_filename = filename
+
+        self.setCentralWidget(MainWidget(db))
  
     def openDatabase(self, filename):
         db = QSqlDatabase.addDatabase('QSQLITE')
@@ -419,7 +473,20 @@ class SexyThymeMainWindow(QMainWindow):
         if not db.open():
             raise Exception(db.lastError().text())
 
-        return db
+        self.db = db
+        self.db_filename = filename
+
+        self.setCentralWidget(MainWidget(db))
+
+    def closeDatabase(self):
+        self.setCentralWidget(QWidget())
+
+        self.db.close()
+        print(self.db.connectionName())
+        QSqlDatabase.removeDatabase(self.db.connectionName())
+
+        self.db = None
+        self.db_filename = None
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
