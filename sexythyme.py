@@ -147,7 +147,7 @@ class RacerTable(QTableView):
     visibleChanged = pyqtSignal(bool)
 
     # Slots.
-    def dataChanged(self):
+    def dataChanged(self, topleft, bottomright, role):
         self.model().select()
 
 class ResultTable(QTableView):
@@ -243,6 +243,11 @@ class MainWidget(QWidget):
         # Signals/slots for result input.
         self.result_input.returnPressed.connect(self.newResult)
 
+        # Signals/slots for field name change notification (need to update
+        # racer models.
+        self.field_table.model().dataChanged.connect(
+            self.racer_table.dataChanged)
+
     def newResult(self):
         model = self.result_table.model()
         index = self.result_table.model().rowCount()
@@ -258,13 +263,6 @@ class MainWidget(QWidget):
         self.result_table.scrollToBottom()
 
         self.result_input.clear()
-
-    def setupModel(self, db):
-        self.centralWidget().setEnabled(True)
-
-        # Connect signals/slots.
-        self.field_table.model().dataChanged.connect(
-            self.racer_table.dataChanged)
 
 class SexyThymeMainWindow(QMainWindow):
     APPLICATION_NAME = 'SexyThyme'
