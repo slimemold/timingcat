@@ -58,7 +58,8 @@ class RaceInfo(QTableView):
         self.visibleChanged.emit(False)
 
 class FieldProxyModel(QSortFilterProxyModel):
-    pass
+    def columnCount(self, parent):
+        return self.sourceModel().columnCount(parent) + 2
 
 class FieldTable(QTableView):
     def __init__(self, db):
@@ -77,15 +78,24 @@ class FieldTable(QTableView):
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
-        self.model().setHeaderData(1, Qt.Horizontal, 'Field')
         self.hideColumn(0) # id
         self.hideColumn(2) # data
 
     def setupModel(self):
         # Set up our model.
-        self.setModel(QSqlRelationalTableModel(db=db))
-        self.model().setTable('Field')
-        self.model().select()
+        model = QSqlRelationalTableModel(db=db)
+        model.setTable('Field')
+        model.select()
+
+        # Use a proxy model so we can add some interesting columns.
+        proxyModel = FieldProxyModel()
+        proxyModel.setSourceModel(model)
+
+        self.setModel(proxyModel)
+
+        self.model().setHeaderData(1, Qt.Horizontal, 'Field')
+        self.model().setHeaderData(2, Qt.Horizontal, 'Finished')
+        self.model().setHeaderData(3, Qt.Horizontal, 'Total')
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
