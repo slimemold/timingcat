@@ -6,6 +6,7 @@ peewee - ORM
 sqlite - database backend
 
 ## TODO
+- Hook up delete keyboard key to delete rows.
 - Implement bikereg import in GUI.
 - Finish field table proxy model to show finishers and total.
 - Fix field-specific racer tables to actually filter by field.
