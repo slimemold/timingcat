@@ -12,10 +12,10 @@ CONST_INPUT_TEXT_POINT_SIZE = 32
 CONST_RESULT_TABLE_POINT_SIZE = 20
 
 class RaceInfo(QTableView):
-    def __init__(self, db):
+    def __init__(self, model):
         super().__init__()
 
-        self.setupModel(db)
+        self.setModel(model)
 
         # Set up our view.
         self.setItemDelegate(QSqlRelationalDelegate())
@@ -23,11 +23,6 @@ class RaceInfo(QTableView):
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setHighlightSections(False)
         self.verticalHeader().setVisible(False)
-
-    def setupModel(self, db):
-        self.setModel(QSqlRelationalTableModel(db=db))
-        self.model().setTable('Race')
-        self.model().select()
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -46,10 +41,10 @@ class FieldProxyModel(QSortFilterProxyModel):
         return self.sourceModel().columnCount(parent) + 2
 
 class FieldTable(QTableView):
-    def __init__(self, db):
+    def __init__(self, model):
         super().__init__()
 
-        self.setupModel(db)
+        self.setModel(model)
 
         self.setWindowTitle('Fields')
 
@@ -65,14 +60,10 @@ class FieldTable(QTableView):
         self.hideColumn(0) # id
         self.hideColumn(2) # data
 
-    def setupModel(self, db):
-        model = QSqlRelationalTableModel(db=db)
-        model.setTable('Field')
-        model.select()
-
+    def setupProxyModel(self, db):
         # Use a proxy model so we can add some interesting columns.
         proxyModel = FieldProxyModel()
-        proxyModel.setSourceModel(model)
+        proxyModel.setSourceModel(self.model())
 
         self.setModel(proxyModel)
 
@@ -93,10 +84,10 @@ class FieldTable(QTableView):
     visibleChanged = pyqtSignal(bool)
 
 class RacerTable(QTableView):
-    def __init__(self, db, field=None):
+    def __init__(self, model):
         super().__init__()
 
-        self.setupModel(db, field)
+        self.setModel(model)
 
         # Set up our view.
         self.setItemDelegate(QSqlRelationalDelegate())
@@ -109,31 +100,6 @@ class RacerTable(QTableView):
         self.verticalHeader().setVisible(False)
         self.hideColumn(0) # id
         self.hideColumn(7) # data
-
-    def setupModel(self, db, field):
-        self.setModel(QSqlRelationalTableModel(db=db))
-
-        self.field = field
-        if self.field:
-            self.model().setFilter('name="Alexa Albert"')
-            self.setWindowTitle('Racers (%s)' % (field))
-        else:
-            self.setWindowTitle('Racers')
-
-        self.model().setTable('Racer')
-        self.model().select()
-        self.model().setRelation(4, QSqlRelation('Field', 'id', 'name'));
-        self.model().setHeaderData(1, Qt.Horizontal, 'Bib')
-        self.model().setHeaderData(2, Qt.Horizontal, 'Name')
-        self.model().setHeaderData(3, Qt.Horizontal, 'Team')
-        self.model().setHeaderData(4, Qt.Horizontal, 'Field')
-        self.model().setHeaderData(5, Qt.Horizontal, 'Start')
-        self.model().setHeaderData(6, Qt.Horizontal, 'Finish')
-
-        if self.field:
-            self.hideColumn(4) # field
-        else:
-            self.showColumn(4)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -152,10 +118,10 @@ class RacerTable(QTableView):
         self.model().select()
 
 class ResultTable(QTableView):
-    def __init__(self, db):
+    def __init__(self, model):
         super().__init__()
 
-        self.setupModel(db)
+        self.setModel(model)
 
         self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
@@ -172,13 +138,6 @@ class ResultTable(QTableView):
         font.setPointSize(CONST_RESULT_TABLE_POINT_SIZE)
         self.setFont(font)
 
-    def setupModel(self, db):
-        self.setModel(QSqlRelationalTableModel(db=db))
-        self.model().setTable('Result')
-        self.model().setHeaderData(1, Qt.Horizontal, 'Bib')
-        self.model().setHeaderData(2, Qt.Horizontal, 'Finish')
-        self.model().select()
-
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Backspace:
             print(event.key())
@@ -188,6 +147,8 @@ class ResultTable(QTableView):
 class MainWidget(QWidget):
     def __init__(self, db):
         super().__init__()
+
+        self.setupModels(db)
 
         # Top-level layout. Top to bottom.
         self.setLayout(QVBoxLayout())
@@ -210,7 +171,7 @@ class MainWidget(QWidget):
         self.button_row.layout().addWidget(self.button_row.racer_button)
 
         # Result table.
-        self.result_table = ResultTable(db)
+        self.result_table = ResultTable(self.result_model)
 
         # Result line edit.
         self.result_input = QLineEdit()
@@ -229,9 +190,9 @@ class MainWidget(QWidget):
         self.layout().addWidget(self.commit_all_button)
 
         # Floating windows. Keep then hidden initially.
-        self.race_info = RaceInfo(db)
-        self.field_table = FieldTable(db)
-        self.racer_table = RacerTable(db)
+        self.race_info = RaceInfo(self.race_model)
+        self.field_table = FieldTable(self.field_model)
+        self.racer_table = RacerTable(self.racer_model)
 
         # Signals/slots for button row toggle buttons.
         self.button_row.race_button.toggled.connect(self.race_info.setVisible)
@@ -248,6 +209,33 @@ class MainWidget(QWidget):
         # racer models.
         self.field_table.model().dataChanged.connect(
             self.racer_table.dataChanged)
+
+    def setupModels(self, db):
+        self.race_model = QSqlRelationalTableModel(db=db)
+        self.race_model.setTable('Race')
+        self.race_model.select()
+
+        self.field_model = QSqlRelationalTableModel(db=db)
+        self.field_model.setTable('Field')
+        self.field_model.select()
+
+        self.racer_model = QSqlRelationalTableModel(db=db)
+        self.racer_model.setTable('Racer')
+        self.racer_model.select()
+        self.racer_model.setRelation(4, QSqlRelation('Field', 'id', 'name'));
+        self.racer_model.setHeaderData(1, Qt.Horizontal, 'Bib')
+        self.racer_model.setHeaderData(2, Qt.Horizontal, 'Name')
+        self.racer_model.setHeaderData(3, Qt.Horizontal, 'Team')
+        self.racer_model.setHeaderData(4, Qt.Horizontal, 'Field')
+        self.racer_model.setHeaderData(5, Qt.Horizontal, 'Start')
+        self.racer_model.setHeaderData(6, Qt.Horizontal, 'Finish')
+        self.racer_model.select()
+
+        self.result_model = QSqlRelationalTableModel(db=db)
+        self.result_model.setTable('Result')
+        self.result_model.setHeaderData(1, Qt.Horizontal, 'Bib')
+        self.result_model.setHeaderData(2, Qt.Horizontal, 'Finish')
+        self.result_model.select()
 
     def newResult(self):
         model = self.result_table.model()
