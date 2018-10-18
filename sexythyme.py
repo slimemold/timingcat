@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-from datetime import datetime
 import os
 import sys
 from PyQt5.QtCore import *
