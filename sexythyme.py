@@ -8,6 +8,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtSql  import *
 from PyQt5.QtWidgets import *
 
+CONST_APPLICATION_NAME = 'SexyThyme'
 CONST_INPUT_TEXT_POINT_SIZE = 32
 CONST_RESULT_TABLE_POINT_SIZE = 20
 
@@ -50,29 +51,49 @@ class Model(QObject):
             raise Exception(query.lastError().text())
 
         if not query.exec(
-            'CREATE TABLE Race' +
-            '(key TEXT PRIMARY KEY,' +
-             'value TEXT);'):
+            'CREATE TABLE IF NOT EXISTS "race" ' +
+            '("key" TEXT NOT NULL PRIMARY KEY, ' +
+             '"value" TEXT NOT NULL);'):
             raise Exception(query.lastError().text())
 
         if not query.exec(
-            'CREATE TABLE Field' +
-            '(id INTEGER PRIMARY KEY,' +
-             'name TEXT UNIQUE,' +
-             'data TEXT);'):
+            'CREATE TABLE IF NOT EXISTS "field" ' +
+            '("id" INTEGER NOT NULL PRIMARY KEY, ' +
+             '"name" TEXT NOT NULL, ' +
+             '"data" TEXT NOT NULL);'):
             raise Exception(query.lastError().text())
 
         if not query.exec(
-            'CREATE TABLE Racer' +
-            '(id INTEGER PRIMARY KEY,' +
-             'bib INTEGER UNIQUE,' +
-             'name TEXT,' +
-             'team TEXT,' +
-             'field_id INTEGER,' +
-             'start TEXT,' +
-             'finish TEXT,' +
-             'data TEXT,' +
-             'FOREIGN KEY(field_id) REFERENCES Field(id));'):
+            'CREATE UNIQUE INDEX "field_name" ON "field" ("name");'):
+            raise Exception(query.lastError().text())
+
+        if not query.exec(
+            'CREATE TABLE IF NOT EXISTS "racer" ' +
+            '("id" INTEGER NOT NULL PRIMARY KEY, ' +
+             '"bib" INTEGER NOT NULL, ' +
+             '"name" TEXT NOT NULL, ' +
+             '"team" TEXT NOT NULL, ' +
+             '"field_id" INTEGER NOT NULL, ' +
+             '"start" TIME NOT NULL, ' +
+             '"finish" TIME NOT NULL, ' +
+             '"data" TEXT NOT NULL, ' +
+             'FOREIGN KEY ("field_id") REFERENCES "field" ("id"));'):
+            raise Exception(query.lastError().text())
+
+        if not query.exec(
+            'CREATE UNIQUE INDEX "racer_bib" ON "racer" ("bib");'):
+            raise Exception(query.lastError().text())
+
+        if not query.exec(
+            'CREATE INDEX "racer_field_id" ON "racer" ("field_id");'):
+            raise Exception(query.lastError().text())
+
+        if not query.exec(
+            'CREATE TABLE IF NOT EXISTS "result" ' +
+            '("id" INTEGER NOT NULL PRIMARY KEY, ' +
+             '"scratchpad" TEXT NOT NULL, ' +
+             '"finish" TIME NOT NULL, ' +
+             '"data" TEXT NOT NULL);'):
             raise Exception(query.lastError().text())
 
         if not query.exec(
@@ -83,75 +104,116 @@ class Model(QObject):
 
     def setupModels(self):
         self.race = QSqlRelationalTableModel(db=self.db)
-        self.race.setTable('Race')
-        self.race.select()
+        self.race.setTable('race')
+        if not self.race.select():
+            raise Exception(self.race.lastError().text())
 
         self.field = QSqlRelationalTableModel(db=self.db)
-        self.field.setTable('Field')
-        self.field.setHeaderData(1, Qt.Horizontal, 'Field')
-        self.field.select()
+        self.field.setTable('field')
+        self.field.setHeaderData(self.field.fieldIndex('name'),
+                                 Qt.Horizontal, 'Field')
+        if not self.field.select():
+            raise Exception(self.field.lastError().text())
 
         self.racer = QSqlRelationalTableModel(db=self.db)
-        self.racer.setTable('Racer')
-        self.racer.select()
-        self.racer.setRelation(4, QSqlRelation('Field', 'id', 'name'));
-        self.racer.setHeaderData(1, Qt.Horizontal, 'Bib')
-        self.racer.setHeaderData(2, Qt.Horizontal, 'Name')
-        self.racer.setHeaderData(3, Qt.Horizontal, 'Team')
-        self.racer.setHeaderData(4, Qt.Horizontal, 'Field')
-        self.racer.setHeaderData(5, Qt.Horizontal, 'Start')
-        self.racer.setHeaderData(6, Qt.Horizontal, 'Finish')
-        self.racer.select()
+        self.racer.setTable('racer')
+        self.racer.setHeaderData(self.racer.fieldIndex('bib'),
+                                 Qt.Horizontal, 'Bib')
+        self.racer.setHeaderData(self.racer.fieldIndex('name'),
+                                 Qt.Horizontal, 'Name')
+        self.racer.setHeaderData(self.racer.fieldIndex('team'),
+                                 Qt.Horizontal, 'Team')
+        self.racer.setHeaderData(self.racer.fieldIndex('field_id'),
+                                 Qt.Horizontal, 'Field')
+        self.racer.setHeaderData(self.racer.fieldIndex('start'),
+                                 Qt.Horizontal, 'Start')
+        self.racer.setHeaderData(self.racer.fieldIndex('finish'),
+                                 Qt.Horizontal, 'Finish')
+        # After this relation is defined, the field name becomes
+        # "field_name_2".
+        self.racer.setRelation(self.racer.fieldIndex('field_id'),
+                               QSqlRelation('field', 'id', 'name'));
+        if not self.racer.select():
+            raise Exception(self.racer.lastError().text())
 
         self.result = QSqlRelationalTableModel(db=self.db)
-        self.result.setTable('Result')
-        self.result.setHeaderData(1, Qt.Horizontal, 'Bib')
-        self.result.setHeaderData(2, Qt.Horizontal, 'Finish')
-        self.result.select()
+        self.result.setTable('result')
+        self.result.setHeaderData(self.result.fieldIndex('scratchpad'),
+                                  Qt.Horizontal, 'Bib')
+        self.result.setHeaderData(self.result.fieldIndex('finish'),
+                                  Qt.Horizontal, 'Finish')
+        if not self.result.select():
+            raise Exception(self.result.lastError().text())
 
     def addField(self, name, data='{}'):
-        print("Adding field " + name)
-        index = self.field.rowCount()
-
         record = self.field.record()
         record.setValue('name', name)
         record.setValue('data', data)
 
-        self.field.insertRecord(index, record)
-        self.field.select()
+        if True:
+            print('Adding field:')
+            for index in range(record.count()):
+                print('record[%s] = %s' % (record.field(index).name(),
+                                           record.field(index).value()))
 
-    def addRacer(self, bib, name, team, field,
-                 start=None, finish=None, data='{}'):
+        self.field.insertRecord(-1, record)
+        if not self.field.select():
+            raise Exception(self.field.lastError().text())
+
+    def addRacer(self, bib, name, team, field, start, finish, data='{}'):
         # See if the field exists in our Field table.  If not, we add a new
         # field.
-        print("Adding racer " + name)
-        field_model = QSqlTableModel()
-        field_model.setTable('Field')
+        field_model = self.racer.relationModel(
+                                           self.racer.fieldIndex('field_name_2'))
         field_model.setFilter('name = "%s"' % field)
-        field_model.select()
-        print("Field row count = " + str(field_model.rowCount()))
-        print("Select statement = " + str(field_model.selectStatement()))
+        if not field_model.select():
+            raise Exception(field_model.lastError().text())
+
         if field_model.rowCount() == 0:
             self.addField(field)
-
-        index = self.racer.rowCount()
 
         record = self.racer.record()
         record.setValue('bib', bib)
         record.setValue('name', name)
         record.setValue('team', team)
+        record.setValue('field_name_2', field)
         record.setValue('start', start)
         record.setValue('finish', finish)
         record.setValue('data', data)
 
-        self.racer.insertRecord(index, record)
-        self.racer.select()
+        if True:
+            print('Adding racer:')
+            for index in range(record.count()):
+                print('record[%s] = %s' % (record.field(index).name(),
+                                           record.field(index).value()))
+
+        self.racer.insertRecord(-1, record)
+        if not self.racer.select():
+            raise Exception(self.racer.lastError().text())
+
+    def addResult(self, scratchpad, finish, data='{}'):
+        record = self.result.record()
+        record.setValue('scratchpad', scratchpad)
+        record.setValue('finish', finish)
+        record.setValue('data', '{}')
+
+        if True:
+            print('Adding result:')
+            for index in range(record.count()):
+                print('record[%s] = %s' % (record.field(index).name(),
+                                           record.field(index).value()))
+
+        self.result.insertRecord(-1, record)
+        if not self.result.select():
+            raise Exception(model.lastError().text())
 
 class RaceInfo(QTableView):
-    def __init__(self, race_model):
-        super().__init__()
+    def __init__(self, race_model, parent=None):
+        super().__init__(parent=parent)
 
         self.setModel(race_model)
+
+        self.setWindowTitle('Race Info')
 
         # Set up our view.
         self.setItemDelegate(QSqlRelationalDelegate())
@@ -177,8 +239,8 @@ class FieldProxyModel(QSortFilterProxyModel):
         return self.sourceModel().columnCount(parent) + 2
 
 class FieldTable(QTableView):
-    def __init__(self, field_model):
-        super().__init__()
+    def __init__(self, field_model, parent=None):
+        super().__init__(parent=parent)
 
         self.setModel(field_model)
 
@@ -189,12 +251,13 @@ class FieldTable(QTableView):
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(1, Qt.SortOrder.AscendingOrder) # field
+        self.sortByColumn(self.model().fieldIndex('name'),
+                          Qt.SortOrder.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(0) # id
-        self.hideColumn(2) # data
+        self.hideColumn(self.model().fieldIndex('id'))
+        self.hideColumn(self.model().fieldIndex('data'))
 
     def setupProxyModel(self, db):
         # Use a proxy model so we can add some interesting columns.
@@ -220,22 +283,25 @@ class FieldTable(QTableView):
     visibleChanged = pyqtSignal(bool)
 
 class RacerTable(QTableView):
-    def __init__(self, racer_model):
-        super().__init__()
+    def __init__(self, racer_model, parent=None):
+        super().__init__(parent=parent)
 
         self.setModel(racer_model)
+
+        self.setWindowTitle('Racers')
 
         # Set up our view.
         self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(1, Qt.SortOrder.AscendingOrder) # bib
+        self.sortByColumn(self.model().fieldIndex('bib'),
+                          Qt.SortOrder.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(0) # id
-        self.hideColumn(7) # data
+        self.hideColumn(self.model().fieldIndex('id'))
+        self.hideColumn(self.model().fieldIndex('data'))
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -251,11 +317,12 @@ class RacerTable(QTableView):
 
     # Slots.
     def dataChanged(self, topleft, bottomright, role):
-        self.model().select()
+        if not self.model().select():
+            raise Exception(self.model.lastError().text())
 
 class ResultTable(QTableView):
-    def __init__(self, result_model):
-        super().__init__()
+    def __init__(self, result_model, parent=None):
+        super().__init__(parent=parent)
 
         self.setModel(result_model)
 
@@ -263,12 +330,13 @@ class ResultTable(QTableView):
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(False) # Don't allow sorting.
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(0, Qt.SortOrder.AscendingOrder) # finish
+        self.sortByColumn(self.model().fieldIndex('id'),
+                          Qt.SortOrder.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(0) # id
-        self.hideColumn(3) # data
+        self.hideColumn(self.model().fieldIndex('id'))
+        self.hideColumn(self.model().fieldIndex('data'))
 
         font = self.font()
         font.setPointSize(CONST_RESULT_TABLE_POINT_SIZE)
@@ -281,8 +349,8 @@ class ResultTable(QTableView):
             super().keyPressEvent(event)
 
 class CentralWidget(QObject):
-    def __init__(self, model):
-        super().__init__()
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
 
     def cleanup(self):
         pass
@@ -291,8 +359,8 @@ class CentralWidget(QObject):
         return False
 
 class MainWidget(QWidget, CentralWidget):
-    def __init__(self, model):
-        super().__init__(model)
+    def __init__(self, model, parent=None):
+        super().__init__(parent=parent)
 
         self.model = model
 
@@ -364,34 +432,21 @@ class MainWidget(QWidget, CentralWidget):
         return self.model is not None
 
     def newResult(self):
-        model = self.result_table.model()
-        index = self.result_table.model().rowCount()
-
-        record = model.record()
-        record.setValue('scratchpad', self.result_input.text())
-        record.setValue('finish', QTime.currentTime())
-        record.setValue('data', '{}')
-
-        model.insertRecord(index, record)
-        model.select()
-
+        self.model.addResult(self.result_input.text(), QTime.currentTime())
         self.result_table.scrollToBottom()
-
         self.result_input.clear()
 
 class DummyWidget(QLabel, CentralWidget):
-    def __init__(self):
-        super().__init__(None)
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
 
         self.setPixmap(QPixmap(os.path.join('resources', 'thyme.jpg')))
 
 class SexyThymeMainWindow(QMainWindow):
-    APPLICATION_NAME = 'SexyThyme'
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
 
-    def __init__(self):
-        super().__init__()
-
-        self.setWindowTitle(self.APPLICATION_NAME)
+        self.setWindowTitle(CONST_APPLICATION_NAME)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
         self.setCentralWidget(DummyWidget())
 
@@ -414,13 +469,14 @@ class SexyThymeMainWindow(QMainWindow):
             super().keyPressEvent(event)
 
     def closeEvent(self, event):
-        if (not isinstance(self.centralWidget(), MainWidget) or
+        if (not self.centralWidget().hasModel() or
             (self.centralWidget().result_table.model().rowCount() == 0)):
             event.accept()
+            QApplication.quit()
             return
 
         msg_box = QMessageBox()
-        msg_box.setWindowTitle(self.APPLICATION_NAME)
+        msg_box.setWindowTitle(CONST_APPLICATION_NAME)
         msg_box.setText('You have uncommitted results.')
         msg_box.setInformativeText('Do you really want to quit?')
         msg_box.setStandardButtons(QMessageBox.Ok |
@@ -445,14 +501,18 @@ class SexyThymeMainWindow(QMainWindow):
         dialog.setViewMode(QFileDialog.List)
 
         if not dialog.exec():
-            return
+            return None
+
+        filename = dialog.selectedFiles()[0]
 
         # Clean up old central widget, which will clean up the model we gave it.
         self.centralWidget().cleanup()
 
         # Make a new model, and give it to a new central widget.
-        model = Model(dialog.selectedFiles()[0], new=True)
+        model = Model(filename, new=True)
         self.setCentralWidget(MainWidget(model))
+
+        return filename
 
     def openFile(self):
         dialog = QFileDialog(self)
@@ -463,14 +523,18 @@ class SexyThymeMainWindow(QMainWindow):
         dialog.setViewMode(QFileDialog.List)
 
         if not dialog.exec():
-            return
+            return None
+
+        filename = dialog.selectedFiles()[0]
 
         # Clean up old central widget, which will clean up the model we gave it.
         self.centralWidget().cleanup()
 
         # Make a new model, and give it to a new central widget.
-        model = Model(dialog.selectedFiles()[0], new=False)
+        model = Model(filename, new=False)
         self.setCentralWidget(MainWidget(model))
+
+        return filename
 
     def importFilePrepare(self):
         # Pick the import file.
@@ -482,14 +546,16 @@ class SexyThymeMainWindow(QMainWindow):
         dialog.setViewMode(QFileDialog.List)
 
         if not dialog.exec():
-            return
+            return None
 
         import_filename = dialog.selectedFiles()[0]
 
         # If we are not yet initialized, pick a new race file.
         if not self.centralWidget().hasModel():
-            self.newFile()
-            return import_filename
+            if self.newFile():
+                return import_filename
+            else:
+                return None
 
         # Otherwise, if our current race has stuff in it, confirm to overwrite
         # before clearing it.
@@ -501,7 +567,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         if (field_model.rowCount() != 0) or (racer_model.rowCount() != 0):
             msg_box = QMessageBox()
-            msg_box.setWindowTitle(self.APPLICATION_NAME)
+            msg_box.setWindowTitle(CONST_APPLICATION_NAME)
             msg_box.setText('There are %s fields and %s racers defined.' %
                             (field_model.rowCount(), racer_model.rowCount()))
             msg_box.setInformativeText('Do you really want to overwrite this data?')
@@ -548,7 +614,8 @@ class SexyThymeMainWindow(QMainWindow):
                 if 'One-day License' in field:
                     continue
 
-                self.centralWidget().model.addRacer(bib, name, team, field)
+                self.centralWidget().model.addRacer(bib, name, team, field,
+                                 QTime.currentTime(), QTime.currentTime())
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
