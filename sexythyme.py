@@ -88,6 +88,7 @@ class Model(QObject):
 
         self.field = QSqlRelationalTableModel(db=self.db)
         self.field.setTable('Field')
+        self.field.setHeaderData(1, Qt.Horizontal, 'Field')
         self.field.select()
 
         self.racer = QSqlRelationalTableModel(db=self.db)
@@ -108,11 +109,49 @@ class Model(QObject):
         self.result.setHeaderData(2, Qt.Horizontal, 'Finish')
         self.result.select()
 
+    def addField(self, name, data='{}'):
+        print("Adding field " + name)
+        index = self.field.rowCount()
+
+        record = self.field.record()
+        record.setValue('name', name)
+        record.setValue('data', data)
+
+        self.field.insertRecord(index, record)
+        self.field.select()
+
+    def addRacer(self, bib, name, team, field,
+                 start=None, finish=None, data='{}'):
+        # See if the field exists in our Field table.  If not, we add a new
+        # field.
+        print("Adding racer " + name)
+        field_model = QSqlTableModel()
+        field_model.setTable('Field')
+        field_model.setFilter('name = "%s"' % field)
+        field_model.select()
+        print("Field row count = " + str(field_model.rowCount()))
+        print("Select statement = " + str(field_model.selectStatement()))
+        if field_model.rowCount() == 0:
+            self.addField(field)
+
+        index = self.racer.rowCount()
+
+        record = self.racer.record()
+        record.setValue('bib', bib)
+        record.setValue('name', name)
+        record.setValue('team', team)
+        record.setValue('start', start)
+        record.setValue('finish', finish)
+        record.setValue('data', data)
+
+        self.racer.insertRecord(index, record)
+        self.racer.select()
+
 class RaceInfo(QTableView):
-    def __init__(self, models):
+    def __init__(self, race_model):
         super().__init__()
 
-        self.setModel(models.race)
+        self.setModel(race_model)
 
         # Set up our view.
         self.setItemDelegate(QSqlRelationalDelegate())
@@ -138,10 +177,10 @@ class FieldProxyModel(QSortFilterProxyModel):
         return self.sourceModel().columnCount(parent) + 2
 
 class FieldTable(QTableView):
-    def __init__(self, models):
+    def __init__(self, field_model):
         super().__init__()
 
-        self.setModel(models.field)
+        self.setModel(field_model)
 
         self.setWindowTitle('Fields')
 
@@ -181,10 +220,10 @@ class FieldTable(QTableView):
     visibleChanged = pyqtSignal(bool)
 
 class RacerTable(QTableView):
-    def __init__(self, models):
+    def __init__(self, racer_model):
         super().__init__()
 
-        self.setModel(models.racer)
+        self.setModel(racer_model)
 
         # Set up our view.
         self.setItemDelegate(QSqlRelationalDelegate())
@@ -215,10 +254,10 @@ class RacerTable(QTableView):
         self.model().select()
 
 class ResultTable(QTableView):
-    def __init__(self, model):
+    def __init__(self, result_model):
         super().__init__()
 
-        self.setModel(model.result)
+        self.setModel(result_model)
 
         self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
@@ -244,6 +283,12 @@ class ResultTable(QTableView):
 class CentralWidget(QObject):
     def __init__(self, model):
         super().__init__()
+
+    def cleanup(self):
+        pass
+
+    def hasModel(self):
+        return False
 
 class MainWidget(QWidget, CentralWidget):
     def __init__(self, model):
@@ -272,7 +317,7 @@ class MainWidget(QWidget, CentralWidget):
         self.button_row.layout().addWidget(self.button_row.racer_button)
 
         # Result table.
-        self.result_table = ResultTable(model)
+        self.result_table = ResultTable(self.model.result)
 
         # Result line edit.
         self.result_input = QLineEdit()
@@ -291,9 +336,9 @@ class MainWidget(QWidget, CentralWidget):
         self.layout().addWidget(self.commit_all_button)
 
         # Floating windows. Keep then hidden initially.
-        self.race_info = RaceInfo(model)
-        self.field_table = FieldTable(model)
-        self.racer_table = RacerTable(model)
+        self.race_info = RaceInfo(self.model.race)
+        self.field_table = FieldTable(self.model.field)
+        self.racer_table = RacerTable(self.model.racer)
 
         # Signals/slots for button row toggle buttons.
         self.button_row.race_button.toggled.connect(self.race_info.setVisible)
@@ -310,6 +355,13 @@ class MainWidget(QWidget, CentralWidget):
         # racer models.
         self.field_table.model().dataChanged.connect(
             self.racer_table.dataChanged)
+
+    def cleanup(self):
+        self.model.cleanup()
+        self.model = None
+
+    def hasModel(self):
+        return self.model is not None
 
     def newResult(self):
         model = self.result_table.model()
@@ -395,6 +447,10 @@ class SexyThymeMainWindow(QMainWindow):
         if not dialog.exec():
             return
 
+        # Clean up old central widget, which will clean up the model we gave it.
+        self.centralWidget().cleanup()
+
+        # Make a new model, and give it to a new central widget.
         model = Model(dialog.selectedFiles()[0], new=True)
         self.setCentralWidget(MainWidget(model))
 
@@ -409,6 +465,10 @@ class SexyThymeMainWindow(QMainWindow):
         if not dialog.exec():
             return
 
+        # Clean up old central widget, which will clean up the model we gave it.
+        self.centralWidget().cleanup()
+
+        # Make a new model, and give it to a new central widget.
         model = Model(dialog.selectedFiles()[0], new=False)
         self.setCentralWidget(MainWidget(model))
 
@@ -427,37 +487,49 @@ class SexyThymeMainWindow(QMainWindow):
         import_filename = dialog.selectedFiles()[0]
 
         # If we are not yet initialized, pick a new race file.
-        if not isinstance(self.centralWidget(), MainWidget):
+        if not self.centralWidget().hasModel():
             self.newFile()
+            return import_filename
+
         # Otherwise, if our current race has stuff in it, confirm to overwrite
         # before clearing it.
-        else:
-            # Get Field and Racer tables.
-            field_model = self.centralWidget().field_table.model()
-            racer_model = self.centralWidget().racer_table.model()
 
-            if (field_model.rowCount() != 0) or (racer_model.rowCount() != 0):
-                msg_box = QMessageBox()
-                msg_box.setWindowTitle(self.APPLICATION_NAME)
-                msg_box.setText('There are %s fields and %s racers defined.' %
-                                (field_model.rowCount(), racer_model.rowCount()))
-                msg_box.setInformativeText('Do you really want to overwrite this data?')
-                msg_box.setStandardButtons(QMessageBox.Ok |
-                                           QMessageBox.Cancel)
-                msg_box.setDefaultButton(QMessageBox.Cancel)
-                msg_box.setIcon(QMessageBox.Information)
+        # Get Field and Racer tables so we can whine about how much state
+        # we're going to lose if we let the import happen.
+        field_model = self.centralWidget().field_table.model()
+        racer_model = self.centralWidget().racer_table.model()
 
-                if msg_box.exec() != QMessageBox.Ok:
-                    return
+        if (field_model.rowCount() != 0) or (racer_model.rowCount() != 0):
+            msg_box = QMessageBox()
+            msg_box.setWindowTitle(self.APPLICATION_NAME)
+            msg_box.setText('There are %s fields and %s racers defined.' %
+                            (field_model.rowCount(), racer_model.rowCount()))
+            msg_box.setInformativeText('Do you really want to overwrite this data?')
+            msg_box.setStandardButtons(QMessageBox.Ok |
+                                       QMessageBox.Cancel)
+            msg_box.setDefaultButton(QMessageBox.Cancel)
+            msg_box.setIcon(QMessageBox.Information)
 
-            db_filename = self.db_filename
-            self.closeDatabase()
-            self.newDatabase(db_filename)
+            if msg_box.exec() != QMessageBox.Ok:
+                return None
+
+        # Reuse old filename.
+        filename = self.centralWidget().model.filename
+
+        # Clean up our old model.
+        self.centralWidget().cleanup()
+
+        # Make a new central widget, with a new model.
+        model = Model(filename, new=True)
+        self.setCentralWidget(MainWidget(model))
 
         return import_filename
 
     def importBikeregFile(self):
         import_filename = self.importFilePrepare()
+
+        if not import_filename:
+            return
 
         with open(import_filename) as import_file:
             reader = csv.reader(import_file)
@@ -476,7 +548,7 @@ class SexyThymeMainWindow(QMainWindow):
                 if 'One-day License' in field:
                     continue
 
-                print('Importing %s' % name)
+                self.centralWidget().model.addRacer(bib, name, team, field)
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
