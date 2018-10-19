@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import csv
 import os
 import sys
@@ -13,12 +14,12 @@ CONST_INPUT_TEXT_POINT_SIZE = 32
 CONST_RESULT_TABLE_POINT_SIZE = 20
 
 class Model(QObject):
-    def __init__(self, filename, **kwargs):
+    def __init__(self, filename, new=False):
         super().__init__()
 
         self.filename = filename
 
-        if kwargs['new']:
+        if new:
             # Delete the file, if it exists.
             if os.path.exists(self.filename):
                 os.remove(self.filename)
@@ -33,9 +34,10 @@ class Model(QObject):
         if not self.db.open():
             raise Exception(self.db.lastError().text())
 
-        if kwargs['new']:
+        if new:
             self.createTables()
 
+        print('Setting up models from %s' % self.filename)
         self.setupModels()
 
     def cleanup(self):
@@ -145,6 +147,21 @@ class Model(QObject):
         if not self.result.select():
             raise Exception(self.result.lastError().text())
 
+    def addRaceProperty(self, key, value):
+        record = self.race.record()
+        record.setValue('key', key)
+        record.setValue('value', value)
+
+        if True:
+            print('Adding race property:')
+            for index in range(record.count()):
+                print('record[%s] = %s' % (record.field(index).name(),
+                                           record.field(index).value()))
+
+        self.race.insertRecord(-1, record)
+        if not self.race.select():
+            raise Exception(self.race.lastError().text())
+
     def addField(self, name, data='{}'):
         record = self.field.record()
         record.setValue('name', name)
@@ -195,7 +212,7 @@ class Model(QObject):
         record = self.result.record()
         record.setValue('scratchpad', scratchpad)
         record.setValue('finish', finish)
-        record.setValue('data', '{}')
+        record.setValue('data', data)
 
         if True:
             print('Adding result:')
@@ -394,14 +411,14 @@ class MainWidget(QWidget, CentralWidget):
         font.setPointSize(CONST_INPUT_TEXT_POINT_SIZE)
         self.result_input.setFont(font)
 
-        # Commit All button.
-        self.commit_all_button = QPushButton('Commit Selected')
+        # Commit button.
+        self.commit_button = QPushButton('Commit Selected')
 
         # Add to top-level layout.
         self.layout().addWidget(self.button_row)
         self.layout().addWidget(self.result_table)
         self.layout().addWidget(self.result_input)
-        self.layout().addWidget(self.commit_all_button)
+        self.layout().addWidget(self.commit_button)
 
         # Floating windows. Keep then hidden initially.
         self.race_info = RaceInfo(self.model.race)
@@ -418,6 +435,9 @@ class MainWidget(QWidget, CentralWidget):
 
         # Signals/slots for result input.
         self.result_input.returnPressed.connect(self.newResult)
+
+        # Signals/slots for commit button.
+        self.commit_button.clicked.connect(self.commitResults)
 
         # Signals/slots for field name change notification (need to update
         # racer models.
@@ -436,6 +456,9 @@ class MainWidget(QWidget, CentralWidget):
         self.result_table.scrollToBottom()
         self.result_input.clear()
 
+    def commitResults(self):
+        pass
+
 class DummyWidget(QLabel, CentralWidget):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -443,14 +466,34 @@ class DummyWidget(QLabel, CentralWidget):
         self.setPixmap(QPixmap(os.path.join('resources', 'thyme.jpg')))
 
 class SexyThymeMainWindow(QMainWindow):
-    def __init__(self, parent=None):
+    def __init__(self, filename=None, parent=None):
         super().__init__(parent=parent)
 
         self.setWindowTitle(CONST_APPLICATION_NAME)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
-        self.setCentralWidget(DummyWidget())
 
         self.setupMenuBar()
+
+        if filename:
+            self.switchToMain(filename)
+        else:
+            self.switchToDummy()
+
+    def switchToDummy(self):
+        # Clean up old central widget, which will clean up the model we gave it.
+        if self.centralWidget():
+            self.centralWidget().cleanup()
+
+        self.setCentralWidget(DummyWidget())
+
+    def switchToMain(self, filename, new=False):
+        # Clean up old central widget, which will clean up the model we gave it.
+        if self.centralWidget():
+            self.centralWidget().cleanup()
+
+        # Make a new model, and give it to a new central widget.
+        model = Model(filename, new)
+        self.setCentralWidget(MainWidget(model))
 
     def setupMenuBar(self):
         self.menuBar().setNativeMenuBar(False)
@@ -504,13 +547,7 @@ class SexyThymeMainWindow(QMainWindow):
             return None
 
         filename = dialog.selectedFiles()[0]
-
-        # Clean up old central widget, which will clean up the model we gave it.
-        self.centralWidget().cleanup()
-
-        # Make a new model, and give it to a new central widget.
-        model = Model(filename, new=True)
-        self.setCentralWidget(MainWidget(model))
+        self.switchToMain(filename, True)
 
         return filename
 
@@ -526,13 +563,7 @@ class SexyThymeMainWindow(QMainWindow):
             return None
 
         filename = dialog.selectedFiles()[0]
-
-        # Clean up old central widget, which will clean up the model we gave it.
-        self.centralWidget().cleanup()
-
-        # Make a new model, and give it to a new central widget.
-        model = Model(filename, new=False)
-        self.setCentralWidget(MainWidget(model))
+        self.switchToMain(filename, False)
 
         return filename
 
@@ -585,9 +616,7 @@ class SexyThymeMainWindow(QMainWindow):
         # Clean up our old model.
         self.centralWidget().cleanup()
 
-        # Make a new central widget, with a new model.
-        model = Model(filename, new=True)
-        self.setCentralWidget(MainWidget(model))
+        swtichToMain(filename, True)
 
         return import_filename
 
@@ -618,9 +647,13 @@ class SexyThymeMainWindow(QMainWindow):
                                  QTime.currentTime(), QTime.currentTime())
 
 if __name__ == '__main__':
+    parser = argparse.ArgumentParser(description=CONST_APPLICATION_NAME)
+    parser.add_argument('racefile', nargs='?', help='Optional racefile to load')
+    args = parser.parse_args()
+
     app = QApplication(sys.argv)
 
-    main = SexyThymeMainWindow()
+    main = SexyThymeMainWindow(filename=args.racefile)
     main.show()
 
     sys.exit(app.exec_())
