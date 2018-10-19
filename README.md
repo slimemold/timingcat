@@ -6,7 +6,6 @@ peewee - ORM
 sqlite - database backend
 
 ## TODO
-- Fix mainwindow close to close app.
 - Hook up delete keyboard key to delete rows.
 - Implement bikereg import in GUI.
 - Finish field table proxy model to show finishers and total.

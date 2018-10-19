@@ -11,17 +11,86 @@ from PyQt5.QtWidgets import *
 CONST_INPUT_TEXT_POINT_SIZE = 32
 CONST_RESULT_TABLE_POINT_SIZE = 20
 
-class Models(QObject):
-    def __init__(self, db):
-        self.race = QSqlRelationalTableModel(db=db)
+class Model(QObject):
+    def __init__(self, filename, **kwargs):
+        super().__init__()
+
+        self.filename = filename
+
+        if kwargs['new']:
+            # Delete the file, if it exists.
+            if os.path.exists(self.filename):
+                os.remove(self.filename)
+
+        self.db = QSqlDatabase.addDatabase('QSQLITE', self.filename)
+
+        if not self.db.isValid():
+            raise Exception('Invalid database')
+
+        self.db.setDatabaseName(filename)
+
+        if not self.db.open():
+            raise Exception(self.db.lastError().text())
+
+        if kwargs['new']:
+            self.createTables()
+
+        self.setupModels()
+
+    def cleanup(self):
+        self.db.close()
+        QSqlDatabase.removeDatabase(self.filename)
+
+    def createTables(self):
+        # Create tables.
+        query = QSqlQuery(self.db)
+
+        if not query.exec(
+            'PRAGMA foreign_keys = ON;'):
+            raise Exception(query.lastError().text())
+
+        if not query.exec(
+            'CREATE TABLE Race' +
+            '(key TEXT PRIMARY KEY,' +
+             'value TEXT);'):
+            raise Exception(query.lastError().text())
+
+        if not query.exec(
+            'CREATE TABLE Field' +
+            '(id INTEGER PRIMARY KEY,' +
+             'name TEXT UNIQUE,' +
+             'data TEXT);'):
+            raise Exception(query.lastError().text())
+
+        if not query.exec(
+            'CREATE TABLE Racer' +
+            '(id INTEGER PRIMARY KEY,' +
+             'bib INTEGER UNIQUE,' +
+             'name TEXT,' +
+             'team TEXT,' +
+             'field_id INTEGER,' +
+             'start TEXT,' +
+             'finish TEXT,' +
+             'data TEXT,' +
+             'FOREIGN KEY(field_id) REFERENCES Field(id));'):
+            raise Exception(query.lastError().text())
+
+        if not query.exec(
+            'INSERT INTO Race VALUES("Race name", "(race name here)");'):
+            raise Exception(query.lastError().text())
+
+        query.finish()
+
+    def setupModels(self):
+        self.race = QSqlRelationalTableModel(db=self.db)
         self.race.setTable('Race')
         self.race.select()
 
-        self.field = QSqlRelationalTableModel(db=db)
+        self.field = QSqlRelationalTableModel(db=self.db)
         self.field.setTable('Field')
         self.field.select()
 
-        self.racer = QSqlRelationalTableModel(db=db)
+        self.racer = QSqlRelationalTableModel(db=self.db)
         self.racer.setTable('Racer')
         self.racer.select()
         self.racer.setRelation(4, QSqlRelation('Field', 'id', 'name'));
@@ -33,7 +102,7 @@ class Models(QObject):
         self.racer.setHeaderData(6, Qt.Horizontal, 'Finish')
         self.racer.select()
 
-        self.result = QSqlRelationalTableModel(db=db)
+        self.result = QSqlRelationalTableModel(db=self.db)
         self.result.setTable('Result')
         self.result.setHeaderData(1, Qt.Horizontal, 'Bib')
         self.result.setHeaderData(2, Qt.Horizontal, 'Finish')
@@ -146,10 +215,10 @@ class RacerTable(QTableView):
         self.model().select()
 
 class ResultTable(QTableView):
-    def __init__(self, models):
+    def __init__(self, model):
         super().__init__()
 
-        self.setModel(models.result)
+        self.setModel(model.result)
 
         self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
@@ -172,11 +241,15 @@ class ResultTable(QTableView):
         else:
             super().keyPressEvent(event)
 
-class MainWidget(QWidget):
-    def __init__(self, db):
+class CentralWidget(QObject):
+    def __init__(self, model):
         super().__init__()
 
-        self.models = Models(db)
+class MainWidget(QWidget, CentralWidget):
+    def __init__(self, model):
+        super().__init__(model)
+
+        self.model = model
 
         # Top-level layout. Top to bottom.
         self.setLayout(QVBoxLayout())
@@ -199,7 +272,7 @@ class MainWidget(QWidget):
         self.button_row.layout().addWidget(self.button_row.racer_button)
 
         # Result table.
-        self.result_table = ResultTable(self.models)
+        self.result_table = ResultTable(model)
 
         # Result line edit.
         self.result_input = QLineEdit()
@@ -218,9 +291,9 @@ class MainWidget(QWidget):
         self.layout().addWidget(self.commit_all_button)
 
         # Floating windows. Keep then hidden initially.
-        self.race_info = RaceInfo(self.models)
-        self.field_table = FieldTable(self.models)
-        self.racer_table = RacerTable(self.models)
+        self.race_info = RaceInfo(model)
+        self.field_table = FieldTable(model)
+        self.racer_table = RacerTable(model)
 
         # Signals/slots for button row toggle buttons.
         self.button_row.race_button.toggled.connect(self.race_info.setVisible)
@@ -254,6 +327,12 @@ class MainWidget(QWidget):
 
         self.result_input.clear()
 
+class DummyWidget(QLabel, CentralWidget):
+    def __init__(self):
+        super().__init__(None)
+
+        self.setPixmap(QPixmap(os.path.join('resources', 'thyme.jpg')))
+
 class SexyThymeMainWindow(QMainWindow):
     APPLICATION_NAME = 'SexyThyme'
 
@@ -262,7 +341,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.setWindowTitle(self.APPLICATION_NAME)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
-        self.setCentralWidget(QWidget())
+        self.setCentralWidget(DummyWidget())
 
         self.setupMenuBar()
 
@@ -299,6 +378,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         if msg_box.exec() == QMessageBox.Ok:
             event.accept()
+            QApplication.quit()
         else:
             event.ignore()
 
@@ -315,7 +395,8 @@ class SexyThymeMainWindow(QMainWindow):
         if not dialog.exec():
             return
 
-        self.newDatabase(dialog.selectedFiles()[0])
+        model = Model(dialog.selectedFiles()[0], new=True)
+        self.setCentralWidget(MainWidget(model))
 
     def openFile(self):
         dialog = QFileDialog(self)
@@ -328,7 +409,8 @@ class SexyThymeMainWindow(QMainWindow):
         if not dialog.exec():
             return
 
-        self.openDatabase(dialog.selectedFiles()[0])
+        model = Model(dialog.selectedFiles()[0], new=False)
+        self.setCentralWidget(MainWidget(model))
 
     def importFilePrepare(self):
         # Pick the import file.
@@ -395,87 +477,6 @@ class SexyThymeMainWindow(QMainWindow):
                     continue
 
                 print('Importing %s' % name)
-
-    def newDatabase(self, filename):
-        # Delete the file, if it exists.
-        if os.path.exists(filename):
-            os.remove(filename)
-
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        if not db.isValid():
-            raise Exception('Invalid database')
-
-        db.setDatabaseName(filename)
-
-        if not db.open():
-            raise Exception(db.lastError().text())
-
-        # Create tables.
-        query = QSqlQuery(db)
-
-        if not query.exec(
-            'PRAGMA foreign_keys = ON;'):
-            raise Exception(query.lastError().text())
-
-        if not query.exec(
-            'CREATE TABLE Race' +
-            '(key TEXT PRIMARY KEY,' +
-             'value TEXT);'):
-            raise Exception(query.lastError().text())
-
-        if not query.exec(
-            'CREATE TABLE Field' +
-            '(id INTEGER PRIMARY KEY,' +
-             'name TEXT UNIQUE,' +
-             'data TEXT);'):
-            raise Exception(query.lastError().text())
-
-        if not query.exec(
-            'CREATE TABLE Racer' +
-            '(id INTEGER PRIMARY KEY,' +
-             'bib INTEGER UNIQUE,' +
-             'name TEXT,' +
-             'team TEXT,' +
-             'field_id INTEGER,' +
-             'start TEXT,' +
-             'finish TEXT,' +
-             'data TEXT,' +
-             'FOREIGN KEY(field_id) REFERENCES Field(id));'):
-            raise Exception(query.lastError().text())
-
-        if not query.exec(
-            'INSERT INTO Race VALUES("Race name", "(race name here)");'):
-            raise Exception(query.lastError().text())
-
-        self.db = db
-        self.db_filename = filename
-
-        self.setCentralWidget(MainWidget(db))
- 
-    def openDatabase(self, filename):
-        db = QSqlDatabase.addDatabase('QSQLITE')
-        if not db.isValid():
-            raise Exception('Invalid database')
-
-        db.setDatabaseName(filename)
-
-        if not db.open():
-            raise Exception(db.lastError().text())
-
-        self.db = db
-        self.db_filename = filename
-
-        self.setCentralWidget(MainWidget(db))
-
-    def closeDatabase(self):
-        self.setCentralWidget(QWidget())
-
-        self.db.close()
-        print(self.db.connectionName())
-        QSqlDatabase.removeDatabase(self.db.connectionName())
-
-        self.db = None
-        self.db_filename = None
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
