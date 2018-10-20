@@ -153,30 +153,30 @@ class Model(QObject):
     def addRacer(self, bib, name, team, field, start, finish, data='{}'):
         # See if the field exists in our Field table.  If not, we add a new
         # field.
-        field_model = self.racer.relationModel(
+        field_relation_model = self.racer.relationModel(
                                         self.racer.fieldIndex('field_name_2'))
-        field_model.setFilter('name = "%s"' % field)
-        if not field_model.select():
-            raise Exception(field_model.lastError().text())
+        field_relation_model.setFilter('name = "%s"' % field)
+        if not field_relation_model.select():
+            raise Exception(field_relation_model.lastError().text())
 
         # Yup, not there. Add it, and then select it. Should just be the one
         # after adding.
-        if field_model.rowCount() == 0:
+        if field_relation_model.rowCount() == 0:
             self.addField(field)
-            if not field_model.select():
-                raise Exception(field_model.lastError().text())
+            if not field_relation_model.select():
+                raise Exception(field_relation_model.lastError().text())
 
         # Make sure there's only one, and get its field id.
-        if field_model.rowCount() != 1:
+        if field_relation_model.rowCount() != 1:
             raise Exception('More than one field with the same name found')
-        field_id = (field_model.record(0).field(field_model
-                               .fieldIndex('id')).value())
+        field_id = (field_relation_model.record(0).field(field_relation_model
+                                        .fieldIndex('id')).value())
 
         # Restore the filter. This model is actually owned by the racer model
         # that we got this from via relationModel(), and I guess it uses it
         # to populate the combobox. If we don't do this, the combobox will
         # only show the latest field added, which I guess makes sense.
-        field_model.setFilter('')
+        field_relation_model.setFilter('')
 
         record = self.racer.record()
         record.setValue('bib', bib)
@@ -442,7 +442,17 @@ class MainWidget(QWidget, CentralWidget):
         return self.model is not None
 
     def fieldModelChanged(self, top_left, bottom_right, roles):
-        self.model.racer.select()
+        # When someone changes a field name, we have to update the racer model
+        # to get the field name change. In addition, there is a combo box
+        # in the racer table view that is a view for a relation model inside
+        # the racer model. That combo box needs to update as well, to get the
+        # field name change.
+        racer_model = self.model.racer
+        field_relation_model = racer_model.relationModel(
+                                        racer_model.fieldIndex('field_name_2'))
+
+        racer_model.select()
+        field_relation_model.select()
 
     def newResult(self):
         self.model.addResult(self.result_input.text(), QTime.currentTime())
