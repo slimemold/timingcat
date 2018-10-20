@@ -245,15 +245,31 @@ class RaceInfo(QTableView):
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
-class FieldProxyModel(QSortFilterProxyModel):
+class FieldProxyModel(QIdentityProxyModel):
     def columnCount(self, parent):
         return self.sourceModel().columnCount(parent) + 2
+
+    def fieldIndex(self, field_name):
+        return self.sourceModel().fieldIndex(field_name)
+
+    def headerData(self, section, orientation, role):
+        if orientation == Qt.Horizontal and role == Qt.DisplayRole:
+            if section == 3:
+                return 'Finished'
+            elif section == 4:
+                return 'Total'
+
+        return self.sourceModel().headerData(section, orientation, role)
+
+    def __normalizedSection(self, section):
+        return section - self.sourceModel().columnCount(parent)
 
 class FieldTable(QTableView):
     def __init__(self, field_model, parent=None):
         super().__init__(parent=parent)
 
         self.setModel(field_model)
+        self.setupProxyModel()
 
         self.setWindowTitle('Fields')
 
@@ -270,7 +286,7 @@ class FieldTable(QTableView):
         self.hideColumn(self.model().fieldIndex('id'))
         self.hideColumn(self.model().fieldIndex('data'))
 
-    def setupProxyModel(self, db):
+    def setupProxyModel(self):
         # Use a proxy model so we can add some interesting columns.
         proxyModel = FieldProxyModel()
         proxyModel.setSourceModel(self.model())
@@ -278,8 +294,8 @@ class FieldTable(QTableView):
         self.setModel(proxyModel)
 
         self.model().setHeaderData(1, Qt.Horizontal, 'Field')
-        self.model().setHeaderData(2, Qt.Horizontal, 'Finished')
-        self.model().setHeaderData(3, Qt.Horizontal, 'Total')
+        self.model().setHeaderData(4, Qt.Horizontal, 'Finished')
+        self.model().setHeaderData(5, Qt.Horizontal, 'Total')
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
