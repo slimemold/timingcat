@@ -88,11 +88,13 @@ class Model(QObject):
 
     def setupModels(self):
         self.race = QSqlRelationalTableModel(db=self.db)
+        self.race.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.race.setTable('race')
         if not self.race.select():
             raise Exception(self.race.lastError().text())
 
         self.field = QSqlRelationalTableModel(db=self.db)
+        self.field.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.field.setTable('field')
         self.field.setHeaderData(self.field.fieldIndex('name'),
                                  Qt.Horizontal, 'Field')
@@ -100,7 +102,7 @@ class Model(QObject):
             raise Exception(self.field.lastError().text())
 
         self.racer = QSqlRelationalTableModel(db=self.db)
-        self.racer.setEditStrategy(QSqlTableModel.OnManualSubmit)
+        self.racer.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.racer.setTable('racer')
         self.racer.setHeaderData(self.racer.fieldIndex('bib'),
                                  Qt.Horizontal, 'Bib')
@@ -122,6 +124,7 @@ class Model(QObject):
             raise Exception(self.racer.lastError().text())
 
         self.result = QSqlRelationalTableModel(db=self.db)
+        self.result.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.result.setTable('result')
         self.result.setHeaderData(self.result.fieldIndex('scratchpad'),
                                   Qt.Horizontal, 'Bib')
