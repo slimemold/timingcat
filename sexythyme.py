@@ -218,6 +218,9 @@ class Model(QObject):
         if not self.result.select():
             raise Exception(model.lastError().text())
 
+    def deleteResult(self, id):
+        pass
+
 class RaceInfo(QTableView):
     def __init__(self, race_model, parent=None):
         super().__init__(parent=parent)
@@ -366,9 +369,17 @@ class ResultTable(QTableView):
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Backspace:
-            print(event.key())
-        else:
-            super().keyPressEvent(event)
+            self.handleDelete()
+
+        return super().keyPressEvent(event)
+
+    def handleDelete(self):
+        model = self.selectionModel().model()
+        selection_list = self.selectionModel().selectedRows()
+        for selection in selection_list:
+            record = model.record(selection.row())
+            bib = record.value('scratchpad')
+            finish = record.value('finish')
 
 class CentralWidget(QObject):
     def __init__(self, parent=None):
