@@ -242,5 +242,5 @@ class ResultTableModel(TableModel):
         if not self.select():
             raise Exception(self.lastError().text())
 
-    def deleteResult(self, id):
-        pass
+    def deleteResult(self, row):
+        record = self.record()

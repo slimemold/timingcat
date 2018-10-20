@@ -4,7 +4,7 @@ import argparse
 import sys
 from PyQt5.QtWidgets import QApplication
 from common import CONST_APPLICATION_NAME, CONST_VERSION
-from raceview import SexyThymeMainWindow
+from gui import SexyThymeMainWindow
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description=CONST_APPLICATION_NAME)
