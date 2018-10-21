@@ -62,12 +62,12 @@ class FieldTableView(QTableView):
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(self.model().fieldIndex('name'),
+        self.sortByColumn(self.model().fieldIndex(FieldTableModel.NAME),
                           Qt.SortOrder.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(self.model().fieldIndex('id'))
+        self.hideColumn(self.model().fieldIndex(FieldTableModel.ID))
 
     def setupProxyModel(self):
         # Use a proxy model so we can add some interesting columns.
@@ -103,12 +103,12 @@ class RacerTableView(QTableView):
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(self.model().fieldIndex('bib'),
+        self.sortByColumn(self.model().fieldIndex(RacerTableModel.BIB),
                           Qt.SortOrder.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(self.model().fieldIndex('id'))
+        self.hideColumn(self.model().fieldIndex(RacerTableModel.ID))
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -137,12 +137,12 @@ class ResultTableView(QTableView):
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(False) # Don't allow sorting.
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(self.model().fieldIndex('id'),
+        self.sortByColumn(self.model().fieldIndex(ResultTableModel.FINISH),
                           Qt.SortOrder.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(self.model().fieldIndex('id'))
+        self.hideColumn(self.model().fieldIndex(ResultTableModel.ID))
 
         font = self.font()
         font.setPointSize(self.RESULT_TABLE_POINT_SIZE)
@@ -165,12 +165,13 @@ class ResultTableView(QTableView):
 
     def handleCommit(self):
         model = self.selectionModel().model()
+        print(model)
         selection_list = self.selectionModel().selectedRows()
         for selection in selection_list:
             try:
                 model.commitResult(selection.row())
                 model.deleteResult(selection.row())
-            except UserError as e:
+            except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))
 
         # Model retains blank rows until we select() again.

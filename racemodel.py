@@ -9,9 +9,14 @@ class DatabaseError(Exception):
 class InternalModelError(Exception):
     pass
 
+class InputError(Exception):
+    pass
+
 def _printRecord(record):
     for index in range(record.count()):
-        print('%s: %s' % (record.field(index).name(), record.field(index).value()))
+        print('%s: %s, generated = %s' % (record.field(index).name(),
+                                          record.field(index).value(),
+                                          record.isGenerated(index)))
 
 class ModelDatabase(QObject):
     def __init__(self, filename, new=False):
@@ -219,6 +224,7 @@ class RacerTableModel(TableModel):
         field_relation_model.setFilter('')
 
         record = self.record()
+        record.setGenerated(self.ID, False)
         record.setValue(self.BIB, bib)
         record.setValue(self.NAME, name)
         record.setValue(self.TEAM, team)
@@ -248,40 +254,34 @@ class RacerTableModel(TableModel):
             raise DatabaseError(self.lastError().text())
 
     def setRacerFinish(self, bib, finish):
-        print('setFinish(%s, %s)' % (bib, finish))
-
         model = QSqlRelationalTableModel(db=self.modeldb.db)
+        model.setEditStrategy(QSqlTableModel.OnFieldChange)
         model.setTable(self.TABLE)
         model.setFilter('%s = %s' % (self.BIB, bib))
         if not model.select():
             raise DatabaseError(model.lastError().text())
 
         if model.rowCount() == 0:
-            raise UserError('Setting racer finish failed, ' +
-                            'bib %s not found' % bib)
+            raise InputError('Setting racer finish failed, ' +
+                             'bib %s not found' % bib)
 
         if model.rowCount() > 1:
             raise InternalModelError('Internal error, duplicate bib %s ' % bib +
                                      ' found in racer table')
 
-        print('setting racer %s finish time' % model.record(0).value(self.NAME))
-        model.record(0).setValue(self.BIB, bib)
-        model.record(0).setValue(self.FINISH, finish)
+        record = model.record(0)
 
-        if not model.setRecord(0, model.record(0)):
-            raise DatabaseError(self.lastError().text())
+        record.setValue(self.FINISH, finish)
 
-        if not model.select():
-            raise DatabaseError(self.lastError().text())
+        if not model.setRecord(0, record):
+            raise DatabaseError(model.lastError().text())
 
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-        print('found %s rows with bib %s' % (model.rowCount(), bib))
-
-
 class ResultTableModel(TableModel):
     TABLE = 'result'
+    ID = 'id'
     SCRATCHPAD = 'scratchpad'
     FINISH = 'finish'
 
@@ -304,7 +304,7 @@ class ResultTableModel(TableModel):
 
         if not query.exec(
             'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
-            '("id" INTEGER NOT NULL PRIMARY KEY, ' +
+            '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
              '"%s" TEXT NOT NULL, ' % self.SCRATCHPAD +
              '"%s" TIME NOT NULL);' % self.FINISH):
             raise DatabaseError(query.lastError().text())
