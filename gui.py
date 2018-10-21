@@ -74,6 +74,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         font = self.result_input.font()
         font.setPointSize(INPUT_TEXT_POINT_SIZE)
         self.result_input.setFont(font)
+        self.result_input.setValidator(QRegExpValidator(QRegExp('[A-Za-z0-9]*')))
 
         # Commit button.
         self.commit_button = QPushButton('Commit Selected')
