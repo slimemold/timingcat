@@ -23,7 +23,7 @@ class RaceTableView(QTableView):
         else:
             super().keyPressEvent(event)
 
-    def closeEvent(self, event):
+    def hideEvent(self, event):
         self.visibleChanged.emit(False)
 
     # Signals.
@@ -84,7 +84,7 @@ class FieldTableView(QTableView):
         else:
             super().keyPressEvent(event)
 
-    def closeEvent(self, event):
+    def hideEvent(self, event):
         self.visibleChanged.emit(False)
 
     # Signals.
@@ -116,7 +116,10 @@ class RacerTableView(QTableView):
         else:
             super().keyPressEvent(event)
 
-    def closeEvent(self, event):
+    def showEvent(self, event):
+        self.resize(600, 800)
+
+    def hideEvent(self, event):
         self.visibleChanged.emit(False)
 
     # Signals.
@@ -156,6 +159,7 @@ class ResultTableView(QTableView):
         selection_list = self.selectionModel().selectedRows()
         for selection in selection_list:
             model.deleteResult(selection.row())
+
         # Model retains blank rows until we select() again.
         model.select()
 
@@ -166,8 +170,8 @@ class ResultTableView(QTableView):
             try:
                 model.commitResult(selection.row())
                 model.deleteResult(selection.row())
-            except Exception as e:
-                print(e)
-                raise e
+            except UserError as e:
+                QMessageBox.warning(self, 'Error', str(e))
+
         # Model retains blank rows until we select() again.
         model.select()
