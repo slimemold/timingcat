@@ -186,6 +186,7 @@ class RacerTableModel(TableModel):
     NAME = 'name'
     TEAM = 'team'
     FIELD = 'field_id'
+    FIELD_ALIAS = 'field_name_2'
     START = 'start'
     FINISH = 'finish'
     STATUS = 'status'
@@ -244,7 +245,7 @@ class RacerTableModel(TableModel):
         # See if the field exists in our Field table.  If not, we add a new
         # field.
         field_relation_model = self.relationModel(
-                                        self.fieldIndex('field_name_2'))
+                                        self.fieldIndex(self.FIELD_ALIAS))
         field_relation_model.setFilter('%s = "%s"' % (FieldTableModel.NAME, field))
         if not field_relation_model.select():
             raise DatabaseError(field_relation_model.lastError().text())
@@ -280,9 +281,9 @@ class RacerTableModel(TableModel):
         # one, failing the transaction. This piece of code switches the
         # field back from the field_name_2 alias to the original field_id,
         # so that the ensuing sql query can work.
-        sql_field = record.field(self.fieldIndex('field_name_2'))
+        sql_field = record.field(self.fieldIndex(self.FIELD_ALIAS))
         sql_field.setName(self.FIELD)
-        record.replace(self.fieldIndex('field_name_2'), sql_field)
+        record.replace(self.fieldIndex(self.FIELD_ALIAS), sql_field)
         record.setValue(self.FIELD, field_id)
 
         record.setValue(self.START, start)
