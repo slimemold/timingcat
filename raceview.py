@@ -56,9 +56,6 @@ class FieldProxyModel(ExtraColumnsProxyModel):
 
         return None
 
-    def fieldIndex(self, field_name):
-        return self.sourceModel().fieldIndex(field_name)
-
 class FieldTableView(QTableView):
     def __init__(self, field_model, parent=None):
         super().__init__(parent=parent)
@@ -87,8 +84,6 @@ class FieldTableView(QTableView):
 
         self.setModel(proxyModel)
 
-        self.model().setHeaderData(1, Qt.Horizontal, 'Field')
-
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
@@ -101,13 +96,28 @@ class FieldTableView(QTableView):
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
+# Proxy model for only showing racers that belong to a specific field.
+class RacerInFieldFilterProxyModel(QSortFilterProxyModel):
+
+    def __init__(self, field_id, parent=None):
+        super().__init__(parent)
+
+        self.setFilterKeyColumn(4)
+
+    def fieldIndex(self, field_name):
+        return self.sourceModel().fieldIndex(field_name)
+
 class RacerTableView(QTableView):
-    def __init__(self, racer_model, parent=None):
+    def __init__(self, racer_model, field_id=None, parent=None):
         super().__init__(parent=parent)
 
-        self.setModel(racer_model)
+        self.field_id = field_id
 
-        self.setWindowTitle('Racers')
+        self.setModel(racer_model)
+        if self.field_id:
+            self.setupProxyModel(field_id)
+
+        self.updateFieldName()
 
         # Set up our view.
         self.setItemDelegate(QSqlRelationalDelegate())
@@ -120,6 +130,15 @@ class RacerTableView(QTableView):
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.model().fieldIndex(RacerTableModel.ID))
+        #if self.field_id:
+        #    self.hideColumn(self.model().fieldIndex(RacerTableModel.FIELD_ALIAS))
+
+    def setupProxyModel(self, field_id):
+        # Use a proxy model so we can add some interesting columns.
+        proxyModel = RacerInFieldFilterProxyModel(field_id)
+        proxyModel.setSourceModel(self.model())
+
+        self.setModel(proxyModel)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -132,6 +151,14 @@ class RacerTableView(QTableView):
 
     def hideEvent(self, event):
         self.visibleChanged.emit(False)
+
+    def updateFieldName(self):
+        if self.field_id:
+            field_name = self.model().sourceModel().fieldNameFromId(self.field_id)
+            self.setWindowTitle('Racers (%s)' % field_name)
+            self.model().setFilterRegExp(QRegExp(field_name, Qt.CaseSensitive, QRegExp.FixedString))
+        else:
+            self.setWindowTitle('Racers')
 
     # Signals.
     visibleChanged = pyqtSignal(bool)
@@ -173,7 +200,8 @@ class ResultTableView(QTableView):
             model.deleteResult(selection.row())
 
         # Model retains blank rows until we select() again.
-        model.select()
+        if not model.select():
+            raise DatabaseError(model.lastError().text())
 
         # Selection changed because of this deletion, but for some reason,
         # this widget class doesn't emit the selectionChanged signal in this
@@ -195,4 +223,5 @@ class ResultTableView(QTableView):
                 QMessageBox.warning(self, 'Error', str(e))
 
         # Model retains blank rows until we select() again.
-        model.select()
+        if not model.select():
+            raise DatabaseError(model.lastError().text())

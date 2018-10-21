@@ -21,3 +21,4 @@ requests
   selector. (OS X)
 - Native anyfile file selector does not allow new file. (OS X)
 - File selector not keyboard-navigatable. (OS X)
+- Can open multiple racer lists of the same field.

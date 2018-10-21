@@ -163,7 +163,26 @@ class FieldTableModel(TableModel):
         query.finish()
 
     def recordAtRow(self, row):
-        return { self.NAME: self.record(row).value(self.NAME) }
+        return { self.ID: self.record(row).value(self.ID),
+                 self.NAME: self.record(row).value(self.NAME) }
+
+    def nameFromId(self, field_id):
+        model = QSqlRelationalTableModel(db=self.modeldb.db)
+        model.setTable(self.TABLE)
+        model.setFilter('%s = %s' % (self.ID, field_id))
+        if not model.select():
+            raise DatabaseError(model.lastError().text())
+
+        if model.rowCount() == 0:
+            raise InputError('Failed to find field_id %s' % field_id)
+
+        if model.rowCount() > 1:
+            raise InternalModelError('Internal error, duplicate id %s ' % field_id +
+                                     ' found in field table')
+
+        record = model.record(0)
+
+        return record.value(self.NAME)
 
     def addField(self, name):
         record = self.record()
@@ -240,6 +259,9 @@ class RacerTableModel(TableModel):
                  self.START: self.record(row).value(self.START),
                  self.FINISH: self.record(row).value(self.FINISH),
                  self.STATUS: self.record(row).value(self.TEAM) }
+
+    def fieldNameFromId(self, field_id):
+        return self.modeldb.field_table_model.nameFromId(field_id)
 
     def addRacer(self, bib, name, team, field, start, finish, status='local'):
         # See if the field exists in our Field table.  If not, we add a new
