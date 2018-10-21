@@ -4,6 +4,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from common import *
 from raceview import *
+from remotes import OnTheDayRemote
 
 INPUT_TEXT_POINT_SIZE = 32
 
@@ -23,6 +24,7 @@ INPUT_TEXT_POINT_SIZE = 32
 #     FieldTableView
 #     RacerTableView
 #     ResultTableView
+
 class CentralWidget(QObject):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -205,9 +207,13 @@ class SexyThymeMainWindow(QMainWindow):
         fileMenu.addAction('New...', self.newFile, QKeySequence.New)
         fileMenu.addAction('Open...', self.openFile, QKeySequence.Open)
         fileMenu.addSeparator()
-        fileMenu.addAction('Import Bikereg csv', self.importBikeregFile)
+        fileMenu.addAction('Import Bikereg csv...', self.importBikeregFile)
         fileMenu.addSeparator()
         fileMenu.addAction('Quit', self.close, QKeySequence.Quit)
+
+        configMenu = self.menuBar().addMenu('&Config');
+        configMenu.addAction('Preferences', self.configPreferences)
+        configMenu.addAction('Remote', self.configRemote)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -351,3 +357,9 @@ class SexyThymeMainWindow(QMainWindow):
                 racer_table_model.addRacer(bib, name, team, field,
                                            QTime.currentTime(),
                                            QTime.currentTime())
+
+    def configPreferences(self):
+        pass
+
+    def configRemote(self):
+        pass

@@ -45,9 +45,6 @@ class FieldProxyModel(QIdentityProxyModel):
 
         return self.sourceModel().headerData(section, orientation, role)
 
-    def __normalizedSection(self, section):
-        return section - self.sourceModel().columnCount(parent)
-
 class FieldTableView(QTableView):
     def __init__(self, field_model, parent=None):
         super().__init__(parent=parent)

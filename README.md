@@ -1,5 +1,9 @@
 # SexyThyme - Time trial timing software with OnTheDay.net integration
 
+# Prerequisites
+PyQt5
+requests
+
 ## TODO
 - Finish field table proxy model to show finishers and total.
 - Fix field-specific racer tables to actually filter by field.
