@@ -9,6 +9,10 @@ class DatabaseError(Exception):
 class InternalModelError(Exception):
     pass
 
+def _printRecord(record):
+    for index in range(record.count()):
+        print('%s: %s' % (record.field(index).name(), record.field(index).value()))
+
 class ModelDatabase(QObject):
     def __init__(self, filename, new=False):
         super().__init__()
@@ -260,15 +264,18 @@ class RacerTableModel(TableModel):
             raise InternalModelError('Internal error, duplicate bib %s ' % bib +
                                      ' found in racer table')
 
+        print('setting racer %s finish time' % model.record(0).value(self.NAME))
         model.record(0).setValue(self.BIB, bib)
         model.record(0).setValue(self.FINISH, finish)
 
         if not model.setRecord(0, model.record(0)):
             raise DatabaseError(self.lastError().text())
 
-        if not self.select():
+        if not model.select():
             raise DatabaseError(self.lastError().text())
 
+        if not self.select():
+            raise DatabaseError(self.lastError().text())
 
         print('found %s rows with bib %s' % (model.rowCount(), bib))
 

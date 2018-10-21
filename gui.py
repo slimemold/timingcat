@@ -268,14 +268,16 @@ class SexyThymeMainWindow(QMainWindow):
 
         # Get Field and Racer tables so we can whine about how much state
         # we're going to lose if we let the import happen.
-        field_model = self.centralWidget().field_table.model()
-        racer_model = self.centralWidget().racer_table.model()
+        field_table_model = self.centralWidget().modeldb.field_table_model
+        racer_table_model = self.centralWidget().modeldb.racer_table_model
 
-        if (field_model.rowCount() != 0) or (racer_model.rowCount() != 0):
+        if ((field_table_model.rowCount() != 0) or
+            (racer_table_model.rowCount() != 0)):
             msg_box = QMessageBox()
             msg_box.setWindowTitle(APPLICATION_NAME)
             msg_box.setText('There are %s fields and %s racers defined.' %
-                            (field_model.rowCount(), racer_model.rowCount()))
+                            (field_table_model.rowCount(),
+                             racer_table_model.rowCount()))
             msg_box.setInformativeText('Do you really want to overwrite ' +
                                        'this data?')
             msg_box.setStandardButtons(QMessageBox.Ok |
