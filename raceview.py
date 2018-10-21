@@ -30,6 +30,9 @@ class RaceTableView(QTableView):
     visibleChanged = pyqtSignal(bool)
 
 class FieldProxyModel(QIdentityProxyModel):
+    FINISHED_SECTION = 0
+    TOTAL_SECTION = 1
+
     def columnCount(self, parent):
         return self.sourceModel().columnCount(parent) + 2
 
@@ -38,12 +41,28 @@ class FieldProxyModel(QIdentityProxyModel):
 
     def headerData(self, section, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            if section == 2:
+            if (section - self.sourceModel().columnCount())  == self.FINISHED_SECTION:
                 return 'Finished'
-            elif section == 3:
+            elif (section - self.sourceModel().columnCount()) == self.TOTAL_SECTION:
                 return 'Total'
 
         return self.sourceModel().headerData(section, orientation, role)
+
+    def data(self, model_index, role):
+#        print('col %s row %s' % (model_index.column(), model_index.row()))
+        section = model_index.column()
+
+        if role == Qt.DisplayRole:
+            if (section - self.sourceModel().columnCount())  == self.FINISHED_SECTION:
+                print("Squish")
+                return "3"
+            elif (section - self.sourceModel().columnCount()) == self.TOTAL_SECTION:
+                print("Squish2")
+                return "5"
+
+        fish = self.sourceModel().data(model_index, role)
+        print(fish)
+        return fish
 
 class FieldTableView(QTableView):
     def __init__(self, field_model, parent=None):

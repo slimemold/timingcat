@@ -53,9 +53,36 @@ class TableModel(QSqlRelationalTableModel):
         super().__init__(db=modeldb.db)
 
         self.modeldb = modeldb
+        self.column_flags_to_add = {}
+        self.column_flags_to_remove = {}
 
     def createTable(self):
         raise NotImplementedError
+
+    def addColumnFlags(self, column, flags):
+        if not column in self.column_flags_to_add.keys():
+            self.column_flags_to_add[column] = 0
+        self.column_flags_to_add[column] |= int(flags)
+
+    def removeColumnFlags(self, column, flags):
+        if not column in self.column_flags_to_remove.keys():
+            self.column_flags_to_remove[column] = 0
+        self.column_flags_to_remove[column] |= int(flags)
+
+    def flags(self, model_index):
+        flags = super().flags(model_index)
+
+        column = model_index.column()
+
+        if not column in self.column_flags_to_add.keys():
+            self.column_flags_to_add[column] = 0
+        flags |= self.column_flags_to_add[column]
+
+        if not column in self.column_flags_to_remove.keys():
+            self.column_flags_to_remove[column] = 0
+        flags &= ~self.column_flags_to_remove[model_index.column()]
+
+        return flags
 
 class RaceTableModel(TableModel):
     TABLE = 'race'
@@ -71,6 +98,8 @@ class RaceTableModel(TableModel):
         self.setTable(self.TABLE)
         if not self.select():
             raise DatabaseError(self.lastError().text())
+
+        self.removeColumnFlags(0, Qt.ItemIsEditable | Qt.ItemIsSelectable)
 
     def createTable(self, new):
         query = QSqlQuery(self.database())
@@ -101,6 +130,14 @@ class RaceTableModel(TableModel):
     def deleteRaceProperty(self, row):
         if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
+
+#    def flags(self, model_index):
+#        flags = super().flags(model_index)
+
+#        if model_index.column() == 0:
+#            flags = flags & ~Qt.ItemIsEditable
+
+#        return flags
 
 class FieldTableModel(TableModel):
     TABLE = 'field'
