@@ -38,9 +38,9 @@ class FieldProxyModel(QIdentityProxyModel):
 
     def headerData(self, section, orientation, role):
         if orientation == Qt.Horizontal and role == Qt.DisplayRole:
-            if section == 3:
+            if section == 2:
                 return 'Finished'
-            elif section == 4:
+            elif section == 3:
                 return 'Total'
 
         return self.sourceModel().headerData(section, orientation, role)
@@ -68,7 +68,6 @@ class FieldTableView(QTableView):
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.model().fieldIndex('id'))
-        self.hideColumn(self.model().fieldIndex('data'))
 
     def setupProxyModel(self):
         # Use a proxy model so we can add some interesting columns.
@@ -78,8 +77,6 @@ class FieldTableView(QTableView):
         self.setModel(proxyModel)
 
         self.model().setHeaderData(1, Qt.Horizontal, 'Field')
-        self.model().setHeaderData(4, Qt.Horizontal, 'Finished')
-        self.model().setHeaderData(5, Qt.Horizontal, 'Total')
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -112,7 +109,6 @@ class RacerTableView(QTableView):
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.model().fieldIndex('id'))
-        self.hideColumn(self.model().fieldIndex('data'))
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -127,7 +123,7 @@ class RacerTableView(QTableView):
     visibleChanged = pyqtSignal(bool)
 
 class ResultTableView(QTableView):
-    CONST_RESULT_TABLE_POINT_SIZE = 20
+    RESULT_TABLE_POINT_SIZE = 20
 
     def __init__(self, result_model, parent=None):
         super().__init__(parent=parent)
@@ -144,10 +140,9 @@ class ResultTableView(QTableView):
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.model().fieldIndex('id'))
-        self.hideColumn(self.model().fieldIndex('data'))
 
         font = self.font()
-        font.setPointSize(self.CONST_RESULT_TABLE_POINT_SIZE)
+        font.setPointSize(self.RESULT_TABLE_POINT_SIZE)
         self.setFont(font)
 
     def keyPressEvent(self, event):
@@ -160,6 +155,19 @@ class ResultTableView(QTableView):
         model = self.selectionModel().model()
         selection_list = self.selectionModel().selectedRows()
         for selection in selection_list:
-            model.removeRows(selection.row(), 1)
+            model.deleteResult(selection.row())
+        # Model retains blank rows until we select() again.
+        model.select()
+
+    def handleCommit(self):
+        model = self.selectionModel().model()
+        selection_list = self.selectionModel().selectedRows()
+        for selection in selection_list:
+            try:
+                model.commitResult(selection.row())
+                model.deleteResult(selection.row())
+            except Exception as e:
+                print(e)
+                raise e
         # Model retains blank rows until we select() again.
         model.select()

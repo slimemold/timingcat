@@ -5,8 +5,24 @@ from PyQt5.QtWidgets import *
 from common import *
 from raceview import *
 
-CONST_INPUT_TEXT_POINT_SIZE = 32
+INPUT_TEXT_POINT_SIZE = 32
 
+# Widget Instance Hierarchy
+#
+# SexyThymeMainWindow
+#     StartCentralWidget
+#     MainCentralWidget
+#         button_row
+#             race_button
+#             field_button
+#             racer_button
+#         result_table_view
+#         result_input
+#         commit_button
+#    RaceTableView
+#    FieldTableView
+#    RacerTableView
+#    ResultTableView
 class CentralWidget(QObject):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -17,7 +33,13 @@ class CentralWidget(QObject):
     def hasModel(self):
         return False
 
-class MainWidget(QWidget, CentralWidget):
+class StartCentralWidget(QLabel, CentralWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+        self.setPixmap(QPixmap(os.path.join('resources', 'thyme.jpg')))
+
+class MainCentralWidget(QWidget, CentralWidget):
     def __init__(self, modeldb, parent=None):
         super().__init__(parent=parent)
 
@@ -50,7 +72,7 @@ class MainWidget(QWidget, CentralWidget):
         self.result_input = QLineEdit()
         self.result_input.setClearButtonEnabled(True)
         font = self.result_input.font()
-        font.setPointSize(CONST_INPUT_TEXT_POINT_SIZE)
+        font.setPointSize(INPUT_TEXT_POINT_SIZE)
         self.result_input.setFont(font)
 
         # Commit button.
@@ -89,7 +111,7 @@ class MainWidget(QWidget, CentralWidget):
         self.result_input.returnPressed.connect(self.newResult)
 
         # Signals/slots for commit button.
-        self.commit_button.clicked.connect(self.commitResults)
+        self.commit_button.clicked.connect(self.result_table_view.handleCommit)
 
     def cleanup(self):
         self.modeldb.cleanup()
@@ -117,20 +139,11 @@ class MainWidget(QWidget, CentralWidget):
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
 
-    def commitResults(self):
-        print('commitResults')
-
-class DummyWidget(QLabel, CentralWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent=parent)
-
-        self.setPixmap(QPixmap(os.path.join('resources', 'thyme.jpg')))
-
 class SexyThymeMainWindow(QMainWindow):
     def __init__(self, filename=None, parent=None):
         super().__init__(parent=parent)
 
-        self.setWindowTitle(CONST_APPLICATION_NAME)
+        self.setWindowTitle(APPLICATION_NAME)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
 
         self.setupMenuBar()
@@ -138,14 +151,14 @@ class SexyThymeMainWindow(QMainWindow):
         if filename:
             self.switchToMain(filename)
         else:
-            self.switchToDummy()
+            self.switchToStart()
 
-    def switchToDummy(self):
+    def switchToStart(self):
         # Clean up old central widget, which will clean up the model we gave it.
         if self.centralWidget():
             self.centralWidget().cleanup()
 
-        self.setCentralWidget(DummyWidget())
+        self.setCentralWidget(StartCentralWidget())
 
     def switchToMain(self, filename, new=False):
         # Clean up old central widget, which will clean up the model we gave it.
@@ -154,7 +167,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         # Make a new model, and give it to a new central widget.
         model = ModelDatabase(filename, new)
-        self.setCentralWidget(MainWidget(model))
+        self.setCentralWidget(MainCentralWidget(model))
 
     def setupMenuBar(self):
         self.menuBar().setNativeMenuBar(False)
@@ -180,7 +193,7 @@ class SexyThymeMainWindow(QMainWindow):
             return
 
         msg_box = QMessageBox()
-        msg_box.setWindowTitle(CONST_APPLICATION_NAME)
+        msg_box.setWindowTitle(APPLICATION_NAME)
         msg_box.setText('You have uncommitted results.')
         msg_box.setInformativeText('Do you really want to quit?')
         msg_box.setStandardButtons(QMessageBox.Ok |
@@ -259,7 +272,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         if (field_model.rowCount() != 0) or (racer_model.rowCount() != 0):
             msg_box = QMessageBox()
-            msg_box.setWindowTitle(CONST_APPLICATION_NAME)
+            msg_box.setWindowTitle(APPLICATION_NAME)
             msg_box.setText('There are %s fields and %s racers defined.' %
                             (field_model.rowCount(), racer_model.rowCount()))
             msg_box.setInformativeText('Do you really want to overwrite ' +

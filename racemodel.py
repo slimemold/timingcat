@@ -38,17 +38,21 @@ class TableModel(QSqlRelationalTableModel):
 
         self.modeldb = modeldb
 
-    def createTable():
+    def createTable(self):
         raise NotImplemented
 
 class RaceTableModel(TableModel):
+    TABLE = 'race'
+    KEY = 'key'
+    VALUE = 'value'
+
     def __init__(self, modeldb, new):
         super().__init__(modeldb)
 
         self.createTable(new)
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
-        self.setTable('race')
+        self.setTable(self.TABLE)
         if not self.select():
             raise Exception(self.lastError().text())
 
@@ -56,9 +60,9 @@ class RaceTableModel(TableModel):
         query = QSqlQuery(self.database())
 
         if not query.exec(
-            'CREATE TABLE IF NOT EXISTS "race" ' +
-            '("key" TEXT NOT NULL PRIMARY KEY, ' +
-             '"value" TEXT NOT NULL);'):
+            'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
+            '("%s" TEXT NOT NULL PRIMARY KEY, ' % self.KEY +
+             '"%s" TEXT NOT NULL);' % self.VALUE):
             raise Exception(query.lastError().text())
 
         if new:
@@ -70,23 +74,31 @@ class RaceTableModel(TableModel):
 
     def addRaceProperty(self, key, value):
         record = self.record()
-        record.setValue('key', key)
-        record.setValue('value', value)
+        record.setValue(self.KEY, key)
+        record.setValue(self.VALUE, value)
 
         if not self.insertRecord(-1, record):
             raise Exception(self.lastError().text())
         if not self.race.select():
             raise Exception(self.lastError().text())
 
+    def deleteRaceProperty(self, row):
+        if not self.removeRow(row):
+            raise Exception(self.lastError().text())
+
 class FieldTableModel(TableModel):
+    TABLE = 'field'
+    ID = 'id'
+    NAME = 'name'
+
     def __init__(self, modeldb, new):
         super().__init__(modeldb)
 
         self.createTable()
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
-        self.setTable('field')
-        self.setHeaderData(self.fieldIndex('name'), Qt.Horizontal, 'Field')
+        self.setTable(self.TABLE)
+        self.setHeaderData(self.fieldIndex(self.NAME), Qt.Horizontal, 'Field')
         if not self.select():
             raise Exception(self.lastError().text())
 
@@ -94,43 +106,59 @@ class FieldTableModel(TableModel):
         query = QSqlQuery(self.database())
 
         if not query.exec(
-            'CREATE TABLE IF NOT EXISTS "field" ' +
-            '("id" INTEGER NOT NULL PRIMARY KEY, ' +
-             '"name" TEXT NOT NULL, ' +
-             '"data" TEXT NOT NULL);'):
+            'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
+            '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
+             '"%s" TEXT NOT NULL);' % self.NAME):
             raise Exception(query.lastError().text())
 
         query.finish()
 
-    def addField(self, name, data='{}'):
+    def addField(self, name):
         record = self.record()
         record.setValue('name', name)
-        record.setValue('data', data)
 
         if not self.insertRecord(-1, record):
             raise Exception(self.lastError().text())
         if not self.select():
             raise Exception(self.lastError().text())
 
+    # TODO: Must check to make sure the field is empty before allowing delete.
+    def deleteField(self, row):
+        if not self.removeRow(row):
+            raise Exception(self.lastError().text())
+
 class RacerTableModel(TableModel):
+    TABLE = 'racer'
+    ID = 'id'
+    BIB = 'bib'
+    NAME = 'name'
+    TEAM = 'team'
+    FIELD = 'field_id'
+    START = 'start'
+    FINISH = 'finish'
+    STATUS = 'status'
+
     def __init__(self, modeldb, new):
         super().__init__(modeldb)
 
         self.createTable()
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
-        self.setTable('racer')
-        self.setHeaderData(self.fieldIndex('bib'), Qt.Horizontal, 'Bib')
-        self.setHeaderData(self.fieldIndex('name'), Qt.Horizontal, 'Name')
-        self.setHeaderData(self.fieldIndex('team'), Qt.Horizontal, 'Team')
-        self.setHeaderData(self.fieldIndex('field_id'), Qt.Horizontal, 'Field')
-        self.setHeaderData(self.fieldIndex('start'), Qt.Horizontal, 'Start')
-        self.setHeaderData(self.fieldIndex('finish'), Qt.Horizontal, 'Finish')
+        self.setTable(self.TABLE)
+        self.setHeaderData(self.fieldIndex(self.BIB), Qt.Horizontal, 'Bib')
+        self.setHeaderData(self.fieldIndex(self.NAME), Qt.Horizontal, 'Name')
+        self.setHeaderData(self.fieldIndex(self.TEAM), Qt.Horizontal, 'Team')
+        self.setHeaderData(self.fieldIndex(self.FIELD), Qt.Horizontal, 'Field')
+        self.setHeaderData(self.fieldIndex(self.START), Qt.Horizontal, 'Start')
+        self.setHeaderData(self.fieldIndex(self.FINISH), Qt.Horizontal, 'Finish')
+        self.setHeaderData(self.fieldIndex(self.STATUS), Qt.Horizontal, 'Status')
 
         # After this relation is defined, the field name becomes
         # "field_name_2".
-        self.setRelation(self.fieldIndex('field_id'),
-                         QSqlRelation('field', 'id', 'name'));
+        self.setRelation(self.fieldIndex(self.FIELD),
+            QSqlRelation(FieldTableModel.TABLE,
+                         FieldTableModel.ID,
+                         FieldTableModel.NAME));
         if not self.select():
             raise Exception(self.lastError().text())
 
@@ -138,25 +166,25 @@ class RacerTableModel(TableModel):
         query = QSqlQuery(self.database())
 
         if not query.exec(
-            'CREATE TABLE IF NOT EXISTS "racer" ' +
-            '("id" INTEGER NOT NULL PRIMARY KEY, ' +
-             '"bib" INTEGER UNIQUE NOT NULL, ' +
-             '"name" TEXT NOT NULL, ' +
-             '"team" TEXT NOT NULL, ' +
-             '"field_id" INTEGER, ' +
-             '"start" TIME NOT NULL, ' +
-             '"finish" TIME NOT NULL, ' +
-             '"data" TEXT NOT NULL);'):
+            'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
+            '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
+             '"%s" INTEGER UNIQUE NOT NULL, ' % self.BIB +
+             '"%s" TEXT NOT NULL, ' % self.NAME +
+             '"%s" TEXT NOT NULL, ' % self.TEAM +
+             '"%s" INTEGER, ' % self.FIELD +
+             '"%s" TIME NOT NULL, ' % self.START +
+             '"%s" TIME NOT NULL, ' % self.FINISH +
+             '"%s" TEXT NOT NULL);' % self.STATUS):
             raise Exception(query.lastError().text())
 
         query.finish()
 
-    def addRacer(self, bib, name, team, field, start, finish, data='{}'):
+    def addRacer(self, bib, name, team, field, start, finish, status='local'):
         # See if the field exists in our Field table.  If not, we add a new
         # field.
         field_relation_model = self.relationModel(
                                         self.fieldIndex('field_name_2'))
-        field_relation_model.setFilter('name = "%s"' % field)
+        field_relation_model.setFilter('%s = "%s"' % (FieldTableModel.NAME, field))
         if not field_relation_model.select():
             raise Exception(field_relation_model.lastError().text())
 
@@ -171,7 +199,7 @@ class RacerTableModel(TableModel):
         if field_relation_model.rowCount() != 1:
             raise Exception('More than one field with the same name found')
         field_id = (field_relation_model.record(0).field(field_relation_model
-                                        .fieldIndex('id')).value())
+                                        .fieldIndex(FieldTableModel.ID)).value())
 
         # Restore the filter. This model is actually owned by the racer model
         # that we got this from via relationModel(), and I guess it uses it
@@ -180,9 +208,9 @@ class RacerTableModel(TableModel):
         field_relation_model.setFilter('')
 
         record = self.record()
-        record.setValue('bib', bib)
-        record.setValue('name', name)
-        record.setValue('team', team)
+        record.setValue(self.BIB, bib)
+        record.setValue(self.NAME, name)
+        record.setValue(self.TEAM, team)
 
         # OMFG I can't believe I have to do this...but Qt is not retranslating
         # this stupid field_name_2 alias back to its original field name,
@@ -191,13 +219,13 @@ class RacerTableModel(TableModel):
         # field back from the field_name_2 alias to the original field_id,
         # so that the ensuing sql query can work.
         sql_field = record.field(self.fieldIndex('field_name_2'))
-        sql_field.setName('field_id')
+        sql_field.setName(self.FIELD)
         record.replace(self.fieldIndex('field_name_2'), sql_field)
-        record.setValue('field_id', field_id)
+        record.setValue(self.FIELD, field_id)
 
-        record.setValue('start', start)
-        record.setValue('finish', finish)
-        record.setValue('data', data)
+        record.setValue(self.START, start)
+        record.setValue(self.FINISH, finish)
+        record.setValue(self.STATUS, status)
 
         if not self.insertRecord(-1, record):
             raise Exception(self.lastError().text())
@@ -206,16 +234,35 @@ class RacerTableModel(TableModel):
         if not self.select():
             raise Exception(self.lastError().text())
 
+    def deleteRacer(self, row):
+        if not self.removeRow(row):
+            raise Exception(self.lastError().text())
+
+    def setRacerFinish(self, bib, finish):
+        print('setFinish(%s, %s)' % (bib, finish))
+
+        model = QSqlRelationalTableModel(db=self.modeldb.db)
+        model.setTable(self.TABLE)
+        model.setFilter('%s = %s' % (self.BIB, bib))
+        if not model.select():
+            raise Exception(model.lastError().text())
+
+        print('found %s rows with bib %s' % (model.rowCount(), bib))
+
 class ResultTableModel(TableModel):
+    TABLE = 'result'
+    SCRATCHPAD = 'scratchpad'
+    FINISH = 'finish'
+
     def __init__(self, modeldb, new):
         super().__init__(modeldb)
 
         self.createTable()
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
-        self.setTable('result')
-        self.setHeaderData(self.fieldIndex('scratchpad'), Qt.Horizontal, 'Bib')
-        self.setHeaderData(self.fieldIndex('finish'), Qt.Horizontal, 'Finish')
+        self.setTable(self.TABLE)
+        self.setHeaderData(self.fieldIndex(self.SCRATCHPAD), Qt.Horizontal, 'Bib')
+        self.setHeaderData(self.fieldIndex(self.FINISH), Qt.Horizontal, 'Finish')
         if not self.select():
             raise Exception(self.lastError().text())
 
@@ -223,24 +270,30 @@ class ResultTableModel(TableModel):
         query = QSqlQuery(self.database())
 
         if not query.exec(
-            'CREATE TABLE IF NOT EXISTS "result" ' +
+            'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
             '("id" INTEGER NOT NULL PRIMARY KEY, ' +
-             '"scratchpad" TEXT NOT NULL, ' +
-             '"finish" TIME NOT NULL, ' +
-             '"data" TEXT NOT NULL);'):
+             '"%s" TEXT NOT NULL, ' % self.SCRATCHPAD +
+             '"%s" TIME NOT NULL);' % self.FINISH):
             raise Exception(query.lastError().text())
 
         query.finish()
 
-    def addResult(self, scratchpad, finish, data='{}'):
+    def addResult(self, scratchpad, finish):
         record = self.record()
-        record.setValue('scratchpad', scratchpad)
-        record.setValue('finish', finish)
-        record.setValue('data', data)
+        record.setValue(self.SCRATCHPAD, scratchpad)
+        record.setValue(self.FINISH, finish)
 
         self.insertRecord(-1, record)
         if not self.select():
             raise Exception(self.lastError().text())
 
     def deleteResult(self, row):
-        record = self.record()
+        if not self.removeRow(row):
+            raise Exception(self.lastError().text())
+
+    def commitResult(self, row):
+        record = self.record(row)
+        bib = record.value(self.SCRATCHPAD)
+        finish = record.value(self.FINISH)
+
+        self.modeldb.racer_table_model.setRacerFinish(bib, finish)
