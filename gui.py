@@ -18,7 +18,7 @@ INPUT_TEXT_POINT_SIZE = 32
 #             racer_button
 #         result_table_view
 #         result_input
-#         commit_button
+#         submit_button
 #    RaceTableView
 #    FieldTableView
 #    RacerTableView
@@ -77,13 +77,13 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_input.setValidator(QRegExpValidator(QRegExp('[A-Za-z0-9]*')))
 
         # Commit button.
-        self.commit_button = QPushButton('Commit Selected')
+        self.submit_button = QPushButton('Commit Selected')
 
         # Add to top-level layout.
         self.layout().addWidget(self.button_row)
         self.layout().addWidget(self.result_table_view)
         self.layout().addWidget(self.result_input)
-        self.layout().addWidget(self.commit_button)
+        self.layout().addWidget(self.submit_button)
 
         # Floating windows. Keep then hidden initially.
         self.race_table_view = RaceTableView(self.modeldb.race_table_model)
@@ -108,11 +108,15 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.modeldb.field_table_model.dataChanged.connect(
                                                        self.fieldModelChanged)
 
+        # Signals/slots for result table.
+        self.result_table_view.selectionModel().selectionChanged.connect(
+                                                  self.resultSelectionChanged)
+
         # Signals/slots for result input.
         self.result_input.returnPressed.connect(self.newResult)
 
-        # Signals/slots for commit button.
-        self.commit_button.clicked.connect(self.result_table_view.handleCommit)
+        # Signals/slots for submit button.
+        self.submit_button.clicked.connect(self.result_table_view.handleCommit)
 
     def cleanup(self):
         self.modeldb.cleanup()
@@ -120,6 +124,23 @@ class MainCentralWidget(QWidget, CentralWidget):
 
     def hasModel(self):
         return self.modeldb is not None
+
+    def updateSubmitButton(self):
+        selection_count = len(self.result_table_view.selectionModel().selectedRows())
+        total_count = self.result_table_view.model().rowCount()
+
+        if selection_count == 0:
+            self.submit_button.setText('Submit')
+            self.submit_button.setEnabled(False)
+        elif selection_count == 1:
+            self.submit_button.setText('Submit')
+            self.submit_button.setEnabled(True)
+        elif selection_count < total_count:
+            self.submit_button.setText('Submit Selected')
+            self.submit_button.setEnabled(True)
+        else:
+            self.submit_button.setText('Submit All')
+            self.submit_button.setEnabled(True)
 
     def fieldModelChanged(self, top_left, bottom_right, roles):
         # When someone changes a field name, we have to update the racer model
@@ -133,6 +154,9 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         racer_table_model.select()
         field_relation_model.select()
+
+    def resultSelectionChanged(self, selected, deselected):
+        self.updateSubmitButton()
 
     def newResult(self):
         self.modeldb.result_table_model.addResult(
@@ -195,7 +219,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         msg_box = QMessageBox()
         msg_box.setWindowTitle(APPLICATION_NAME)
-        msg_box.setText('You have uncommitted results.')
+        msg_box.setText('You have unsubmitted results.')
         msg_box.setInformativeText('Do you really want to quit?')
         msg_box.setStandardButtons(QMessageBox.Ok |
                                    QMessageBox.Cancel)

@@ -156,6 +156,7 @@ class ResultTableView(QTableView):
 
     def handleDelete(self):
         model = self.selectionModel().model()
+        item_selection = self.selectionModel().selection()
         selection_list = self.selectionModel().selectedRows()
         for selection in selection_list:
             model.deleteResult(selection.row())
@@ -163,9 +164,17 @@ class ResultTableView(QTableView):
         # Model retains blank rows until we select() again.
         model.select()
 
+        # Selection changed because of this deletion, but for some reason,
+        # this widget class doesn't emit the selectionChanged signal in this
+        # case. Let's emit it ourselves.
+        #
+        # Not gonna bother calculating selected and deselected. Hopefully,
+        # slots that receive this signal won't care...
+        self.selectionModel().selectionChanged.emit(QItemSelection(),
+                                                    item_selection)
+
     def handleCommit(self):
         model = self.selectionModel().model()
-        print(model)
         selection_list = self.selectionModel().selectedRows()
         for selection in selection_list:
             try:

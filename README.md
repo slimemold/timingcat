@@ -1,11 +1,8 @@
 # SexyThyme - Time trial timing software with OnTheDay.net integration
 
 ## TODO
-- Hook up delete keyboard key to delete rows.
 - Finish field table proxy model to show finishers and total.
 - Fix field-specific racer tables to actually filter by field.
-- Add "commit" and "delete" buttons to result table.
-- Hook up "commit selected" button.
 - Add "delete" buttons to racer table.
 - Add "new racer" button to racer table.
 - Add "racers" and "delete" buttons to field table.
