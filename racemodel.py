@@ -131,14 +131,6 @@ class RaceTableModel(TableModel):
         if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
 
-#    def flags(self, model_index):
-#        flags = super().flags(model_index)
-
-#        if model_index.column() == 0:
-#            flags = flags & ~Qt.ItemIsEditable
-
-#        return flags
-
 class FieldTableModel(TableModel):
     TABLE = 'field'
     ID = 'id'
