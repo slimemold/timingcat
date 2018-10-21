@@ -19,10 +19,10 @@ INPUT_TEXT_POINT_SIZE = 32
 #         result_table_view
 #         result_input
 #         submit_button
-#    RaceTableView
-#    FieldTableView
-#    RacerTableView
-#    ResultTableView
+#     RaceTableView
+#     FieldTableView
+#     RacerTableView
+#     ResultTableView
 class CentralWidget(QObject):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
