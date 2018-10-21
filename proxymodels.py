@@ -36,6 +36,9 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
 
         return super().mapToSource(proxy_index)
 
+    def fieldIndex(self, field_name):
+        return self.sourceModel().fieldIndex(field_name)
+
     def buddy(self, proxy_index):
         column = proxy_index.column()
         if column >= self.sourceModel().columnCount():
