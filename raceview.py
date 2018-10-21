@@ -30,6 +30,8 @@ class RaceTableView(QTableView):
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
+# Add a "Finished" column for total racers that have a finish time, and a
+# "Total" column to show total racers in that field.
 class FieldProxyModel(ExtraColumnsProxyModel):
     FINISHED_SECTION = 0
     TOTAL_SECTION = 1
@@ -42,7 +44,15 @@ class FieldProxyModel(ExtraColumnsProxyModel):
 
     def extraColumnData(self, parent, row, extraColumn, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
-            return 'Foo'
+            field_table_model = self.sourceModel()
+            racer_table_model = self.sourceModel().modeldb.racer_table_model
+
+            field = field_table_model.recordAtRow(row)[RacerTableModel.NAME]
+
+            if extraColumn == self.FINISHED_SECTION:
+                return racer_table_model.racerCountFinishedInField(field)
+            elif extraColumn == self.TOTAL_SECTION:
+                return racer_table_model.racerCountTotalInField(field)
 
         return None
 

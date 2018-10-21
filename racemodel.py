@@ -117,6 +117,10 @@ class RaceTableModel(TableModel):
 
         query.finish()
 
+    def recordAtRow(self, row):
+        return { self.KEY: self.record(row).value(self.KEY),
+                 self.VALUE: self.record(row).value(self.VALUE) }
+
     def addRaceProperty(self, key, value):
         record = self.record()
         record.setValue(self.KEY, key)
@@ -157,6 +161,9 @@ class FieldTableModel(TableModel):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
+
+    def recordAtRow(self, row):
+        return { self.NAME: self.record(row).value(self.NAME) }
 
     def addField(self, name):
         record = self.record()
@@ -216,13 +223,22 @@ class RacerTableModel(TableModel):
              '"%s" INTEGER UNIQUE NOT NULL, ' % self.BIB +
              '"%s" TEXT NOT NULL, ' % self.NAME +
              '"%s" TEXT NOT NULL, ' % self.TEAM +
-             '"%s" INTEGER, ' % self.FIELD +
-             '"%s" TIME NOT NULL, ' % self.START +
-             '"%s" TIME NOT NULL, ' % self.FINISH +
+             '"%s" INTEGER NOT NULL, ' % self.FIELD +
+             '"%s" TIME, ' % self.START +
+             '"%s" TIME, ' % self.FINISH +
              '"%s" TEXT NOT NULL);' % self.STATUS):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
+
+    def recordAtRow(self, row):
+        return { self.BIB: self.record(row).value(self.BIB),
+                 self.NAME: self.record(row).value(self.NAME),
+                 self.TEAM: self.record(row).value(self.TEAM),
+                 self.FIELD: self.record(row).value(self.FIELD),
+                 self.START: self.record(row).value(self.START),
+                 self.FINISH: self.record(row).value(self.FINISH),
+                 self.STATUS: self.record(row).value(self.TEAM) }
 
     def addRacer(self, bib, name, team, field, start, finish, status='local'):
         # See if the field exists in our Field table.  If not, we add a new
@@ -308,6 +324,15 @@ class RacerTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
+    def racerCount(self):
+        return 5
+
+    def racerCountTotalInField(self, field):
+        return 15
+
+    def racerCountFinishedInField(self, field):
+        return 10
+
 class ResultTableModel(TableModel):
     TABLE = 'result'
     ID = 'id'
@@ -339,6 +364,10 @@ class ResultTableModel(TableModel):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
+
+    def recordAtRow(self, row):
+        return { self.SCRATCHPAD: self.record(row).value(self.SCRATCHPAD),
+                 self.FINISH: self.record(row).value(self.FINISH) }
 
     def addResult(self, scratchpad, finish):
         record = self.record()
