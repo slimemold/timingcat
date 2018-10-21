@@ -77,7 +77,8 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_input.setValidator(QRegExpValidator(QRegExp('[A-Za-z0-9]*')))
 
         # Commit button.
-        self.submit_button = QPushButton('Commit Selected')
+        self.submit_button = QPushButton()
+        self.updateSubmitButton()
 
         # Add to top-level layout.
         self.layout().addWidget(self.button_row)
@@ -126,8 +127,12 @@ class MainCentralWidget(QWidget, CentralWidget):
         return self.modeldb is not None
 
     def updateSubmitButton(self):
-        selection_count = len(self.result_table_view.selectionModel().selectedRows())
-        total_count = self.result_table_view.model().rowCount()
+        if self.result_table_view:
+            selection_count = len(self.result_table_view.selectionModel().selectedRows())
+            total_count = self.result_table_view.model().rowCount()
+        else:
+            seletion_count = 0
+            total_count = 0
 
         if selection_count == 0:
             self.submit_button.setText('Submit')
