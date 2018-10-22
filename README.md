@@ -5,8 +5,6 @@ PyQt5
 requests
 
 ## TODO
-- Finish field table proxy model to show finishers and total.
-- Fix field-specific racer tables to actually filter by field.
 - Add "delete" buttons to racer table.
 - Add "new racer" button to racer table.
 - Add "racers" and "delete" buttons to field table.
