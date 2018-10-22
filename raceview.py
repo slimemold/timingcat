@@ -47,12 +47,12 @@ class FieldProxyModel(ExtraColumnsProxyModel):
             field_table_model = self.sourceModel()
             racer_table_model = self.sourceModel().modeldb.racer_table_model
 
-            field = field_table_model.recordAtRow(row)[RacerTableModel.NAME]
+            field_id = field_table_model.recordAtRow(row)[RacerTableModel.ID]
 
             if extraColumn == self.FINISHED_SECTION:
-                return racer_table_model.racerCountFinishedInField(field)
+                return racer_table_model.racerCountFinishedInField(field_id)
             elif extraColumn == self.TOTAL_SECTION:
-                return racer_table_model.racerCountTotalInField(field)
+                return racer_table_model.racerCountTotalInField(field_id)
 
         return None
 
@@ -206,7 +206,7 @@ class ResultTableView(QTableView):
         self.selectionModel().selectionChanged.emit(QItemSelection(),
                                                     item_selection)
 
-    def handleCommit(self):
+    def handleSubmit(self):
         model = self.selectionModel().model()
         selection_list = self.selectionModel().selectedRows()
         for selection in selection_list:

@@ -120,7 +120,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_input.returnPressed.connect(self.newResult)
 
         # Signals/slots for submit button.
-        self.submit_button.clicked.connect(self.result_table_view.handleCommit)
+        self.submit_button.clicked.connect(self.submitResults)
 
         # Signals/slots for field table.
         self.field_table_view.doubleClicked.connect(self.newRacerInFieldTableView)
@@ -167,8 +167,6 @@ class MainCentralWidget(QWidget, CentralWidget):
             if table_view.isVisible():
                 new_list.append(table_view)
                 table_view.updateFieldName()
-            else:
-                print('Removing RacerTableView %s' % table_view)
 
         self.racer_in_field_table_view_list = new_list
 
@@ -195,6 +193,12 @@ class MainCentralWidget(QWidget, CentralWidget):
                                self.result_input.text(), QTime.currentTime())
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
+
+    def submitResults(self):
+        self.result_table_view.handleSubmit()
+
+        # Signal that the finishers counts in the field table model has changed.
+        self.modeldb.field_table_model.signalFinishersChanged()
 
     def newRacerInFieldTableView(self, model_index):
         # Don't make a new racer in field view if the double-click is on the

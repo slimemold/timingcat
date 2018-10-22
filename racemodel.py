@@ -193,10 +193,20 @@ class FieldTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    # TODO: Must check to make sure the field is empty before allowing delete.
     def deleteField(self, row):
+        field_id = self.record(row).value(self.ID)
+        if self.modeldb.racer_table_model.racerCountTotalInField(field_id) > 0:
+            raise InputError('Trying to delete non-empty field')
+
         if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
+
+    # TODO: Really should just specify finisher column has changed, rather than
+    # the entire table model.
+    def signalFinishersChanged(self):
+        top_left = QModelIndex()
+        bottom_right = QModelIndex()
+        self.modeldb.field_table_model.dataChanged.emit(top_left, bottom_right)
 
 class RacerTableModel(TableModel):
     TABLE = 'racer'
@@ -348,13 +358,31 @@ class RacerTableModel(TableModel):
             raise DatabaseError(self.lastError().text())
 
     def racerCount(self):
-        return 5
+        model = QSqlRelationalTableModel(db=self.modeldb.db)
+        model.setTable(self.TABLE)
+        if not model.select():
+            raise DatabaseError(model.lastError().text())
 
-    def racerCountTotalInField(self, field):
-        return 15
+        return model.rowCount()
 
-    def racerCountFinishedInField(self, field):
-        return 10
+    def racerCountTotalInField(self, field_id):
+        model = QSqlRelationalTableModel(db=self.modeldb.db)
+        model.setTable(self.TABLE)
+        model.setFilter('%s = %s' % (self.FIELD, field_id))
+        if not model.select():
+            raise DatabaseError(model.lastError().text())
+
+        return model.rowCount()
+
+    def racerCountFinishedInField(self, field_id):
+        model = QSqlRelationalTableModel(db=self.modeldb.db)
+        model.setTable(self.TABLE)
+        model.setFilter('%s = %s AND %s IS NOT NULL' % (self.FIELD, field_id,
+                                                        self.FINISH))
+        if not model.select():
+            raise DatabaseError(model.lastError().text())
+
+        return model.rowCount()
 
 class ResultTableModel(TableModel):
     TABLE = 'result'
