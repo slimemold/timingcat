@@ -211,8 +211,13 @@ class ResultTableView(QTableView):
         selection_list = self.selectionModel().selectedRows()
         for selection in selection_list:
             try:
-                model.submitResult(selection.row())
-                model.deleteResult(selection.row())
+                # Only try to submit it if it's a non-negative integer.
+                # Else, it is obviously a work in progress, so don't even
+                # bother.
+                record = model.recordAtRow(selection.row())
+                if record[ResultTableModel.SCRATCHPAD].isdigit():
+                    model.submitResult(selection.row())
+                    model.deleteResult(selection.row())
             except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))
 
