@@ -96,26 +96,20 @@ class FieldTableView(QTableView):
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
-# Proxy model for only showing racers that belong to a specific field.
-class RacerInFieldFilterProxyModel(QSortFilterProxyModel):
-
-    def __init__(self, field_id, parent=None):
-        super().__init__(parent)
-
-        self.setFilterKeyColumn(4)
-
-    def fieldIndex(self, field_name):
-        return self.sourceModel().fieldIndex(field_name)
-
 class RacerTableView(QTableView):
     def __init__(self, racer_model, field_id=None, parent=None):
         super().__init__(parent=parent)
 
         self.field_id = field_id
+        model = racer_model
 
-        self.setModel(racer_model)
         if self.field_id:
-            self.setupProxyModel(field_id)
+            self.setModel(QSortFilterProxyModel())
+            self.model().setSourceModel(model)
+            self.model().setFilterKeyColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
+            self.updateFieldName()
+        else:
+            self.setModel(model)
 
         self.updateFieldName()
 
@@ -124,14 +118,14 @@ class RacerTableView(QTableView):
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(self.model().fieldIndex(RacerTableModel.BIB),
+        self.sortByColumn(model.fieldIndex(RacerTableModel.BIB),
                           Qt.SortOrder.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(self.model().fieldIndex(RacerTableModel.ID))
-        #if self.field_id:
-        #    self.hideColumn(self.model().fieldIndex(RacerTableModel.FIELD_ALIAS))
+        self.hideColumn(model.fieldIndex(RacerTableModel.ID))
+        if self.field_id:
+            self.hideColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
 
     def setupProxyModel(self, field_id):
         # Use a proxy model so we can add some interesting columns.
