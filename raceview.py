@@ -211,7 +211,7 @@ class ResultTableView(QTableView):
         selection_list = self.selectionModel().selectedRows()
         for selection in selection_list:
             try:
-                model.commitResult(selection.row())
+                model.submitResult(selection.row())
                 model.deleteResult(selection.row())
             except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))

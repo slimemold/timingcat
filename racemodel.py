@@ -433,7 +433,7 @@ class ResultTableModel(TableModel):
         if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
 
-    def commitResult(self, row):
+    def submitResult(self, row):
         record = self.record(row)
         bib = record.value(self.SCRATCHPAD)
         finish = record.value(self.FINISH)

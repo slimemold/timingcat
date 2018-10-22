@@ -10,8 +10,8 @@ requests
 - Add "racers" and "delete" buttons to field table.
 - Add "new field" button to field table.
 - Add reports pdf generation.
-- Add result commit hook.
-- Implement OnTheDay.net result commit hook.
+- Add result submit hook.
+- Implement OnTheDay.net result submit hook.
 
 ## Known Bugs
 - Clear button on result_input doesn't always erase text. (OS X)

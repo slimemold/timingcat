@@ -78,7 +78,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_input.setFont(font)
         self.result_input.setValidator(QRegExpValidator(QRegExp('[A-Za-z0-9]*')))
 
-        # Commit button.
+        # Submit button.
         self.submit_button = QPushButton()
         self.updateSubmitButton()
 
