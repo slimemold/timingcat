@@ -153,7 +153,7 @@ class MainCentralWidget(QWidget, CentralWidget):
             self.submit_button.setText('Submit All')
             self.submit_button.setEnabled(True)
 
-    def fieldModelChanged(self, top_left, bottom_right, roles):
+    def fieldModelChanged(self, *args):
         # A little silly to do this in here...but we can't do it on the
         # close path of these table views, and I can't find anywhere else
         # to do this.
@@ -166,7 +166,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         for table_view in self.racer_in_field_table_view_list:
             if table_view.isVisible():
                 new_list.append(table_view)
-                table_view.updateWindowTitle()
+                table_view.updateFieldName()
             else:
                 print('Removing RacerTableView %s' % table_view)
 
