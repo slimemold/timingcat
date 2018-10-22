@@ -197,6 +197,12 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_input.clear()
 
     def newRacerInFieldTableView(self, model_index):
+        # Don't make a new racer in field view if the double-click is on the
+        # field name. Double-clicking there probably just means the user
+        # wants to edit the field name.
+        if model_index.column() == 1:
+            return
+
         field_id = self.modeldb.field_table_model.recordAtRow(model_index.row())[FieldTableModel.ID]
 
         new_table_view = RacerTableView(self.modeldb.racer_table_model, field_id)
