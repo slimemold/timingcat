@@ -68,7 +68,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.button_row.layout().addWidget(self.button_row.racer_button)
 
         # Result table.
-        self.result_table_view = ResultTableView(self.modeldb.result_table_model)
+        self.result_table_view = ResultTableView(self.modeldb)
 
         # Result line edit.
         self.result_input = QLineEdit()
@@ -89,9 +89,9 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.layout().addWidget(self.submit_button)
 
         # Floating windows. Keep then hidden initially.
-        self.race_table_view = RaceTableView(self.modeldb.race_table_model)
-        self.field_table_view = FieldTableView(self.modeldb.field_table_model)
-        self.racer_table_view = RacerTableView(self.modeldb.racer_table_model)
+        self.race_table_view = RaceTableView(self.modeldb)
+        self.field_table_view = FieldTableView(self.modeldb)
+        self.racer_table_view = RacerTableView(self.modeldb)
         self.racer_in_field_table_view_list = []
 
         # Signals/slots for button row toggle buttons.
@@ -209,7 +209,7 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         field_id = self.modeldb.field_table_model.recordAtRow(model_index.row())[FieldTableModel.ID]
 
-        new_table_view = RacerTableView(self.modeldb.racer_table_model, field_id)
+        new_table_view = RacerTableView(self.modeldb, field_id)
         new_table_view.show()
 
         self.racer_in_field_table_view_list.append(new_table_view)

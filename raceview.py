@@ -4,10 +4,12 @@ from proxymodels import *
 from racemodel import *
 
 class RaceTableView(QTableView):
-    def __init__(self, race_model, parent=None):
+    def __init__(self, modeldb, parent=None):
         super().__init__(parent=parent)
 
-        self.setModel(race_model)
+        self.modeldb = modeldb
+
+        self.setModel(self.modeldb.race_table_model)
 
         self.setWindowTitle('Race Info')
 
@@ -57,10 +59,12 @@ class FieldProxyModel(ExtraColumnsProxyModel):
         return None
 
 class FieldTableView(QTableView):
-    def __init__(self, field_model, parent=None):
+    def __init__(self, modeldb, parent=None):
         super().__init__(parent=parent)
 
-        self.setModel(field_model)
+        self.modeldb = modeldb
+
+        self.setModel(self.modeldb.field_table_model)
         self.setupProxyModel()
 
         self.setWindowTitle('Fields')
@@ -97,11 +101,13 @@ class FieldTableView(QTableView):
     visibleChanged = pyqtSignal(bool)
 
 class RacerTableView(QTableView):
-    def __init__(self, racer_model, field_id=None, parent=None):
+    def __init__(self, modeldb, field_id=None, parent=None):
         super().__init__(parent=parent)
 
+        self.modeldb = modeldb
+
         self.field_id = field_id
-        model = racer_model
+        model = self.modeldb.racer_table_model
 
         if self.field_id:
             self.setModel(QSortFilterProxyModel())
@@ -160,10 +166,12 @@ class RacerTableView(QTableView):
 class ResultTableView(QTableView):
     RESULT_TABLE_POINT_SIZE = 20
 
-    def __init__(self, result_model, parent=None):
+    def __init__(self, modeldb, parent=None):
         super().__init__(parent=parent)
 
-        self.setModel(result_model)
+        self.modeldb = modeldb
+
+        self.setModel(self.modeldb.result_table_model)
 
         self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
