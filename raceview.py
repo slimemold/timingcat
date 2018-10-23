@@ -81,6 +81,18 @@ class FieldTableView(QTableView):
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.model().fieldIndex(FieldTableModel.ID))
 
+        # For each field, we make a racer in field table view ahead of time.
+        self.racer_in_field_table_view_dict = {}
+        field_table_model = self.modeldb.field_table_model
+        for index in range(field_table_model.rowCount()):
+            record_dict = field_table_model.recordDict(field_table_model.record(index))
+            self.handleFieldAdded(record_dict)
+
+        # Signals/slots to handle racer in field table views.
+        self.modeldb.field_table_model.fieldAdded.connect(self.handleFieldAdded)
+        self.modeldb.field_table_model.dataChanged.connect(self.handleDataChanged)
+        self.doubleClicked.connect(self.handleShowRacerInFieldTableView)
+
     def setupProxyModel(self):
         # Use a proxy model so we can add some interesting columns.
         proxyModel = FieldProxyModel()
@@ -96,6 +108,23 @@ class FieldTableView(QTableView):
 
     def hideEvent(self, event):
         self.visibleChanged.emit(False)
+
+    def handleFieldAdded(self, record_dict):
+        field_id = record_dict[FieldTableModel.ID]
+
+        self.racer_in_field_table_view_dict[field_id] = RacerTableView(self.modeldb, field_id)
+
+    def handleDataChanged(self, *args):
+        for field_id in self.racer_in_field_table_view_dict:
+            self.racer_in_field_table_view_dict[field_id].updateFieldName()
+
+    def handleShowRacerInFieldTableView(self, model_index):
+        if model_index.column() == 1:
+            return
+
+        field_id = self.modeldb.field_table_model.recordAtRow(model_index.row())[FieldTableModel.ID]
+
+        self.racer_in_field_table_view_dict[field_id].show()
 
     # Signals.
     visibleChanged = pyqtSignal(bool)

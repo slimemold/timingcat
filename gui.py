@@ -92,7 +92,6 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.race_table_view = RaceTableView(self.modeldb)
         self.field_table_view = FieldTableView(self.modeldb)
         self.racer_table_view = RacerTableView(self.modeldb)
-        self.racer_in_field_table_view_list = []
 
         # Signals/slots for button row toggle buttons.
         self.button_row.race_button.toggled.connect(self.race_table_view
@@ -121,9 +120,6 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Signals/slots for submit button.
         self.submit_button.clicked.connect(self.submitResults)
-
-        # Signals/slots for field table.
-        self.field_table_view.doubleClicked.connect(self.newRacerInFieldTableView)
 
     def cleanup(self):
         self.modeldb.cleanup()
@@ -154,22 +150,6 @@ class MainCentralWidget(QWidget, CentralWidget):
             self.submit_button.setEnabled(True)
 
     def fieldModelChanged(self, *args):
-        # A little silly to do this in here...but we can't do it on the
-        # close path of these table views, and I can't find anywhere else
-        # to do this.
-        #
-        # Anyway...manage the racer_in_field_table_view_list.  This includes
-        # removing closed views, and updating their window names.
-        new_list = []
-
-        # Remove closed table views from the list.
-        for table_view in self.racer_in_field_table_view_list:
-            if table_view.isVisible():
-                new_list.append(table_view)
-                table_view.updateFieldName()
-
-        self.racer_in_field_table_view_list = new_list
-
         # When someone changes a field name, we have to update the racer model
         # to get the field name change. In addition, there is a combo box
         # in the racer table view that is a view for a relation model inside
@@ -199,20 +179,6 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Signal that the finishers counts in the field table model has changed.
         self.modeldb.field_table_model.signalFinishersChanged()
-
-    def newRacerInFieldTableView(self, model_index):
-        # Don't make a new racer in field view if the double-click is on the
-        # field name. Double-clicking there probably just means the user
-        # wants to edit the field name.
-        if model_index.column() == 1:
-            return
-
-        field_id = self.modeldb.field_table_model.recordAtRow(model_index.row())[FieldTableModel.ID]
-
-        new_table_view = RacerTableView(self.modeldb, field_id)
-        new_table_view.show()
-
-        self.racer_in_field_table_view_list.append(new_table_view)
 
 class SexyThymeMainWindow(QMainWindow):
     def __init__(self, filename=None, parent=None):
