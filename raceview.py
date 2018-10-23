@@ -37,12 +37,14 @@ class RaceTableView(QTableView):
 class FieldProxyModel(ExtraColumnsProxyModel):
     FINISHED_SECTION = 0
     TOTAL_SECTION = 1
+    STATUS_SECTION = 2
 
     def __init__(self):
         super().__init__()
 
         self.appendColumn('Finished')
         self.appendColumn('Total')
+        self.appendColumn('Status')
 
     def extraColumnData(self, parent, row, extraColumn, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
@@ -55,6 +57,12 @@ class FieldProxyModel(ExtraColumnsProxyModel):
                 return racer_table_model.racerCountFinishedInField(field_id)
             elif extraColumn == self.TOTAL_SECTION:
                 return racer_table_model.racerCountTotalInField(field_id)
+            elif extraColumn == self.STATUS_SECTION:
+                if (racer_table_model.racerCountFinishedInField(field_id) <
+                    racer_table_model.racerCountTotalInField(field_id)):
+                    return 'In Progress'
+                else:
+                    return 'Complete'
 
         return None
 
