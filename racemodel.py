@@ -131,9 +131,24 @@ class RaceTableModel(TableModel):
         if not self.race.select():
             raise DatabaseError(self.lastError().text())
 
+        record_dict = self.recordDict(record)
+
+        racePropertyAdded.emit(record_dict)
+
     def deleteRaceProperty(self, row):
+        record_dict = self.recordDict(self.record(row))
+
         if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
+
+        racePropertyDeleted.emit(record_dict)
+
+    def recordDict(self, record):
+        return {self.KEY: record.value(self.KEY),
+                self.VALUE: record.value(self.VALUE)}
+
+    racePropertyAdded = pyqtSignal(dict)
+    racePropertyDeleted = pyqtSignal(dict)
 
 class FieldTableModel(TableModel):
     TABLE = 'field'
@@ -193,7 +208,13 @@ class FieldTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
+        record_dict = self.recordDict(record)
+
+        fieldAdded.emit(racer_dict)
+
     def deleteField(self, row):
+        record_dict = self.recordDict(self.record(row))
+
         field_id = self.record(row).value(self.ID)
         if self.modeldb.racer_table_model.racerCountTotalInField(field_id) > 0:
             raise InputError('Trying to delete non-empty field')
@@ -201,12 +222,21 @@ class FieldTableModel(TableModel):
         if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
 
+        fieldDeleted.emit(record_dict)
+
     # TODO: Really should just specify finisher column has changed, rather than
     # the entire table model.
     def signalFinishersChanged(self):
         top_left = QModelIndex()
         bottom_right = QModelIndex()
         self.modeldb.field_table_model.dataChanged.emit(top_left, bottom_right)
+
+    def recordDict(self, record):
+        return {self.ID: record.value(self.ID),
+                self.NAME: record.value(self.NAME)}
+
+    fieldAdded = pyqtSignal(dict)
+    fieldDeleted = pyqtSignal(dict)
 
 class RacerTableModel(TableModel):
     TABLE = 'racer'
@@ -327,9 +357,17 @@ class RacerTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
+        record_dict = self.recordDict(record)
+
+        self.racerAdded.emit(record)
+
     def deleteRacer(self, row):
+        record_dict = self.recordDict(self.record(row))
+
         if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
+
+        racerDeleted.emit(record_dict)
 
     def setRacerFinish(self, bib, finish):
         model = QSqlRelationalTableModel(db=self.modeldb.db)
@@ -351,11 +389,15 @@ class RacerTableModel(TableModel):
 
         record.setValue(self.FINISH, finish)
 
+        record_dict = self.recordDict(record)
+
         if not model.setRecord(0, record):
             raise DatabaseError(model.lastError().text())
 
         if not self.select():
             raise DatabaseError(self.lastError().text())
+
+        racerFinished.emit(record_dict)
 
     def racerCount(self):
         model = QSqlRelationalTableModel(db=self.modeldb.db)
@@ -383,6 +425,19 @@ class RacerTableModel(TableModel):
             raise DatabaseError(model.lastError().text())
 
         return model.rowCount()
+
+    def racerDict(self, record):
+        return {self.ID: record.value(self.ID),
+                self.BIB: record.value(self.BIB),
+                self.NAME: record.value(self.NAME),
+                self.TEAM: record.value(self.TEAM),
+                self.FIELD: record.value(self.FIELD),
+                self.START: record.value(self.START),
+                self.FINISH: record.value(self.FINISH)}
+
+    racerAdded = pyqtSignal(dict)
+    racerDeleted = pyqtSignal(dict)
+    racerFinished = pyqtSignal(dict)
 
 class ResultTableModel(TableModel):
     TABLE = 'result'
@@ -429,9 +484,17 @@ class ResultTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
+        record_dict = self.recordDict(record)
+
+        resultAdded.emit(record_dict)
+
     def deleteResult(self, row):
+        record_dict = self.recordDict(self.record(row))
+
         if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
+
+        resultDeleted.emit(record_dict)
 
     def submitResult(self, row):
         record = self.record(row)
@@ -439,3 +502,16 @@ class ResultTableModel(TableModel):
         finish = record.value(self.FINISH)
 
         self.modeldb.racer_table_model.setRacerFinish(bib, finish)
+
+        record_dict = self.recordDict(self.record(row))
+
+        resultSubmitted.emit(record_dict)
+
+    def recordDict(self, record):
+        return {self.ID: record.value(self.ID),
+                self.SCRATCHPAD: record.value(self.SCRATCHPAD),
+                self.FINISH: record.value(self.FINISH)}
+
+    resultAdded = pyqtSignal(dict)
+    resultDeleted = pyqtSignal(dict)
+    resultSubmitted = pyqtSignal(dict)
