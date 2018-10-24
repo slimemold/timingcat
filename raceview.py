@@ -53,14 +53,21 @@ class FieldProxyModel(ExtraColumnsProxyModel):
 
             field_id = field_table_model.recordAtRow(row)[RacerTableModel.ID]
 
+            total = racer_table_model.racerCountTotalInField(field_id)
+            finished = racer_table_model.racerCountFinishedInField(field_id)
+
             if extraColumn == self.FINISHED_SECTION:
-                return racer_table_model.racerCountFinishedInField(field_id)
+                return finished
             elif extraColumn == self.TOTAL_SECTION:
-                return racer_table_model.racerCountTotalInField(field_id)
+                return total
             elif extraColumn == self.STATUS_SECTION:
-                if (racer_table_model.racerCountFinishedInField(field_id) <
-                    racer_table_model.racerCountTotalInField(field_id)):
-                    return 'In Progress'
+                total = racer_table_model.racerCountTotalInField(field_id)
+                finished = racer_table_model.racerCountFinishedInField(field_id)
+
+                if total == 0:
+                    return 'Empty'
+                elif (finished < total):
+                    return 'In Progress (%s%%)' % int(round(finished * 100 / total))
                 else:
                     return 'Complete'
 
@@ -91,14 +98,11 @@ class FieldTableView(QTableView):
 
         # For each field, we make a racer in field table view ahead of time.
         self.racer_in_field_table_view_dict = {}
-        field_table_model = self.modeldb.field_table_model
-        for index in range(field_table_model.rowCount()):
-            record_dict = field_table_model.recordDict(field_table_model.record(index))
-            self.handleFieldAdded(record_dict)
+        self.handleDataChanged()
 
         # Signals/slots to handle racer in field table views.
-        self.modeldb.field_table_model.fieldAdded.connect(self.handleFieldAdded)
         self.modeldb.field_table_model.dataChanged.connect(self.handleDataChanged)
+        self.modeldb.racer_table_model.dataChanged.connect(self.updateNonModelColumns)
         self.doubleClicked.connect(self.handleShowRacerInFieldTableView)
 
     def setupProxyModel(self):
@@ -111,28 +115,111 @@ class FieldTableView(QTableView):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
-        else:
-            super().keyPressEvent(event)
+        elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
+            self.handleDelete()
+
+        return super().keyPressEvent(event)
+
+    def showEvent(self, event):
+        self.resize(450, 600)
 
     def hideEvent(self, event):
         self.visibleChanged.emit(False)
 
-    def handleFieldAdded(self, record_dict):
-        field_id = record_dict[FieldTableModel.ID]
+    def handleDelete(self):
+        model = self.selectionModel().model()
+        item_selection = self.selectionModel().selection()
+        selection_list = self.selectionModel().selectedRows()
 
-        self.racer_in_field_table_view_dict[field_id] = RacerTableView(self.modeldb, field_id)
+        field_table_model = self.modeldb.field_table_model
+        racer_table_model = self.modeldb.racer_table_model
+
+        field_count = len(selection_list)
+        racer_count = 0
+        for selection in selection_list:
+            field_record = field_table_model.record(selection.row())
+            field_id = field_record.value(FieldTableModel.ID)
+
+            racer_count += racer_table_model.racerCountTotalInField(field_id)
+
+        # Confirm deletion.
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle(APPLICATION_NAME)
+        msg_box.setText('Deleting %s' %
+                        pretty_list([pluralize('field', field_count),
+                                     pluralize('racer', racer_count)]))
+        msg_box.setInformativeText('Do you really want to delete?')
+        msg_box.setStandardButtons(QMessageBox.Ok |
+                                   QMessageBox.Cancel)
+        msg_box.setDefaultButton(QMessageBox.Cancel)
+        msg_box.setIcon(QMessageBox.Information)
+
+        if msg_box.exec() != QMessageBox.Ok:
+            return
+
+        # Remove rows from large to small, because the rows are removed
+        # immediately, and cause the rest of the rows to shift, invalidating
+        # any row number that's higher than the currently removed one.
+        selection_list.sort(key=lambda selection: selection.row(), reverse=True)
+        for selection in selection_list:
+            field_record = field_table_model.record(selection.row())
+            field_id = field_record.value(FieldTableModel.ID)
+
+            racer_in_field_table_view = self.racer_in_field_table_view_dict[field_id]
+            racer_in_field_table_model = racer_in_field_table_view.model()
+
+            # Have to remove one row at a time from the proxy model. For some
+            # reason, a ranged removeRows() fails.
+            # Also, the removal is immediate, so we keep removing index 0.
+            for row in reversed(range(racer_in_field_table_model.rowCount())):
+                racer_in_field_table_model.removeRow(row)
+
+            model.removeRow(selection.row())
+
+        # Model retains blank rows until we select() again.
+        if not self.modeldb.field_table_model.select():
+            raise DatabaseError(model.lastError().text())
 
     def handleDataChanged(self, *args):
-        for field_id in self.racer_in_field_table_view_dict:
-            self.racer_in_field_table_view_dict[field_id].updateFieldName()
+        # Field table model changed. Go through the model to see if we need to
+        # make any new racer-in-field-table-views. Drop the ones we don't
+        # need anymore.
+        new_racer_in_field_table_view_dict = {}
+        field_table_model = self.modeldb.field_table_model
+
+        for row in range(field_table_model.rowCount()):
+            record = field_table_model.record(row)
+            field_id = record.value(FieldTableModel.ID)
+            if field_id in self.racer_in_field_table_view_dict:
+                new_racer_in_field_table_view_dict[field_id] = self.racer_in_field_table_view_dict[field_id]
+                new_racer_in_field_table_view_dict[field_id].updateFieldName()
+            else:
+                new_racer_in_field_table_view_dict[field_id] = RacerTableView(self.modeldb, field_id)
+
+        self.racer_in_field_table_view_dict = new_racer_in_field_table_view_dict
 
     def handleShowRacerInFieldTableView(self, model_index):
+        # Don't allow using the first column to pop up the racer in field
+        # table view, because it's likely the user just wants to edit the
+        # field name.
         if model_index.column() == 1:
             return
 
         field_id = self.modeldb.field_table_model.recordAtRow(model_index.row())[FieldTableModel.ID]
 
         self.racer_in_field_table_view_dict[field_id].show()
+
+    # Our non-model columns (provided by FieldProxyModel(ExtraColumnsProxyModel))
+    # uses stuff from the racer table model to provide its contents. Therefore,
+    # when the racer model changes, we need to pretend our model changed.
+    # Easiest way is to do a select, which refreshes our view.
+    #
+    # TODO: Really should just specify finisher column has changed, rather than
+    # the entire table model.
+    def updateNonModelColumns(self, *args):
+        top_left = QModelIndex()
+        bottom_right = QModelIndex()
+        self.modeldb.field_table_model.dataChanged.emit(top_left, bottom_right)
 
     # Signals.
     visibleChanged = pyqtSignal(bool)
@@ -150,7 +237,6 @@ class RacerTableView(QTableView):
             self.setModel(QSortFilterProxyModel())
             self.model().setSourceModel(model)
             self.model().setFilterKeyColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
-            self.updateFieldName()
         else:
             self.setModel(model)
 
@@ -180,18 +266,56 @@ class RacerTableView(QTableView):
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
-        else:
-            super().keyPressEvent(event)
+        elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
+            self.handleDelete()
+
+        super().keyPressEvent(event)
 
     def showEvent(self, event):
-        self.resize(600, 800)
+        self.resize(700, 800)
 
     def hideEvent(self, event):
         self.visibleChanged.emit(False)
 
+    def handleDelete(self):
+        model = self.selectionModel().model()
+        item_selection = self.selectionModel().selection()
+        selection_list = self.selectionModel().selectedRows()
+
+        racer_table_model = self.modeldb.racer_table_model
+
+        racer_count = len(selection_list)
+
+        # Confirm deletion.
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle(APPLICATION_NAME)
+        msg_box.setText('Deleting %s' % pluralize('racer', racer_count))
+        msg_box.setInformativeText('Do you really want to delete?')
+        msg_box.setStandardButtons(QMessageBox.Ok |
+                                   QMessageBox.Cancel)
+        msg_box.setDefaultButton(QMessageBox.Cancel)
+        msg_box.setIcon(QMessageBox.Information)
+
+        if msg_box.exec() != QMessageBox.Ok:
+            return
+
+        # Remove rows from large to small, because the rows are removed
+        # immediately, and cause the rest of the rows to shift, invalidating
+        # any row number that's higher than the currently removed one.
+        selection_list.sort(key=lambda selection: selection.row(), reverse=True)
+        for selection in selection_list:
+            model.removeRow(selection.row())
+
+        # Model retains blank rows until we select() again.
+        if not self.modeldb.racer_table_model.select():
+            raise DatabaseError(model.lastError().text())
+
     def updateFieldName(self):
         if self.field_id:
-            field_name = self.model().sourceModel().fieldNameFromId(self.field_id)
+            try:
+                field_name = self.model().sourceModel().fieldNameFromId(self.field_id)
+            except InputError as e:
+                field_name = 'deleted'
             self.setWindowTitle('Racers (%s)' % field_name)
             self.model().setFilterRegExp(QRegExp(field_name, Qt.CaseSensitive, QRegExp.FixedString))
         else:
@@ -226,7 +350,7 @@ class ResultTableView(QTableView):
         self.setFont(font)
 
     def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Backspace:
+        if event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
             self.handleDelete()
 
         return super().keyPressEvent(event)
@@ -235,11 +359,16 @@ class ResultTableView(QTableView):
         model = self.selectionModel().model()
         item_selection = self.selectionModel().selection()
         selection_list = self.selectionModel().selectedRows()
+
+        # Remove rows from large to small, because the rows are removed
+        # immediately, and cause the rest of the rows to shift, invalidating
+        # any row number that's higher than the currently removed one.
+        selection_list.sort(key=lambda selection: selection.row(), reverse=True)
         for selection in selection_list:
-            model.deleteResult(selection.row())
+            model.removeRow(selection.row())
 
         # Model retains blank rows until we select() again.
-        if not model.select():
+        if not self.modeldb.result_table_model.select():
             raise DatabaseError(model.lastError().text())
 
         # Selection changed because of this deletion, but for some reason,
@@ -254,15 +383,21 @@ class ResultTableView(QTableView):
     def handleSubmit(self):
         model = self.selectionModel().model()
         selection_list = self.selectionModel().selectedRows()
+
+        # Remove rows from large to small, because the rows are removed
+        # immediately, and cause the rest of the rows to shift, invalidating
+        # any row number that's higher than the currently removed one.
+        selection_list.sort(key=lambda selection: selection.row(), reverse=True)
         for selection in selection_list:
             try:
                 # Only try to submit it if it's a non-negative integer.
                 # Else, it is obviously a work in progress, so don't even
                 # bother.
-                record = model.recordAtRow(selection.row())
-                if record[ResultTableModel.SCRATCHPAD].isdigit():
+                record = model.record(selection.row())
+                scratchpad = record.value(ResultTableModel.SCRATCHPAD)
+                if scratchpad.isdigit():
                     model.submitResult(selection.row())
-                    model.deleteResult(selection.row())
+                    model.removeRow(selection.row())
             except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))
 

@@ -5,9 +5,7 @@ PyQt5
 requests
 
 ## TODO
-- Add "delete" buttons to racer table.
 - Add "new racer" button to racer table.
-- Add "racers" and "delete" buttons to field table.
 - Add "new field" button to field table.
 - Add reports pdf generation.
 - Add result submit hook.
@@ -19,4 +17,3 @@ requests
   selector. (OS X)
 - Native anyfile file selector does not allow new file. (OS X)
 - File selector not keyboard-navigatable. (OS X)
-- Can open multiple racer lists of the same field.

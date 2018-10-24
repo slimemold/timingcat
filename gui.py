@@ -119,7 +119,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_input.returnPressed.connect(self.newResult)
 
         # Signals/slots for submit button.
-        self.submit_button.clicked.connect(self.submitResults)
+        self.submit_button.clicked.connect(self.result_table_view.handleSubmit)
 
     def cleanup(self):
         self.modeldb.cleanup()
@@ -173,12 +173,6 @@ class MainCentralWidget(QWidget, CentralWidget):
                                self.result_input.text(), QTime.currentTime())
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
-
-    def submitResults(self):
-        self.result_table_view.handleSubmit()
-
-        # Signal that the finishers counts in the field table model has changed.
-        self.modeldb.field_table_model.signalFinishersChanged()
 
 class SexyThymeMainWindow(QMainWindow):
     def __init__(self, filename=None, parent=None):
