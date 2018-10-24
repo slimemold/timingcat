@@ -15,6 +15,7 @@ if __name__ == '__main__':
     args = parser.parse_args()
 
     app = QApplication(sys.argv)
+    app.setApplicationName(APPLICATION_NAME)
 
     main = SexyThymeMainWindow(filename=args.racefile)
     main.show()
