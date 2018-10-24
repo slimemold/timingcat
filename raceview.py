@@ -219,7 +219,7 @@ class FieldTableView(QTableView):
     def updateNonModelColumns(self, *args):
         top_left = QModelIndex()
         bottom_right = QModelIndex()
-        self.modeldb.field_table_model.dataChanged.emit(top_left, bottom_right)
+        self.dataChanged(top_left, bottom_right)
 
     # Signals.
     visibleChanged = pyqtSignal(bool)
