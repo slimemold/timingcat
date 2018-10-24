@@ -1,3 +1,4 @@
+from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from common import *
 from proxymodels import *
@@ -51,7 +52,7 @@ class FieldProxyModel(ExtraColumnsProxyModel):
             field_table_model = self.sourceModel()
             racer_table_model = self.sourceModel().modeldb.racer_table_model
 
-            field_id = field_table_model.recordAtRow(row)[RacerTableModel.ID]
+            field_id = field_table_model.recordAtRow(row)[FieldTableModel.ID]
 
             total = racer_table_model.racerCountTotalInField(field_id)
             finished = racer_table_model.racerCountFinishedInField(field_id)
@@ -72,6 +73,25 @@ class FieldProxyModel(ExtraColumnsProxyModel):
                     return 'Complete'
 
         return None
+
+    def data(self, index, role):
+        if role == Qt.BackgroundRole:
+            row = index.row()
+
+            field_table_model = self.sourceModel()
+            racer_table_model = self.sourceModel().modeldb.racer_table_model
+
+            field_id = field_table_model.recordAtRow(row)[FieldTableModel.ID]
+
+            total = racer_table_model.racerCountTotalInField(field_id)
+            finished = racer_table_model.racerCountFinishedInField(field_id)
+
+            if finished == total:
+                return QBrush(Qt.green)
+            elif finished > 0:
+                return QBrush(Qt.yellow)
+
+        return super().data(index, role)
 
 class FieldTableView(QTableView):
     def __init__(self, modeldb, parent=None):
