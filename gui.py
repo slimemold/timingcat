@@ -205,7 +205,11 @@ class SexyThymeMainWindow(QMainWindow):
         self.setCentralWidget(MainCentralWidget(model))
 
     def setupMenuBar(self):
-        self.menuBar().setNativeMenuBar(False)
+        # Make a parent-less menubar, so that Qt can use the top-level native
+        # one (like on OS-X and Ubuntu Unity) if available.
+        menuBar = QMenuBar()
+        self.setMenuBar(menuBar)
+
         fileMenu = self.menuBar().addMenu('&File');
         fileMenu.addAction('New...', self.newFile, QKeySequence.New)
         fileMenu.addAction('Open...', self.openFile, QKeySequence.Open)
