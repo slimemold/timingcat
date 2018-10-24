@@ -48,6 +48,12 @@ class ModelDatabase(QObject):
         self.db.close()
         QSqlDatabase.removeDatabase(self.filename)
 
+    def addDefaults(self):
+        self.race_table_model.addDefaults()
+        self.field_table_model.addDefaults()
+        self.racer_table_model.addDefaults()
+        self.result_table_model.addDefaults()
+
 class TableModel(QSqlRelationalTableModel):
     def __init__(self, modeldb):
         super().__init__(db=modeldb.db)
@@ -58,6 +64,9 @@ class TableModel(QSqlRelationalTableModel):
 
     def createTable(self):
         raise NotImplementedError
+
+    def addDefaults(self):
+        pass
 
     def addColumnFlags(self, column, flags):
         if not column in self.column_flags_to_add.keys():
@@ -86,6 +95,7 @@ class TableModel(QSqlRelationalTableModel):
 
 class RaceTableModel(TableModel):
     TABLE = 'race'
+    ID = 'id'
     KEY = 'key'
     VALUE = 'value'
 
@@ -106,20 +116,17 @@ class RaceTableModel(TableModel):
 
         if not query.exec(
             'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
-            '("%s" TEXT NOT NULL PRIMARY KEY, ' % self.KEY +
+            '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
+             '"%s" TEXT NOT NULL, ' % self.KEY +
              '"%s" TEXT NOT NULL);' % self.VALUE):
             raise DatabaseError(query.lastError().text())
 
-        if new:
-            if not query.exec(
-                'INSERT INTO Race VALUES("Race name", "(race name here)");'):
-                raise DatabaseError(query.lastError().text())
-
         query.finish()
 
-    def recordAtRow(self, row):
-        return { self.KEY: self.record(row).value(self.KEY),
-                 self.VALUE: self.record(row).value(self.VALUE) }
+    def addDefaults(self):
+        pass
+        if not self.getRaceProperty('Race name'):
+            self.addRaceProperty('Race name', '(race name here)')
 
     def addRaceProperty(self, key, value):
         record = self.record()
@@ -128,12 +135,33 @@ class RaceTableModel(TableModel):
 
         if not self.insertRecord(-1, record):
             raise DatabaseError(self.lastError().text())
-        if not self.race.select():
+        if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def deleteRaceProperty(self, row):
+    def deleteRaceProperty(self, key):
+        index = None
+        for row in range(self.rowCount()):
+            if self.data(self.index(row, self.fieldIndex(self.KEY))) == key:
+                index = self.index(row, self.fieldIndex(self.KEY))
+                break
+
+        if not index:
+            raise InputError('Failed to find race property with KEY %s' % key)
+
         if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
+
+    def getRaceProperty(self, key):
+        index = None
+        for row in range(self.rowCount()):
+            if self.data(self.index(row, self.fieldIndex(self.KEY))) == key:
+                index = self.index(row, self.fieldIndex(self.KEY))
+                break
+
+        if not index:
+            return None
+
+        return self.data(self.index(row, self.fieldIndex(self.VALUE)))
 
 class FieldTableModel(TableModel):
     TABLE = 'field'
@@ -143,7 +171,7 @@ class FieldTableModel(TableModel):
     def __init__(self, modeldb, new):
         super().__init__(modeldb)
 
-        self.createTable()
+        self.createTable(new)
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
@@ -151,46 +179,65 @@ class FieldTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def createTable(self):
+    def createTable(self, new):
         query = QSqlQuery(self.database())
 
         if not query.exec(
             'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
             '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
-             '"%s" TEXT NOT NULL);' % self.NAME):
+             '"%s" TEXT UNIQUE NOT NULL);' % self.NAME):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
 
-    def recordAtRow(self, row):
-        return { self.ID: self.record(row).value(self.ID),
-                 self.NAME: self.record(row).value(self.NAME) }
+    def addDefaults(self):
+        if self.rowCount() == 0:
+            self.addField('default')
 
     def nameFromId(self, field_id):
-        model = QSqlRelationalTableModel(db=self.modeldb.db)
-        model.setTable(self.TABLE)
-        model.setFilter('%s = %s' % (self.ID, field_id))
-        if not model.select():
-            raise DatabaseError(model.lastError().text())
+        index = None
+        for row in range(self.rowCount()):
+            if self.data(self.index(row, self.fieldIndex(self.ID))) == field_id:
+                index = self.index(row, self.fieldIndex(self.ID))
+                break
 
-        if model.rowCount() == 0:
-            raise InputError('Failed to find field_id %s' % field_id)
+        if not index:
+            return None
 
-        if model.rowCount() > 1:
-            raise InternalModelError('Internal error, duplicate id %s ' % field_id +
-                                     ' found in field table')
+        return self.data(self.index(row, self.fieldIndex(self.NAME)))
 
-        record = model.record(0)
+    def idFromName(self, field_name):
+        index = None
+        for row in range(self.rowCount()):
+            if self.data(self.index(row, self.fieldIndex(self.NAME))) == field_name:
+                index = self.index(row, self.fieldIndex(self.NAME))
+                break
 
-        return record.value(self.NAME)
+        if not index:
+            return None
+
+        return self.data(self.index(row, self.fieldIndex(self.ID)))
 
     def addField(self, name):
         record = self.record()
-        record.setValue('name', name)
+        record.setValue(FieldTableModel.NAME, name)
 
         if not self.insertRecord(-1, record):
             raise DatabaseError(self.lastError().text())
         if not self.select():
+            raise DatabaseError(self.lastError().text())
+
+    def deleteField(self, name):
+        index = None
+        for row in range(self.rowCount()):
+            if self.data(self.index(row, self.fieldIndex(self.NAME))) == name:
+                index = self.index(row, self.fieldIndex(self.NAME))
+                break
+
+        if not index:
+            raise InputError('Failed to find field with NAME %s' % name)
+
+        if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
 
 class RacerTableModel(TableModel):
@@ -225,7 +272,7 @@ class RacerTableModel(TableModel):
         self.setRelation(self.fieldIndex(self.FIELD),
             QSqlRelation(FieldTableModel.TABLE,
                          FieldTableModel.ID,
-                         FieldTableModel.NAME));
+                         FieldTableModel.NAME))
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
@@ -246,45 +293,13 @@ class RacerTableModel(TableModel):
 
         query.finish()
 
-    def recordAtRow(self, row):
-        return { self.BIB: self.record(row).value(self.BIB),
-                 self.NAME: self.record(row).value(self.NAME),
-                 self.TEAM: self.record(row).value(self.TEAM),
-                 self.FIELD: self.record(row).value(self.FIELD),
-                 self.START: self.record(row).value(self.START),
-                 self.FINISH: self.record(row).value(self.FINISH),
-                 self.STATUS: self.record(row).value(self.TEAM) }
-
-    def fieldNameFromId(self, field_id):
-        return self.modeldb.field_table_model.nameFromId(field_id)
-
     def addRacer(self, bib, name, team, field, start, finish, status='local'):
         # See if the field exists in our Field table.  If not, we add a new
         # field.
-        field_relation_model = self.relationModel(
-                                        self.fieldIndex(self.FIELD_ALIAS))
-        field_relation_model.setFilter('%s = "%s"' % (FieldTableModel.NAME, field))
-        if not field_relation_model.select():
-            raise DatabaseError(field_relation_model.lastError().text())
-
-        # Yup, not there. Add it, and then select it. Should just be the one
-        # after adding.
-        if field_relation_model.rowCount() == 0:
+        field_id = self.modeldb.field_table_model.idFromName(field)
+        if not field_id:
             self.modeldb.field_table_model.addField(field)
-            if not field_relation_model.select():
-                raise DatabaseError(field_relation_model.lastError().text())
-
-        # Make sure there's only one, and get its field id.
-        if field_relation_model.rowCount() != 1:
-            raise InternalModelError('More than one field with the same name found')
-        field_id = (field_relation_model.record(0).field(field_relation_model
-                                        .fieldIndex(FieldTableModel.ID)).value())
-
-        # Restore the filter. This model is actually owned by the racer model
-        # that we got this from via relationModel(), and I guess it uses it
-        # to populate the combobox. If we don't do this, the combobox will
-        # only show the latest field added, which I guess makes sense.
-        field_relation_model.setFilter('')
+            field_id = self.modeldb.field_table_model.idFromName(field)
 
         record = self.record()
         record.setGenerated(self.ID, False)
@@ -312,59 +327,57 @@ class RacerTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def setRacerFinish(self, bib, finish):
-        model = QSqlRelationalTableModel(db=self.modeldb.db)
-        model.setEditStrategy(QSqlTableModel.OnFieldChange)
-        model.setTable(self.TABLE)
-        model.setFilter('%s = %s' % (self.BIB, bib))
-        if not model.select():
-            raise DatabaseError(model.lastError().text())
+    def deleteRacer(self, bib):
+        index = None
+        for row in range(self.rowCount()):
+            if self.data(self.index(row, self.fieldIndex(self.BIB))) == bib:
+                index = self.index(row, self.fieldIndex(self.BIB))
+                break
 
-        if model.rowCount() == 0:
-            raise InputError('Setting racer finish failed, ' +
-                             'bib %s not found' % bib)
+        if not index:
+            raise InputError('Failed to find racer with BIB %s' % bib)
 
-        if model.rowCount() > 1:
-            raise InternalModelError('Internal error, duplicate bib %s ' % bib +
-                                     ' found in racer table')
-
-        record = model.record(0)
-        record.setValue(self.FINISH, finish)
-
-        if not model.setRecord(0, record):
-            raise DatabaseError(model.lastError().text())
-
-        if not self.select():
+        if not self.removeRow(row):
             raise DatabaseError(self.lastError().text())
 
-        # Why do we need this? For some reason, if we don't emit this signal
-        # ourselves, it doesn't happen (though I would think the self.select()
-        # that we just did would cause the signal to emit).
-        top_left = QModelIndex()
-        bottom_right = QModelIndex()
-        self.dataChanged.emit(top_left, bottom_right)
+    def setRacerFinish(self, bib, finish):
+        index = None
+        for row in range(self.rowCount()):
+            if self.data(self.index(row, self.fieldIndex(self.BIB))) == int(bib):
+                index = self.index(row, self.fieldIndex(self.BIB))
+                break
+
+        if not index:
+            raise InputError('Failed to find racer with bib %s' % bib)
+
+        self.setData(self.index(row, self.fieldIndex(self.FINISH)), finish)
+        self.dataChanged.emit(index, index)
 
     def racerCount(self):
         return self.rowCount()
 
-    def racerCountTotalInField(self, field_id):
-        model = QSqlRelationalTableModel(db=self.modeldb.db)
-        model.setTable(self.TABLE)
-        model.setFilter('%s = %s' % (self.FIELD, field_id))
-        if not model.select():
-            raise DatabaseError(model.lastError().text())
+    def racerCountTotalInField(self, field_name):
+        count = 0
 
-        return model.rowCount()
+        for row in range(self.rowCount()):
+            index = self.index(row, self.fieldIndex(self.FIELD_ALIAS))
 
-    def racerCountFinishedInField(self, field_id):
-        model = QSqlRelationalTableModel(db=self.modeldb.db)
-        model.setTable(self.TABLE)
-        model.setFilter('%s = %s AND %s IS NOT NULL' % (self.FIELD, field_id,
-                                                        self.FINISH))
-        if not model.select():
-            raise DatabaseError(model.lastError().text())
+            if self.data(index) == field_name:
+                count += 1
 
-        return model.rowCount()
+        return count
+
+    def racerCountFinishedInField(self, field_name):
+        count = 0
+
+        for row in range(self.rowCount()):
+            field_index = self.index(row, self.fieldIndex(self.FIELD_ALIAS))
+            finish_index = self.index(row, self.fieldIndex(self.FINISH))
+
+            if self.data(field_index) == field_name and self.data(finish_index):
+                count += 1
+
+        return count
 
 class ResultTableModel(TableModel):
     TABLE = 'result'
@@ -397,10 +410,6 @@ class ResultTableModel(TableModel):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
-
-    def recordAtRow(self, row):
-        return { self.SCRATCHPAD: self.record(row).value(self.SCRATCHPAD),
-                 self.FINISH: self.record(row).value(self.FINISH) }
 
     def addResult(self, scratchpad, finish):
         record = self.record()

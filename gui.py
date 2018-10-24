@@ -265,6 +265,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         filename = dialog.selectedFiles()[0]
         self.switchToMain(filename, True)
+        self.centralWidget().modeldb.addDefaults()
 
         return filename
 
@@ -281,6 +282,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         filename = dialog.selectedFiles()[0]
         self.switchToMain(filename, False)
+        self.centralWidget().modeldb.addDefaults()
 
         return filename
 
@@ -317,9 +319,9 @@ class SexyThymeMainWindow(QMainWindow):
             (racer_table_model.rowCount() != 0)):
             msg_box = QMessageBox()
             msg_box.setWindowTitle(APPLICATION_NAME)
-            msg_box.setText('There are %s fields and %s racers defined.' %
-                            (field_table_model.rowCount(),
-                             racer_table_model.rowCount()))
+            msg_box.setText('Overwriting %s' %
+                            pretty_list([pluralize('field', field_table_model.rowCount()),
+                                         pluralize('racer', racer_table_model.rowCount())]))
             msg_box.setInformativeText('Do you really want to overwrite ' +
                                        'this data?')
             msg_box.setStandardButtons(QMessageBox.Ok |
@@ -364,6 +366,8 @@ class SexyThymeMainWindow(QMainWindow):
                 racer_table_model.addRacer(bib, name, team, field,
                                            QTime(),
                                            QTime())
+
+        self.centralWidget().modeldb.addDefaults()
 
     def configPreferences(self):
         pass

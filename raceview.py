@@ -52,19 +52,16 @@ class FieldProxyModel(ExtraColumnsProxyModel):
             field_table_model = self.sourceModel()
             racer_table_model = self.sourceModel().modeldb.racer_table_model
 
-            field_id = field_table_model.recordAtRow(row)[FieldTableModel.ID]
+            field_name = field_table_model.record(row).value(FieldTableModel.NAME)
 
-            total = racer_table_model.racerCountTotalInField(field_id)
-            finished = racer_table_model.racerCountFinishedInField(field_id)
+            total = racer_table_model.racerCountTotalInField(field_name)
+            finished = racer_table_model.racerCountFinishedInField(field_name)
 
             if extraColumn == self.FINISHED_SECTION:
                 return finished
             elif extraColumn == self.TOTAL_SECTION:
                 return total
             elif extraColumn == self.STATUS_SECTION:
-                total = racer_table_model.racerCountTotalInField(field_id)
-                finished = racer_table_model.racerCountFinishedInField(field_id)
-
                 if total == 0:
                     return 'Empty'
                 elif (finished < total):
@@ -81,15 +78,16 @@ class FieldProxyModel(ExtraColumnsProxyModel):
             field_table_model = self.sourceModel()
             racer_table_model = self.sourceModel().modeldb.racer_table_model
 
-            field_id = field_table_model.recordAtRow(row)[FieldTableModel.ID]
+            field_name = field_table_model.record(row).value(FieldTableModel.NAME)
 
-            total = racer_table_model.racerCountTotalInField(field_id)
-            finished = racer_table_model.racerCountFinishedInField(field_id)
+            total = racer_table_model.racerCountTotalInField(field_name)
+            finished = racer_table_model.racerCountFinishedInField(field_name)
 
-            if finished == total:
-                return QBrush(Qt.green)
-            elif finished > 0:
-                return QBrush(Qt.yellow)
+            if total != 0:
+                if finished == total:
+                    return QBrush(Qt.green)
+                elif finished > 0:
+                    return QBrush(Qt.yellow)
 
         return super().data(index, role)
 
@@ -225,7 +223,7 @@ class FieldTableView(QTableView):
         if model_index.column() == 1:
             return
 
-        field_id = self.modeldb.field_table_model.recordAtRow(model_index.row())[FieldTableModel.ID]
+        field_id = self.modeldb.field_table_model.record(model_index.row()).value(FieldTableModel.ID)
 
         self.racer_in_field_table_view_dict[field_id].show()
 
@@ -333,7 +331,7 @@ class RacerTableView(QTableView):
     def updateFieldName(self):
         if self.field_id:
             try:
-                field_name = self.model().sourceModel().fieldNameFromId(self.field_id)
+                field_name = self.modeldb.field_table_model.nameFromId(self.field_id)
             except InputError as e:
                 field_name = 'deleted'
             self.setWindowTitle('Racers (%s)' % field_name)
