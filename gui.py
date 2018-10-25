@@ -302,7 +302,18 @@ class SexyThymeMainWindow(QMainWindow):
 
         # If we are not yet initialized, pick a new race file.
         if not self.centralWidget().hasModel():
-            if self.newFile():
+            dialog = QFileDialog(self)
+            dialog.setAcceptMode(QFileDialog.AcceptSave)
+            dialog.setDefaultSuffix('rce')
+            dialog.setFileMode(QFileDialog.AnyFile)
+            dialog.setLabelText(QFileDialog.Accept, 'New')
+            dialog.setNameFilter('Race file (*.rce)')
+            dialog.setOptions(QFileDialog.DontUseNativeDialog)
+            dialog.setViewMode(QFileDialog.List)
+
+            if dialog.exec():
+                filename = dialog.selectedFiles()[0]
+                self.switchToMain(filename, True)
                 return import_filename
             else:
                 return None

@@ -115,11 +115,13 @@ class FieldTableView(QTableView):
         self.hideColumn(self.model().fieldIndex(FieldTableModel.ID))
 
         # For each field, we make a racer in field table view ahead of time.
+        # Note that we call dataChanged here because the initial reading of
+        # the model is not considered a data change, but we need to do this
+        # anyway to populate racer_in_field_table_view_dict.
         self.racer_in_field_table_view_dict = {}
-        self.handleDataChanged()
+        self.dataChanged()
 
         # Signals/slots to handle racer in field table views.
-        self.modeldb.field_table_model.dataChanged.connect(self.handleDataChanged)
         self.modeldb.racer_table_model.dataChanged.connect(self.updateNonModelColumns)
         self.doubleClicked.connect(self.handleShowRacerInFieldTableView)
 
@@ -198,12 +200,23 @@ class FieldTableView(QTableView):
         if not self.modeldb.field_table_model.select():
             raise DatabaseError(model.lastError().text())
 
-    def handleDataChanged(self, *args):
+    def dataChanged(self, top_left=QModelIndex(), bottom_right=QModelIndex(), roles=[]):
+        super().dataChanged(top_left, bottom_right, roles)
+
+        field_table_model = self.modeldb.field_table_model
+
+        # When roles is empty, it means everything has changed
+        if roles and Qt.DisplayRole not in roles:
+            return
+
+        if (top_left.isValid() and
+            (top_left.column() > field_table_model.fieldIndex(FieldTableModel.NAME))):
+            return
+
         # Field table model changed. Go through the model to see if we need to
         # make any new racer-in-field-table-views. Drop the ones we don't
         # need anymore.
         new_racer_in_field_table_view_dict = {}
-        field_table_model = self.modeldb.field_table_model
 
         for row in range(field_table_model.rowCount()):
             record = field_table_model.record(row)
@@ -220,7 +233,7 @@ class FieldTableView(QTableView):
         # Don't allow using the first column to pop up the racer in field
         # table view, because it's likely the user just wants to edit the
         # field name.
-        if model_index.column() == 1:
+        if model_index.column() == self.modeldb.field_table_model.fieldIndex(FieldTableModel.NAME):
             return
 
         field_id = self.modeldb.field_table_model.record(model_index.row()).value(FieldTableModel.ID)
@@ -233,7 +246,7 @@ class FieldTableView(QTableView):
     def updateNonModelColumns(self, *args):
         top_left = self.model().index(0, self.modeldb.field_table_model.columnCount(), QModelIndex())
         bottom_right = self.model().index(self.modeldb.field_table_model.rowCount(), self.model().columnCount(QModelIndex())-1, QModelIndex())
-        self.dataChanged(top_left, bottom_right)
+        self.dataChanged(top_left, bottom_right, [Qt.DisplayRole])
 
     # Signals.
     visibleChanged = pyqtSignal(bool)
@@ -326,10 +339,7 @@ class RacerTableView(QTableView):
 
     def updateFieldName(self):
         if self.field_id:
-            try:
-                field_name = self.modeldb.field_table_model.nameFromId(self.field_id)
-            except InputError as e:
-                field_name = 'deleted'
+            field_name = self.modeldb.field_table_model.nameFromId(self.field_id)
             self.setWindowTitle('Racers (%s)' % field_name)
             self.model().setFilterRegExp(QRegExp(field_name, Qt.CaseSensitive, QRegExp.FixedString))
         else:

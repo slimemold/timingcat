@@ -129,6 +129,7 @@ class RaceTableModel(TableModel):
 
     def addRaceProperty(self, key, value):
         record = self.record()
+        record.setGenerated(self.ID, False)
         record.setValue(self.KEY, key)
         record.setValue(self.VALUE, value)
 
@@ -219,6 +220,7 @@ class FieldTableModel(TableModel):
 
     def addField(self, name):
         record = self.record()
+        record.setGenerated(self.ID, False)
         record.setValue(FieldTableModel.NAME, name)
 
         if not self.insertRecord(-1, record):
@@ -412,10 +414,12 @@ class ResultTableModel(TableModel):
 
     def addResult(self, scratchpad, finish):
         record = self.record()
+        record.setGenerated(self.ID, False)
         record.setValue(self.SCRATCHPAD, scratchpad)
         record.setValue(self.FINISH, finish)
 
-        self.insertRecord(-1, record)
+        if not self.insertRecord(-1, record):
+            raise DatabaseError(self.lastError().text())
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
