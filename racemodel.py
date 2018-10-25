@@ -139,29 +139,27 @@ class RaceTableModel(TableModel):
             raise DatabaseError(self.lastError().text())
 
     def deleteRaceProperty(self, key):
-        index = None
-        for row in range(self.rowCount()):
-            if self.data(self.index(row, self.fieldIndex(self.KEY))) == key:
-                index = self.index(row, self.fieldIndex(self.KEY))
-                break
+        index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
+                                Qt.DisplayRole, key, 1, Qt.MatchExactly)
 
-        if not index:
+        if not index_list:
             raise InputError('Failed to find race property with KEY %s' % key)
 
-        if not self.removeRow(row):
+        index = index_list[0]
+
+        if not self.removeRow(index.row()):
             raise DatabaseError(self.lastError().text())
 
     def getRaceProperty(self, key):
-        index = None
-        for row in range(self.rowCount()):
-            if self.data(self.index(row, self.fieldIndex(self.KEY))) == key:
-                index = self.index(row, self.fieldIndex(self.KEY))
-                break
+        index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
+                                Qt.DisplayRole, key, 1, Qt.MatchExactly)
 
-        if not index:
+        if not index_list:
             return None
 
-        return self.data(self.index(row, self.fieldIndex(self.VALUE)))
+        index = index_list[0]
+
+        return self.data(self.index(index.row(), self.fieldIndex(self.VALUE)))
 
 class FieldTableModel(TableModel):
     TABLE = 'field'
@@ -195,28 +193,26 @@ class FieldTableModel(TableModel):
             self.addField('default')
 
     def nameFromId(self, field_id):
-        index = None
-        for row in range(self.rowCount()):
-            if self.data(self.index(row, self.fieldIndex(self.ID))) == field_id:
-                index = self.index(row, self.fieldIndex(self.ID))
-                break
+        index_list = self.match(self.index(0, self.fieldIndex(self.ID)),
+                                Qt.DisplayRole, field_id, 1, Qt.MatchExactly)
 
-        if not index:
+        if not index_list:
             return None
 
-        return self.data(self.index(row, self.fieldIndex(self.NAME)))
+        index = index_list[0]
 
-    def idFromName(self, field_name):
-        index = None
-        for row in range(self.rowCount()):
-            if self.data(self.index(row, self.fieldIndex(self.NAME))) == field_name:
-                index = self.index(row, self.fieldIndex(self.NAME))
-                break
+        return self.data(self.index(index.row(), self.fieldIndex(self.NAME)))
 
-        if not index:
+    def idFromName(self, name):
+        index_list = self.match(self.index(0, self.fieldIndex(self.NAME)),
+                                Qt.DisplayRole, name, 1, Qt.MatchExactly)
+
+        if not index_list:
             return None
 
-        return self.data(self.index(row, self.fieldIndex(self.ID)))
+        index = index_list[0]
+
+        return self.data(self.index(index.row(), self.fieldIndex(self.ID)))
 
     def addField(self, name):
         record = self.record()
@@ -229,16 +225,15 @@ class FieldTableModel(TableModel):
             raise DatabaseError(self.lastError().text())
 
     def deleteField(self, name):
-        index = None
-        for row in range(self.rowCount()):
-            if self.data(self.index(row, self.fieldIndex(self.NAME))) == name:
-                index = self.index(row, self.fieldIndex(self.NAME))
-                break
+        index_list = self.match(self.index(0, self.fieldIndex(self.NAME)),
+                                Qt.DisplayRole, name, 1, Qt.MatchExactly)
 
-        if not index:
+        if not index_list:
             raise InputError('Failed to find field with NAME %s' % name)
 
-        if not self.removeRow(row):
+        index = index_list[0]
+
+        if not self.removeRow(index.row()):
             raise DatabaseError(self.lastError().text())
 
 class RacerTableModel(TableModel):
@@ -329,29 +324,26 @@ class RacerTableModel(TableModel):
             raise DatabaseError(self.lastError().text())
 
     def deleteRacer(self, bib):
-        index = None
-        for row in range(self.rowCount()):
-            if self.data(self.index(row, self.fieldIndex(self.BIB))) == bib:
-                index = self.index(row, self.fieldIndex(self.BIB))
-                break
+        index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
+                                Qt.DisplayRole, bib, 1, Qt.MatchExactly)
 
-        if not index:
+        if not index_list:
             raise InputError('Failed to find racer with BIB %s' % bib)
 
-        if not self.removeRow(row):
+        index = index_list[0]
+
+        if not self.removeRow(index.row()):
             raise DatabaseError(self.lastError().text())
 
     def setRacerFinish(self, bib, finish):
-        index = None
-        for row in range(self.rowCount()):
-            if self.data(self.index(row, self.fieldIndex(self.BIB))) == int(bib):
-                index = self.index(row, self.fieldIndex(self.BIB))
-                break
+        index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
+                                Qt.DisplayRole, bib, 1, Qt.MatchExactly)
 
-        if not index:
+        if not index_list:
             raise InputError('Failed to find racer with bib %s' % bib)
 
-        self.setData(self.index(row, self.fieldIndex(self.FINISH)), finish)
+        index = self.index(index_list[0].row(), self.fieldIndex(self.FINISH))
+        self.setData(index, finish)
         self.dataChanged.emit(index, index)
 
     def racerCount(self):
