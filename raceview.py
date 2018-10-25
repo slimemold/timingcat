@@ -230,13 +230,9 @@ class FieldTableView(QTableView):
     # Our non-model columns (provided by FieldProxyModel(ExtraColumnsProxyModel))
     # uses stuff from the racer table model to provide its contents. Therefore,
     # when the racer model changes, we need to pretend our model changed.
-    # Easiest way is to do a select, which refreshes our view.
-    #
-    # TODO: Really should just specify finisher column has changed, rather than
-    # the entire table model.
     def updateNonModelColumns(self, *args):
-        top_left = QModelIndex()
-        bottom_right = QModelIndex()
+        top_left = self.model().index(0, self.modeldb.field_table_model.columnCount(), QModelIndex())
+        bottom_right = self.model().index(self.modeldb.field_table_model.rowCount(), self.model().columnCount(QModelIndex())-1, QModelIndex())
         self.dataChanged(top_left, bottom_right)
 
     # Signals.
