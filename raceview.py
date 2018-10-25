@@ -4,35 +4,6 @@ from common import *
 from proxymodels import *
 from racemodel import *
 
-class RaceTableView(QTableView):
-    def __init__(self, modeldb, parent=None):
-        super().__init__(parent=parent)
-
-        self.modeldb = modeldb
-
-        self.setModel(self.modeldb.race_table_model)
-
-        self.setWindowTitle('Race Info')
-
-        # Set up our view.
-        self.setItemDelegate(QSqlRelationalDelegate())
-        self.horizontalHeader().setVisible(False)
-        self.horizontalHeader().setStretchLastSection(True)
-        self.horizontalHeader().setHighlightSections(False)
-        self.verticalHeader().setVisible(False)
-
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Escape:
-            self.close()
-        else:
-            super().keyPressEvent(event)
-
-    def hideEvent(self, event):
-        self.visibleChanged.emit(False)
-
-    # Signals.
-    visibleChanged = pyqtSignal(bool)
-
 # Add a "Finished" column for total racers that have a finish time, and a
 # "Total" column to show total racers in that field.
 class FieldProxyModel(ExtraColumnsProxyModel):
