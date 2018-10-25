@@ -124,7 +124,6 @@ class RaceTableModel(TableModel):
         query.finish()
 
     def addDefaults(self):
-        pass
         if not self.getRaceProperty('Race name'):
             self.addRaceProperty('Race name', '(race name here)')
 
