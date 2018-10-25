@@ -99,6 +99,11 @@ class RaceTableModel(TableModel):
     KEY = 'key'
     VALUE = 'value'
 
+    # Race keys
+    NAME = 'name'
+    DATE = 'date'
+    NOTES = 'notes'
+
     def __init__(self, modeldb, new):
         super().__init__(modeldb)
 
@@ -124,8 +129,14 @@ class RaceTableModel(TableModel):
         query.finish()
 
     def addDefaults(self):
-        if not self.getRaceProperty('Race name'):
-            self.addRaceProperty('Race name', '(race name here)')
+        if not self.getRaceProperty(self.NAME):
+            self.addRaceProperty(self.NAME, '(race name here)')
+
+        if not self.getRaceProperty(self.DATE):
+            self.addRaceProperty(self.DATE, QDateTime.currentDateTime())
+
+        if not self.getRaceProperty(self.NOTES):
+            self.addRaceProperty(self.NOTES, '')
 
     def addRaceProperty(self, key, value):
         record = self.record()
