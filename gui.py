@@ -3,6 +3,7 @@ import os
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from common import *
+from racebuilder import *
 from raceview import *
 from remotes import OnTheDayRemote
 
@@ -14,16 +15,18 @@ INPUT_TEXT_POINT_SIZE = 32
 #     StartCentralWidget
 #     MainCentralWidget
 #         button_row
-#             race_button
+#             builder_button
 #             field_button
 #             racer_button
 #         result_table_view
 #         result_input
 #         submit_button
-#     RaceTableView
+#     Builder
 #     FieldTableView
 #     RacerTableView
 #     ResultTableView
+#.    Preferences
+#.    RemoteConfig
 
 class CentralWidget(QObject):
     def __init__(self, parent=None):
@@ -55,15 +58,15 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.button_row.setLayout(QHBoxLayout())
 
         # Race Info, Fields, Racers
-        self.button_row.race_button = QPushButton('Race Info')
-        self.button_row.race_button.setCheckable(True)
+        self.button_row.builder_button = QPushButton('Builder')
+        self.button_row.builder_button.setCheckable(True)
         self.button_row.field_button = QPushButton('Fields')
         self.button_row.field_button.setCheckable(True)
         self.button_row.racer_button = QPushButton('Racers')
         self.button_row.racer_button.setCheckable(True)
 
         # Add to button row.
-        self.button_row.layout().addWidget(self.button_row.race_button)
+        self.button_row.layout().addWidget(self.button_row.builder_button)
         self.button_row.layout().addWidget(self.button_row.field_button)
         self.button_row.layout().addWidget(self.button_row.racer_button)
 
@@ -89,15 +92,15 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.layout().addWidget(self.submit_button)
 
         # Floating windows. Keep then hidden initially.
-        self.race_table_view = RaceTableView(self.modeldb)
+        self.builder = Builder(self.modeldb)
         self.field_table_view = FieldTableView(self.modeldb)
         self.racer_table_view = RacerTableView(self.modeldb)
 
         # Signals/slots for button row toggle buttons.
-        self.button_row.race_button.toggled.connect(self.race_table_view
-                                                        .setVisible)
-        self.race_table_view.visibleChanged.connect(self.button_row.race_button
-                                                        .setChecked)
+        self.button_row.builder_button.toggled.connect(self.builder
+                                                           .setVisible)
+        self.builder.visibleChanged.connect(self.button_row.builder_button
+                                                           .setChecked)
         self.button_row.field_button.toggled.connect(self.field_table_view
                                                          .setVisible)
         self.field_table_view.visibleChanged.connect(self.button_row.field_button
