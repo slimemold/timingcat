@@ -172,6 +172,16 @@ class RaceTableModel(TableModel):
 
         return self.data(self.index(index.row(), self.fieldIndex(self.VALUE)))
 
+    def setRaceProperty(self, key, value):
+        index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
+                                Qt.DisplayRole, key, 1, Qt.MatchExactly)
+
+        if not index_list:
+            raise InputError('Failed to find race property with KEY %s' % key)
+
+        index = index_list[0]
+        self.setData(self.index(index.row(), self.fieldIndex(self.VALUE)), value)
+
 class FieldTableModel(TableModel):
     TABLE = 'field'
     ID = 'id'
