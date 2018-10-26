@@ -377,9 +377,7 @@ class SexyThymeMainWindow(QMainWindow):
 
                 racer_table_model = self.centralWidget().modeldb.racer_table_model
 
-                racer_table_model.addRacer(bib, name, team, field,
-                                           QTime(),
-                                           QTime())
+                racer_table_model.addRacer(bib, name, team, field)
 
         self.centralWidget().modeldb.addDefaults()
 
