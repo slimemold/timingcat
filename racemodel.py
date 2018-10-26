@@ -134,7 +134,7 @@ class RaceTableModel(TableModel):
             self.addRaceProperty(self.NAME, defaults.RACE_NAME)
 
         if not self.getRaceProperty(self.DATE):
-            self.addRaceProperty(self.DATE, QDateTime.currentDateTime())
+            self.addRaceProperty(self.DATE, QDateTime.currentDateTime().date().toString())
 
         if not self.getRaceProperty(self.NOTES):
             self.addRaceProperty(self.NOTES, '')
@@ -237,6 +237,9 @@ class FieldTableModel(TableModel):
         return self.data(self.index(index.row(), self.fieldIndex(self.ID)))
 
     def addField(self, name):
+        if name == '':
+            raise InputError('Field name "%s" is invalid' % name)
+
         record = self.record()
         record.setGenerated(self.ID, False)
         record.setValue(FieldTableModel.NAME, name)
@@ -311,13 +314,29 @@ class RacerTableModel(TableModel):
 
         query.finish()
 
-    def addRacer(self, bib, name, team, field, start, finish, status='local'):
+    def addRacer(self, bib, name, team, field, start=QTime(), finish=QTime(), status='local'):
+        # Do some validation.
+        #
+        # Don't have to check for None, because that would fail the
+        # NOT NULL table constraint.
+        #
+        # Also, default QTime constructor makes an invalid time that ends up
+        # being stored as NULL in the table, which is what we want.
+        if not bib.isdigit():
+            raise InputError('Racer bib "%s" is invalid' % bib)
+
+        if name == '':
+            raise InputError('Racer name "%s" is invalid' % name)
+
         # See if the field exists in our Field table.  If not, we add a new
         # field.
         field_id = self.modeldb.field_table_model.idFromName(field)
         if not field_id:
             self.modeldb.field_table_model.addField(field)
             field_id = self.modeldb.field_table_model.idFromName(field)
+
+        if field_id is None:
+            raise InputError('Racer field "%S" is invalid' % field)
 
         record = self.record()
         record.setGenerated(self.ID, False)
