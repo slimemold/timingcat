@@ -176,7 +176,8 @@ class RaceInfo(QWidget):
 
         self.name_lineedit = QLineEdit()
         self.date_dateedit = QDateEdit()
-        self.notes_textedit = QTextEdit()
+        self.notes_plaintextedit = QPlainTextEdit()
+        self.notes_plaintextedit.setPlaceholderText(defaults.RACE_NOTES_PLACEHOLDER_TEXT)
         self.dataChanged()
 
         self.date_selection_widget = QWidget()
@@ -190,7 +191,7 @@ class RaceInfo(QWidget):
         self.layout().addRow('Race Name', self.name_lineedit)
         self.layout().addRow('Race Date', self.date_selection_widget)
         self.layout().itemAt(self.layout().rowCount()-1, QFormLayout.LabelRole).setAlignment(Qt.AlignCenter)
-        self.layout().addRow('Notes', self.notes_textedit)
+        self.layout().addRow('Notes', self.notes_plaintextedit)
 
         # Signals/slots plumbing.
         self.modeldb.race_table_model.dataChanged.connect(self.dataChanged)
@@ -200,7 +201,15 @@ class RaceInfo(QWidget):
     def dataChanged(self, top_left=QModelIndex(), bottom_right=QModelIndex(), rolesi=[]):
         self.name_lineedit.setText(self.modeldb.race_table_model.getRaceProperty(RaceTableModel.NAME))
         self.date_dateedit.setDate(QDate.fromString(self.modeldb.race_table_model.getRaceProperty(RaceTableModel.DATE)))
-        self.notes_textedit.setHtml(self.modeldb.race_table_model.getRaceProperty(RaceTableModel.NOTES))
+
+        # The QPlainTextEdit really wants a QPlainTextDocumentLayout as its
+        # document layout. If we don't set this up, by default the document
+        # has a QAbstractTextDocumentLayout, which seems to work, but makes
+        # QPlainTextEdit emit a warning. How a supposed abstract class actually
+        # got instantiated is a mystery to me.
+        document = QTextDocument(self.modeldb.race_table_model.getRaceProperty(RaceTableModel.NOTES))
+        document.setDocumentLayout(QPlainTextDocumentLayout(document))
+        self.notes_plaintextedit.setDocument(document)
 
     def nameEditingFinished(self):
         self.modeldb.race_table_model.setRaceProperty(RaceTableModel.NAME, self.name_lineedit.text())
@@ -209,7 +218,7 @@ class RaceInfo(QWidget):
         self.modeldb.race_table_model.setRaceProperty(RaceTableModel.DATE, self.date_dateedit.text())
 
     def hideEvent(self, event):
-        self.modeldb.race_table_model.setRaceProperty(RaceTableModel.NOTES, self.notes_textedit.toHtml())
+        self.modeldb.race_table_model.setRaceProperty(RaceTableModel.NOTES, self.notes_plaintextedit.document().toPlainText())
 
         super().hideEvent(event)
 

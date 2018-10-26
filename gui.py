@@ -125,6 +125,10 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.submit_button.clicked.connect(self.result_table_view.handleSubmit)
 
     def cleanup(self):
+        self.builder.hide()
+        self.field_table_view.hide()
+        self.racer_table_view.hide()
+
         self.modeldb.cleanup()
         self.modeldb = None
 
@@ -232,24 +236,32 @@ class SexyThymeMainWindow(QMainWindow):
             super().keyPressEvent(event)
 
     def closeEvent(self, event):
-        if (not self.centralWidget().hasModel() or
-            (self.centralWidget().result_table_view.model().rowCount() == 0)):
-            event.accept()
-            QApplication.quit()
-            return
+        should_quit = True
 
-        msg_box = QMessageBox()
-        msg_box.setWindowTitle(APPLICATION_NAME)
-        msg_box.setText('You have unsubmitted results.')
-        msg_box.setInformativeText('Do you really want to quit?')
-        msg_box.setStandardButtons(QMessageBox.Ok |
-                                   QMessageBox.Cancel)
-        msg_box.setDefaultButton(QMessageBox.Cancel)
-        msg_box.setIcon(QMessageBox.Information)
+        # If there are unsubmitted results, give the user a chance to cancel
+        # the quit...not that the user will lose anything, but just as a heads
+        # up that there's unfinished business on the part of the user.
+        if (self.centralWidget().hasModel() and
+            (self.centralWidget().result_table_view.model().rowCount() != 0)):
+            msg_box = QMessageBox()
+            msg_box.setWindowTitle(APPLICATION_NAME)
+            msg_box.setText('You have unsubmitted results.')
+            msg_box.setInformativeText('Do you really want to quit?')
+            msg_box.setStandardButtons(QMessageBox.Ok |
+                                       QMessageBox.Cancel)
+            msg_box.setDefaultButton(QMessageBox.Cancel)
+            msg_box.setIcon(QMessageBox.Information)
 
-        if msg_box.exec() == QMessageBox.Ok:
-            event.accept()
+            if msg_box.exec() != QMessageBox.Ok:
+                should_quit = False
+
+        if should_quit:
+            # Clean up old central widget, which will clean up the model we gave it.
+            if self.centralWidget():
+                self.centralWidget().cleanup()
+
             QApplication.quit()
+            event.accept()
         else:
             event.ignore()
 
