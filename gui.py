@@ -67,8 +67,8 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Add to button row.
         self.button_row.layout().addWidget(self.button_row.builder_button)
-        self.button_row.layout().addWidget(self.button_row.field_button)
         self.button_row.layout().addWidget(self.button_row.racer_button)
+        self.button_row.layout().addWidget(self.button_row.field_button)
 
         # Result table.
         self.result_table_view = ResultTableView(self.modeldb)
