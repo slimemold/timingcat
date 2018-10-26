@@ -2,6 +2,7 @@ import os
 from PyQt5.QtCore import *
 from PyQt5.QtSql  import *
 from common import *
+import defaults
 
 class DatabaseError(Exception):
     pass
@@ -130,7 +131,7 @@ class RaceTableModel(TableModel):
 
     def addDefaults(self):
         if not self.getRaceProperty(self.NAME):
-            self.addRaceProperty(self.NAME, '(race name here)')
+            self.addRaceProperty(self.NAME, defaults.RACE_NAME)
 
         if not self.getRaceProperty(self.DATE):
             self.addRaceProperty(self.DATE, QDateTime.currentDateTime())
@@ -211,7 +212,7 @@ class FieldTableModel(TableModel):
 
     def addDefaults(self):
         if self.rowCount() == 0:
-            self.addField('default')
+            self.addField(defaults.FIELD_NAME)
 
     def nameFromId(self, field_id):
         index_list = self.match(self.index(0, self.fieldIndex(self.ID)),
