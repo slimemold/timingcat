@@ -89,9 +89,7 @@ class StartTimeSetup(QWidget):
         self.start_time_button_group.addButton(self.start_time_now_radiobutton)
         self.start_time_specified_radiobutton = QRadioButton('At:')
         self.start_time_button_group.addButton(self.start_time_specified_radiobutton)
-        now = QTime.currentTime().addSecs(defaults.START_TIME_FROM_NOW_SECS)
-        now.setHMS(now.hour(), now.minute() + 5 - now.minute()%5, 0, 0)
-        self.start_time_timeedit = QTimeEdit(now)
+        self.start_time_timeedit = QTimeEdit() # Time "now" set in showEvent()
         self.start_time_timeedit.setDisplayFormat(defaults.TIME_FORMAT)
         self.start_time_timeedit.setEnabled(False)
 
@@ -177,6 +175,13 @@ class StartTimeSetup(QWidget):
         success_message += '.'
 
         QMessageBox.information(self, 'Success', success_message)
+
+    def showEvent(self, event):
+        now = QTime.currentTime().addSecs(defaults.START_TIME_FROM_NOW_SECS)
+        now.setHMS(now.hour(), now.minute() + 5 - now.minute()%5, 0, 0)
+        self.start_time_timeedit.setTime(now)
+
+        super().showEvent(event)
 
 class FieldSetup(QWidget):
     def __init__(self, modeldb, parent=None):
@@ -295,7 +300,14 @@ class Builder(QTabWidget):
 
         super().keyPressEvent(event)
 
+    def showEvent(self, event):
+        self.currentWidget().setVisible(True)
+
+        self.visibleChanged.emit(True)
+
     def hideEvent(self, event):
+        self.currentWidget().setVisible(False)
+
         self.visibleChanged.emit(False)
 
     # Signals.
