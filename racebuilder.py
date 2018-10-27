@@ -235,6 +235,10 @@ class RaceInfo(QWidget):
         self.date_selection_button = QPushButton('Select date')
         self.date_selection_widget.layout().addWidget(self.date_selection_button)
 
+        # Calendar modal window, shown when date_selection_button is clicked.
+        self.calendar = QCalendarWidget()
+        self.calendar.setWindowModality(Qt.ApplicationModal)
+
         # Top-level widgets.
         self.setLayout(QFormLayout())
         self.layout().addRow('Race Name', self.name_lineedit)
@@ -246,6 +250,8 @@ class RaceInfo(QWidget):
         self.modeldb.race_table_model.dataChanged.connect(self.dataChanged)
         self.name_lineedit.editingFinished.connect(self.nameEditingFinished)
         self.date_dateedit.editingFinished.connect(self.dateEditingFinished)
+        self.date_selection_button.clicked.connect(self.dateSelectionStart)
+        self.calendar.clicked.connect(self.dateSelectionFinished)
 
     def dataChanged(self, top_left=QModelIndex(), bottom_right=QModelIndex(), rolesi=[]):
         self.name_lineedit.setText(self.modeldb.race_table_model.getRaceProperty(RaceTableModel.NAME))
@@ -265,6 +271,14 @@ class RaceInfo(QWidget):
 
     def dateEditingFinished(self):
         self.modeldb.race_table_model.setRaceProperty(RaceTableModel.DATE, self.date_dateedit.text())
+
+    def dateSelectionStart(self):
+        self.calendar.show()
+
+    def dateSelectionFinished(self, date):
+        self.calendar.hide()
+        self.date_dateedit.setDate(date)
+        self.dateEditingFinished()
 
     # The QPlainTextEdit widget is a pain in the ass.  The only notification
     # signal we can get out of it is textChanged, and that gets emitted on
