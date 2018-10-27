@@ -5,8 +5,6 @@ PyQt5
 requests
 
 ## TODO
-- Add "new racer" button to racer table.
-- Add "new field" button to field table.
 - Add reports pdf generation.
 - Add result submit hook.
 - Implement OnTheDay.net result submit hook.

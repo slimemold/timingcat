@@ -253,6 +253,9 @@ class RacerTableView(QTableView):
         self.hideColumn(model.fieldIndex(RacerTableModel.ID))
         if self.field_id:
             self.hideColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
+        # Hide the status by default. Show it if we have a remote
+        # set up for this race.
+        self.hideColumn(model.fieldIndex(RacerTableModel.STATUS))
 
     def setupProxyModel(self, field_id):
         # Use a proxy model so we can add some interesting columns.

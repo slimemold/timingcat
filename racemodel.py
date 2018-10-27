@@ -289,7 +289,7 @@ class RacerTableModel(TableModel):
         self.setHeaderData(self.fieldIndex(self.STATUS), Qt.Horizontal, 'Status')
 
         # After this relation is defined, the field name becomes
-        # "field_name_2".
+        # "field_name_2" (FIELD_ALIAS).
         self.setRelation(self.fieldIndex(self.FIELD),
             QSqlRelation(FieldTableModel.TABLE,
                          FieldTableModel.ID,
@@ -376,6 +376,17 @@ class RacerTableModel(TableModel):
         if not self.removeRow(index.row()):
             raise DatabaseError(self.lastError().text())
 
+    def setRacerStart(self, bib, start):
+        index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
+                                Qt.DisplayRole, bib, 1, Qt.MatchExactly)
+
+        if not index_list:
+            raise InputError('Failed to find racer with bib %s' % bib)
+
+        index = self.index(index_list[0].row(), self.fieldIndex(self.START))
+        self.setData(index, start)
+        self.dataChanged.emit(index, index)
+
     def setRacerFinish(self, bib, finish):
         index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
                                 Qt.DisplayRole, bib, 1, Qt.MatchExactly)
@@ -386,6 +397,38 @@ class RacerTableModel(TableModel):
         index = self.index(index_list[0].row(), self.fieldIndex(self.FINISH))
         self.setData(index, finish)
         self.dataChanged.emit(index, index)
+
+    def assignStartTimes(self, field_name, start, interval, dry_run=False):
+        if field_name and not self.modeldb.field_table_model.idFromName(field_name):
+            raise InputError('Invalid field "%s"' % field_name)
+
+        if not isinstance(start, QTime):
+            raise InputError('Invalid start data type "%s"' % type(start))
+
+        if not start.isValid():
+            raise InputError('Invalid QTime start')
+
+        racer_table_model = self.modeldb.racer_table_model
+        starts_overwritten = 0
+
+        for row in range(racer_table_model.rowCount()):
+            if field_name:
+                field_index = self.index(row, self.fieldIndex(self.FIELD_ALIAS))
+                if not field_name == self.data(field_index):
+                    continue
+
+            start_index = self.index(row, self.fieldIndex(self.START))
+            if not dry_run:
+                self.setData(start_index, start)
+            elif self.data(start_index):
+                starts_overwritten += 1
+
+            start = start.addSecs(interval)
+
+        if not dry_run:
+            self.dataChanged.emit(QModelIndex(), QModelIndex())
+
+        return starts_overwritten
 
     def racerCount(self):
         return self.rowCount()

@@ -89,7 +89,10 @@ class StartTimeSetup(QWidget):
         self.start_time_button_group.addButton(self.start_time_now_radiobutton)
         self.start_time_specified_radiobutton = QRadioButton('At:')
         self.start_time_button_group.addButton(self.start_time_specified_radiobutton)
-        self.start_time_timeedit = QTimeEdit(QTime.currentTime().addSecs(defaults.START_TIME_FROM_NOW_SECS))
+        now = QTime.currentTime().addSecs(defaults.START_TIME_FROM_NOW_SECS)
+        now.setHMS(now.hour(), now.minute() + 5 - now.minute()%5, 0, 0)
+        self.start_time_timeedit = QTimeEdit(now)
+        self.start_time_timeedit.setDisplayFormat(defaults.TIME_FORMAT)
         self.start_time_timeedit.setEnabled(False)
 
         self.start_time_widget.setLayout(QHBoxLayout())
@@ -98,7 +101,7 @@ class StartTimeSetup(QWidget):
         self.start_time_widget.layout().addWidget(self.start_time_timeedit)
 
         # Start time interval.
-        self.interval_widget = QGroupBox('Interval')
+        self.interval_widget = QGroupBox('Interval:')
 
         self.interval_button_group = QButtonGroup()
         self.same_start_time_radiobutton = QRadioButton('Same for all')
@@ -130,9 +133,50 @@ class StartTimeSetup(QWidget):
         self.layout().addWidget(self.confirm_button)
 
         # Signals/slots plumbing.
+        self.confirm_button.clicked.connect(self.handleAssignStartTimes)
         self.selected_field_radiobutton.toggled.connect(self.selected_field_combobox.setEnabled)
         self.start_time_specified_radiobutton.toggled.connect(self.start_time_timeedit.setEnabled)
         self.interval_start_time_radiobutton.toggled.connect(self.interval_lineedit_group.setEnabled)
+
+    def handleAssignStartTimes(self):
+        # Validate inputs.
+        if not self.interval_lineedit.text().isdigit:
+            raise
+
+        field = None
+        if self.selected_field_radiobutton.isChecked():
+            field = self.selected_field_combobox.currentText()
+
+        if self.start_time_now_radiobutton.isChecked():
+            start_time = QTime.currentTime()
+        else:
+            start_time = self.start_time_timeedit.time()
+
+        interval = 0
+        if self.interval_start_time_radiobutton.isChecked():
+            interval = int(self.interval_lineedit.text())
+
+        try:
+            # If we're potentially going to be overwriting existing start times,
+            # warn before committing.
+            starts_overwritten = self.modeldb.racer_table_model.assignStartTimes(field, start_time, interval, True)
+            if starts_overwritten > 0:
+                QMessageBox.question(self, 'Question', 'About to overwrite %s existing start times. Proceed anyway?' % starts_overwritten)
+            self.modeldb.racer_table_model.assignStartTimes(field, start_time, interval)
+        except InputError as e:
+            QMessageBox.warning(self, 'Error', str(e))
+
+        success_message = 'Start times have been assigned'
+        if field:
+            success_message += ' to field "%s"' % field
+
+        success_message += ' for %s' % start_time.toString(defaults.TIME_FORMAT)
+        if interval:
+            success_message += ' at %s secomd intervals' % interval
+
+        success_message += '.'
+
+        QMessageBox.information(self, 'Success', success_message)
 
 class FieldSetup(QWidget):
     def __init__(self, modeldb, parent=None):
@@ -217,6 +261,11 @@ class RaceInfo(QWidget):
     def dateEditingFinished(self):
         self.modeldb.race_table_model.setRaceProperty(RaceTableModel.DATE, self.date_dateedit.text())
 
+    # The QPlainTextEdit widget is a pain in the ass.  The only notification
+    # signal we can get out of it is textChanged, and that gets emitted on
+    # every single edit, down to the character.  What's worse is, sending the
+    # change to the model causes the model to emit dataChanged, which causes
+    # us to update, which results in firing off another textChanged...
     def hideEvent(self, event):
         self.modeldb.race_table_model.setRaceProperty(RaceTableModel.NOTES, self.notes_plaintextedit.document().toPlainText())
 

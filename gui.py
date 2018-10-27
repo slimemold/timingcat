@@ -75,7 +75,6 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Result line edit.
         self.result_input = QLineEdit()
-        self.result_input.setClearButtonEnabled(True)
         font = self.result_input.font()
         font.setPointSize(INPUT_TEXT_POINT_SIZE)
         self.result_input.setFont(font)
