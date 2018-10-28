@@ -137,9 +137,6 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
     def proxyColumnForExtraColumn(self, extra_column):
         return self.sourceModel().columnCount() + extra_column
 
-    def fieldIndex(self, field_name):
-        return self.sourceModel().fieldIndex(field_name)
-
 class RearrangeColumnsProxyModel(QIdentityProxyModel):
     def __init__(self, parent=None):
         super().__init__(parent)

@@ -6,7 +6,7 @@ from racemodel import *
 
 # Add a "Finished" column for total racers that have a finish time, and a
 # "Total" column to show total racers in that field.
-class FieldProxyModel(ExtraColumnsProxyModel):
+class FieldProxyModel(SqlExtraColumnsProxyModel):
     FINISHED_SECTION = 0
     TOTAL_SECTION = 1
     STATUS_SECTION = 2
