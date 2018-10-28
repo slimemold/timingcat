@@ -36,9 +36,6 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
 
         return super().mapToSource(proxy_index)
 
-    def fieldIndex(self, field_name):
-        return self.sourceModel().fieldIndex(field_name)
-
     def buddy(self, proxy_index):
         column = proxy_index.column()
         if column >= self.sourceModel().columnCount():
@@ -139,3 +136,109 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
 
     def proxyColumnForExtraColumn(self, extra_column):
         return self.sourceModel().columnCount() + extra_column
+
+    def fieldIndex(self, field_name):
+        return self.sourceModel().fieldIndex(field_name)
+
+class RearrangeColumnsProxyModel(QIdentityProxyModel):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+
+        self.source_columns = []
+
+    def setSourceColumns(self, columns):
+        self.source_columns = columns
+
+    def columnCount(self, parent):
+        if not self.sourceModel():
+            return 0
+
+        return len(self.source_columns)
+
+    def rowCount(self, parent):
+        if not self.sourceModel():
+            return 0;
+
+        # The parent in the source model is on column 0, whatever swapping we are doing
+        source_parent = self.mapToSource(parent).sibling(parent.row(), 0)
+        return self.sourceModel().rowCount(source_parent)
+
+    # We derive from QIdentityProxyModel simply to be able to use
+    # its mapFromSource method which has friend access to createIndex() in the source model.
+
+    def index(self, row, column, parent):
+        # The parent in the source model is on column 0, whatever swapping we are doing
+        source_parent = self.mapToSource(parent).sibling(parent.row(), 0)
+
+        # Find the child in the source model, we need its internal pointer
+        source_index = self.sourceModel().index(row, self.sourceColumnForProxyColumn(column), source_parent)
+        if not source_index.isValid():
+            return QModelIndex()
+
+        return self.createIndex(row, column, source_index.internalPointer())
+
+    def parent(self, child):
+        source_index = self.mapToSource(child)
+        source_parent = source_index.parent()
+        if not source_parent.isValid():
+            return QModelIndex()
+
+        return createIndex(sourceParent.row(), 0, sourceParent.internalPointer());
+
+    def headerData(self, section, orientation, role):
+        if orientation == Qt.Horizontal:
+            source_col = self.sourceColumnForProxyColumn(section)
+            return self.sourceModel().headerData(source_col, orientation, role)
+        else:
+            return super().headerData(section, orientation, role)
+
+    def sibling(self, row, column, idx):
+        if column >= self.source_columns.count():
+            return QModelIndex()
+
+        return self.index(row, column, idx.parent());
+
+    def mapFromSource(self, source_index):
+        if not source_index.isValid():
+            return QModelIndex()
+
+        proxy_column = self.proxyColumnForSourceColumn(source_index.column())
+        return self.createIndex(source_index.row(), proxy_column, source_index.internalPointer())
+
+    def mapToSource(self, proxy_index):
+        if not proxy_index.isValid():
+            return QModelIndex()
+
+        # This is just an indirect way to call sourceModel.createIndex(row, source_column, pointer)
+        fake_index = self.createIndex(proxy_index.row(), self.sourceColumnForProxyColumn(proxy_index.column()), proxy_index.internalPointer())
+        return super().mapToSource(fake_index)
+
+    def proxyColumnForSourceColumn(self, source_column):
+        # If this is too slow, we could add a second QVector with index=logical_source_column value=desired_pos_in_proxy.
+        try:
+            return self.source_columns.index(source_column);
+        except ValueError:
+            return -1
+
+    def sourceColumnForProxyColumn(self, proxy_column):
+        return self.source_columns[proxy_column];
+
+class SqlExtraColumnsProxyModel(ExtraColumnsProxyModel):
+    def fieldIndex(self, field_name):
+        try:
+            extra_col = self.extra_headers.index(field_name)
+        except ValueError:
+            return self.sourceModel().fieldIndex(field_name)
+
+        return self.proxyColumnForExtraColumn(extra_col)
+
+class SqlRearrangeColumnsProxyModel(RearrangeColumnsProxyModel):
+    def fieldIndex(self, field_name):
+        try:
+            return self.proxyColumnForSourceColumn(self.sourceModel().fieldIndex(field_name))
+        except ValueError:
+            return -1
+
+class SqlSortFilterProxyModel(QSortFilterProxyModel):
+    def fieldIndex(self, field_name):
+        return self.sourceModel().fieldIndex(field_name)
