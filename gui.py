@@ -188,17 +188,33 @@ class ReportsWindow(QDialog):
     def __init__(self, modeldb, parent=None):
         super().__init__(parent=parent)
 
+        self.modeldb = modeldb
+
         self.setWindowTitle('Generate Reports')
+
+        # Finish results by field.
+        self.field_finish_radiobutton = QRadioButton()
+        self.field_combobox = QComboBox()
+        self.field_combobox.setModel(self.modeldb.field_table_model)
+        self.field_combobox.setModelColumn(self.modeldb.field_table_model.fieldIndex(self.modeldb.field_table_model.NAME))
+
+        field_finish_groupbox = QGroupBox('Finish results by field')
+        field_finish_groupbox.setLayout(QHBoxLayout())
+        field_finish_groupbox.layout().addWidget(self.field_finish_radiobutton)
+        field_finish_groupbox.layout().addWidget(self.field_combobox)
+
+        self.field_finish_radiobutton.setChecked(True)
 
         generateFinish = QPushButton('Generate Report')
 
         self.setLayout(QVBoxLayout())
+        self.layout().addWidget(field_finish_groupbox)
         self.layout().addWidget(generateFinish)
 
         generateFinish.clicked.connect(self.generateFinishReport)
 
     def generateFinishReport(self):
-        document = reports.generate_finish_report('fish')
+        document = reports.generate_finish_report(self.modeldb, self.field_combobox.currentText())
 
         printer = QPrinter()
 
@@ -209,6 +225,8 @@ class ReportsWindow(QDialog):
 class PreferencesWindow(QDialog):
     def __init__(self, modeldb, parent=None):
         super().__init__(parent=parent)
+
+        self.modeldb = modeldb
 
         self.setWindowTitle('Preferences')
 
@@ -425,14 +443,17 @@ class SexyThymeMainWindow(QMainWindow):
 
     def generateReports(self):
         dialog = ReportsWindow(self.centralWidget().modeldb, self)
+        dialog.setWindowModality(Qt.ApplicationModal)
         dialog.show()
 
     def configPreferences(self):
         dialog = PreferencesWindow(self.centralWidget().modeldb, self)
+        dialog.setWindowModality(Qt.ApplicationModal)
         dialog.show()
 
     def configRemote(self):
         dialog = RemotesWindow(self.centralWidget().modeldb, self)
+        dialog.setWindowModality(Qt.ApplicationModal)
         dialog.show()
 
     def shouldClose(self):
