@@ -1,11 +1,13 @@
 import csv
 import os
 from PyQt5.QtGui import *
+from PyQt5.QtPrintSupport import *
 from PyQt5.QtWidgets import *
 from common import *
 from racebuilder import *
 from raceview import *
 from remotes import OnTheDayRemote
+import reports
 
 INPUT_TEXT_POINT_SIZE = 32
 
@@ -185,6 +187,22 @@ class ReportsWindow(QDialog):
         super().__init__(parent=parent)
 
         self.setWindowTitle('Generate Reports')
+
+        generateFinish = QPushButton('Generate Report')
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(generateFinish)
+
+        generateFinish.clicked.connect(self.generateFinishReport)
+
+    def generateFinishReport(self):
+        document = reports.generate_finish_report('fish')
+
+        printer = QPrinter()
+
+        print_dialog = QPrintDialog(printer, self)
+        if print_dialog.exec() == QDialog.Accepted:
+            document.print(printer)
 
 class PreferencesWindow(QDialog):
     def __init__(self, modeldb, parent=None):
