@@ -180,6 +180,24 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
 
+class ReportsWindow(QDialog):
+    def __init__(self, modeldb, parent=None):
+        super().__init__(parent=parent)
+
+        self.setWindowTitle('Generate Reports')
+
+class PreferencesWindow(QDialog):
+    def __init__(self, modeldb, parent=None):
+        super().__init__(parent=parent)
+
+        self.setWindowTitle('Preferences')
+
+class RemotesWindow(QDialog):
+    def __init__(self, modeldb, parent=None):
+        super().__init__(parent=parent)
+
+        self.setWindowTitle('Setup Remote')
+
 class SexyThymeMainWindow(QMainWindow):
     def __init__(self, filename=None, parent=None):
         super().__init__(parent=parent)
@@ -201,6 +219,9 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.setCentralWidget(StartCentralWidget())
 
+        self.generate_reports_menu_action.setEnabled(False)
+        self.setup_remote_menu_action.setEnabled(False)
+
     def switchToMain(self, filename, new=False):
         # Clean up old central widget, which will clean up the model we gave it.
         if self.centralWidget():
@@ -209,6 +230,9 @@ class SexyThymeMainWindow(QMainWindow):
         # Make a new model, and give it to a new central widget.
         model = ModelDatabase(filename, new)
         self.setCentralWidget(MainCentralWidget(model))
+
+        self.generate_reports_menu_action.setEnabled(True)
+        self.setup_remote_menu_action.setEnabled(True)
 
     def setupMenuBar(self):
         # Make a parent-less menubar, so that Qt can use the top-level native
@@ -219,14 +243,17 @@ class SexyThymeMainWindow(QMainWindow):
         fileMenu = self.menuBar().addMenu('&File');
         fileMenu.addAction('New...', self.newFile, QKeySequence.New)
         fileMenu.addAction('Open...', self.openFile, QKeySequence.Open)
+        fileMenu.addAction('Close', self.closeFile, QKeySequence.Close)
         fileMenu.addSeparator()
         fileMenu.addAction('Import Bikereg csv...', self.importBikeregFile)
         fileMenu.addSeparator()
+        self.generate_reports_menu_action = fileMenu.addAction('Generate reports', self.generateReports)
+        fileMenu.addSeparator()
         fileMenu.addAction('Quit', self.close, QKeySequence.Quit)
 
-        configMenu = self.menuBar().addMenu('&Config');
-        configMenu.addAction('Preferences', self.configPreferences)
-        configMenu.addAction('Remote', self.configRemote)
+        configMenu = self.menuBar().addMenu('&Config')
+        configMenu.addAction('Preferences', self.configPreferences, QKeySequence.Preferences)
+        self.setup_remote_menu_action = configMenu.addAction('Remote Setup', self.configRemote)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -235,26 +262,7 @@ class SexyThymeMainWindow(QMainWindow):
             super().keyPressEvent(event)
 
     def closeEvent(self, event):
-        should_quit = True
-
-        # If there are unsubmitted results, give the user a chance to cancel
-        # the quit...not that the user will lose anything, but just as a heads
-        # up that there's unfinished business on the part of the user.
-        if (self.centralWidget().hasModel() and
-            (self.centralWidget().result_table_view.model().rowCount() != 0)):
-            msg_box = QMessageBox()
-            msg_box.setWindowTitle(APPLICATION_NAME)
-            msg_box.setText('You have unsubmitted results.')
-            msg_box.setInformativeText('Do you really want to quit?')
-            msg_box.setStandardButtons(QMessageBox.Ok |
-                                       QMessageBox.Cancel)
-            msg_box.setDefaultButton(QMessageBox.Cancel)
-            msg_box.setIcon(QMessageBox.Information)
-
-            if msg_box.exec() != QMessageBox.Ok:
-                should_quit = False
-
-        if should_quit:
+        if self.shouldClose():
             # Clean up old central widget, which will clean up the model we gave it.
             if self.centralWidget():
                 self.centralWidget().cleanup()
@@ -299,6 +307,10 @@ class SexyThymeMainWindow(QMainWindow):
         self.centralWidget().modeldb.addDefaults()
 
         return filename
+
+    def closeFile(self):
+        if self.shouldClose():
+            self.switchToStart()
 
     def importFilePrepare(self):
         # Pick the import file.
@@ -392,8 +404,33 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.centralWidget().modeldb.addDefaults()
 
+    def generateReports(self):
+        dialog = ReportsWindow(self.centralWidget().modeldb, self)
+        dialog.show()
+
     def configPreferences(self):
-        pass
+        dialog = PreferencesWindow(self.centralWidget().modeldb, self)
+        dialog.show()
 
     def configRemote(self):
-        pass
+        dialog = RemotesWindow(self.centralWidget().modeldb, self)
+        dialog.show()
+
+    def shouldClose(self):
+        # If there are unsubmitted results, give the user a chance to cancel
+        # the quit...not that the user will lose anything, but just as a heads
+        # up that there's unfinished business on the part of the user.
+        if (self.centralWidget().hasModel() and
+            (self.centralWidget().result_table_view.model().rowCount() != 0)):
+            msg_box = QMessageBox()
+            msg_box.setWindowTitle(APPLICATION_NAME)
+            msg_box.setText('You have unsubmitted results.')
+            msg_box.setInformativeText('Do you really want to quit?')
+            msg_box.setStandardButtons(QMessageBox.Ok |
+                                       QMessageBox.Cancel)
+            msg_box.setDefaultButton(QMessageBox.Cancel)
+            msg_box.setIcon(QMessageBox.Information)
+
+            return msg_box.exec() == QMessageBox.Ok
+
+        return True
