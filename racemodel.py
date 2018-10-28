@@ -265,10 +265,11 @@ class RacerTableModel(TableModel):
     TABLE = 'racer'
     ID = 'id'
     BIB = 'bib'
-    NAME = 'name'
+    FIRST_NAME = 'first_name'
+    LAST_NAME = 'last_name'
     TEAM = 'team'
     FIELD = 'field_id'
-    FIELD_ALIAS = 'field_name_2'
+    FIELD_ALIAS = 'name'
     START = 'start'
     FINISH = 'finish'
     STATUS = 'status'
@@ -281,7 +282,8 @@ class RacerTableModel(TableModel):
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
         self.setHeaderData(self.fieldIndex(self.BIB), Qt.Horizontal, 'Bib')
-        self.setHeaderData(self.fieldIndex(self.NAME), Qt.Horizontal, 'Name')
+        self.setHeaderData(self.fieldIndex(self.FIRST_NAME), Qt.Horizontal, 'First Name')
+        self.setHeaderData(self.fieldIndex(self.LAST_NAME), Qt.Horizontal, 'Last Name')
         self.setHeaderData(self.fieldIndex(self.TEAM), Qt.Horizontal, 'Team')
         self.setHeaderData(self.fieldIndex(self.FIELD), Qt.Horizontal, 'Field')
         self.setHeaderData(self.fieldIndex(self.START), Qt.Horizontal, 'Start')
@@ -304,7 +306,8 @@ class RacerTableModel(TableModel):
             'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
             '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
              '"%s" INTEGER UNIQUE NOT NULL, ' % self.BIB +
-             '"%s" TEXT NOT NULL, ' % self.NAME +
+             '"%s" TEXT NOT NULL, ' % self.FIRST_NAME +
+             '"%s" TEXT NOT NULL, ' % self.LAST_NAME +
              '"%s" TEXT NOT NULL, ' % self.TEAM +
              '"%s" INTEGER NOT NULL, ' % self.FIELD +
              '"%s" TIME, ' % self.START +
@@ -314,7 +317,8 @@ class RacerTableModel(TableModel):
 
         query.finish()
 
-    def addRacer(self, bib, name, team, field, start=QTime(), finish=QTime(), status='local'):
+    def addRacer(self, bib, first_name, last_name, team, field,
+                 start=QTime(), finish=QTime(), status='local'):
         # Do some validation.
         #
         # Don't have to check for None, because that would fail the
@@ -325,8 +329,11 @@ class RacerTableModel(TableModel):
         if not bib.isdigit():
             raise InputError('Racer bib "%s" is invalid' % bib)
 
-        if name == '':
-            raise InputError('Racer name "%s" is invalid' % name)
+        if first_name == '':
+            raise InputError('Racer first name "%s" is invalid' % first_name)
+
+        if last_name == '':
+            raise InputError('Racer last name "%s" is invalid' % last_name)
 
         # See if the field exists in our Field table.  If not, we add a new
         # field.
@@ -341,7 +348,8 @@ class RacerTableModel(TableModel):
         record = self.record()
         record.setGenerated(self.ID, False)
         record.setValue(self.BIB, bib)
-        record.setValue(self.NAME, name)
+        record.setValue(self.FIRST_NAME, first_name)
+        record.setValue(self.LAST_NAME, last_name)
         record.setValue(self.TEAM, team)
 
         # OMFG I can't believe I have to do this...but Qt is not retranslating

@@ -158,6 +158,8 @@ class MainCentralWidget(QWidget, CentralWidget):
             self.submit_button.setEnabled(True)
 
     def fieldModelChanged(self, *args):
+        # TODO: We only care here if field name changes.
+
         # When someone changes a field name, we have to update the racer model
         # to get the field name change. In addition, there is a combo box
         # in the racer table view that is a view for a relation model inside
@@ -407,7 +409,6 @@ class SexyThymeMainWindow(QMainWindow):
 
             for row in reader:
                 _, bib, field, _, first_name, _, last_name, _, team, *_ = row
-                name = first_name + ' ' + last_name
 
                 # BikeReg lists One-day License holders twice, and the second
                 # listing is missing the bib#, and instead has:
@@ -418,7 +419,7 @@ class SexyThymeMainWindow(QMainWindow):
 
                 racer_table_model = self.centralWidget().modeldb.racer_table_model
 
-                racer_table_model.addRacer(bib, name, team, field)
+                racer_table_model.addRacer(bib, first_name,last_name, team, field)
 
         self.centralWidget().modeldb.addDefaults()
 
