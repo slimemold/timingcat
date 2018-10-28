@@ -408,7 +408,7 @@ class SexyThymeMainWindow(QMainWindow):
             next(reader)
 
             for row in reader:
-                _, bib, field, _, first_name, _, last_name, _, team, *_ = row
+                age, bib, field, _, first_name, _, last_name, _, team, category, *_ = row
 
                 # BikeReg lists One-day License holders twice, and the second
                 # listing is missing the bib#, and instead has:
@@ -419,7 +419,7 @@ class SexyThymeMainWindow(QMainWindow):
 
                 racer_table_model = self.centralWidget().modeldb.racer_table_model
 
-                racer_table_model.addRacer(bib, first_name,last_name, team, field)
+                racer_table_model.addRacer(bib, first_name,last_name, field, category, team, age)
 
         self.centralWidget().modeldb.addDefaults()
 

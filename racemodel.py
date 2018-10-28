@@ -267,9 +267,11 @@ class RacerTableModel(TableModel):
     BIB = 'bib'
     FIRST_NAME = 'first_name'
     LAST_NAME = 'last_name'
-    TEAM = 'team'
     FIELD = 'field_id'
     FIELD_ALIAS = 'name'
+    CATEGORY = 'category'
+    TEAM = 'team'
+    AGE = 'age'
     START = 'start'
     FINISH = 'finish'
     STATUS = 'status'
@@ -284,8 +286,10 @@ class RacerTableModel(TableModel):
         self.setHeaderData(self.fieldIndex(self.BIB), Qt.Horizontal, 'Bib')
         self.setHeaderData(self.fieldIndex(self.FIRST_NAME), Qt.Horizontal, 'First Name')
         self.setHeaderData(self.fieldIndex(self.LAST_NAME), Qt.Horizontal, 'Last Name')
-        self.setHeaderData(self.fieldIndex(self.TEAM), Qt.Horizontal, 'Team')
         self.setHeaderData(self.fieldIndex(self.FIELD), Qt.Horizontal, 'Field')
+        self.setHeaderData(self.fieldIndex(self.CATEGORY), Qt.Horizontal, 'Cat')
+        self.setHeaderData(self.fieldIndex(self.TEAM), Qt.Horizontal, 'Team')
+        self.setHeaderData(self.fieldIndex(self.AGE), Qt.Horizontal, 'Age')
         self.setHeaderData(self.fieldIndex(self.START), Qt.Horizontal, 'Start')
         self.setHeaderData(self.fieldIndex(self.FINISH), Qt.Horizontal, 'Finish')
         self.setHeaderData(self.fieldIndex(self.STATUS), Qt.Horizontal, 'Status')
@@ -308,8 +312,10 @@ class RacerTableModel(TableModel):
              '"%s" INTEGER UNIQUE NOT NULL, ' % self.BIB +
              '"%s" TEXT NOT NULL, ' % self.FIRST_NAME +
              '"%s" TEXT NOT NULL, ' % self.LAST_NAME +
-             '"%s" TEXT NOT NULL, ' % self.TEAM +
              '"%s" INTEGER NOT NULL, ' % self.FIELD +
+             '"%s" TEXT NOT NULL, ' % self.CATEGORY +
+             '"%s" TEXT NOT NULL, ' % self.TEAM +
+             '"%s" INTEGER NOT NULL, ' % self.AGE +
              '"%s" TIME, ' % self.START +
              '"%s" TIME, ' % self.FINISH +
              '"%s" TEXT NOT NULL);' % self.STATUS):
@@ -317,7 +323,7 @@ class RacerTableModel(TableModel):
 
         query.finish()
 
-    def addRacer(self, bib, first_name, last_name, team, field,
+    def addRacer(self, bib, first_name, last_name, field, category, team, age,
                  start=QTime(), finish=QTime(), status='local'):
         # Do some validation.
         #
@@ -350,7 +356,6 @@ class RacerTableModel(TableModel):
         record.setValue(self.BIB, bib)
         record.setValue(self.FIRST_NAME, first_name)
         record.setValue(self.LAST_NAME, last_name)
-        record.setValue(self.TEAM, team)
 
         # OMFG I can't believe I have to do this...but Qt is not retranslating
         # this stupid field_name_2 alias back to its original field name,
@@ -363,6 +368,9 @@ class RacerTableModel(TableModel):
         record.replace(self.fieldIndex(self.FIELD_ALIAS), sql_field)
         record.setValue(self.FIELD, field_id)
 
+        record.setValue(self.CATEGORY, category)
+        record.setValue(self.TEAM, team)
+        record.setValue(self.AGE, age)
         record.setValue(self.START, start)
         record.setValue(self.FINISH, finish)
         record.setValue(self.STATUS, status)
