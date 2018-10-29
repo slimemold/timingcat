@@ -60,15 +60,12 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.button_row.setLayout(QHBoxLayout())
 
         # Race Info, Fields, Racers
-        self.button_row.builder_button = QPushButton('Builder')
-        self.button_row.builder_button.setCheckable(True)
         self.button_row.field_button = QPushButton('Fields')
         self.button_row.field_button.setCheckable(True)
         self.button_row.racer_button = QPushButton('Racers')
         self.button_row.racer_button.setCheckable(True)
 
         # Add to button row.
-        self.button_row.layout().addWidget(self.button_row.builder_button)
         self.button_row.layout().addWidget(self.button_row.racer_button)
         self.button_row.layout().addWidget(self.button_row.field_button)
 
@@ -98,10 +95,6 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.racer_table_view = RacerTableView(self.modeldb)
 
         # Signals/slots for button row toggle buttons.
-        self.button_row.builder_button.toggled.connect(self.builder
-                                                           .setVisible)
-        self.builder.visibleChanged.connect(self.button_row.builder_button
-                                                           .setChecked)
         self.button_row.field_button.toggled.connect(self.field_table_view
                                                          .setVisible)
         self.field_table_view.visibleChanged.connect(self.button_row.field_button
@@ -278,20 +271,20 @@ class SexyThymeMainWindow(QMainWindow):
         menuBar = QMenuBar()
         self.setMenuBar(menuBar)
 
-        fileMenu = self.menuBar().addMenu('&File');
-        fileMenu.addAction('New...', self.newFile, QKeySequence.New)
-        fileMenu.addAction('Open...', self.openFile, QKeySequence.Open)
-        fileMenu.addAction('Close', self.closeFile, QKeySequence.Close)
-        fileMenu.addSeparator()
-        fileMenu.addAction('Import Bikereg csv...', self.importBikeregFile)
-        fileMenu.addSeparator()
-        self.generate_reports_menu_action = fileMenu.addAction('Generate reports', self.generateReports)
-        fileMenu.addSeparator()
-        fileMenu.addAction('Quit', self.close, QKeySequence.Quit)
+        file_menu = self.menuBar().addMenu('&File');
+        file_menu.addAction('New...', self.newFile, QKeySequence.New)
+        file_menu.addAction('Open...', self.openFile, QKeySequence.Open)
+        file_menu.addAction('Close', self.closeFile, QKeySequence.Close)
+        file_menu.addSeparator()
+        self.generate_reports_menu_action = file_menu.addAction('Generate reports', self.generateReports)
+        file_menu.addSeparator()
+        file_menu.addAction('Quit', self.close, QKeySequence.Quit)
 
-        configMenu = self.menuBar().addMenu('&Config')
-        configMenu.addAction('Preferences', self.configPreferences, QKeySequence.Preferences)
-        self.setup_remote_menu_action = configMenu.addAction('Remote Setup', self.configRemote)
+        config_menu = self.menuBar().addMenu('&Config')
+        config_menu.addAction('Preferences', self.configPreferences, QKeySequence.Preferences)
+        config_menu.addAction('Race Builder', self.configBuilder)
+        config_menu.addAction('Import Bikereg csv...', self.importBikeregFile)
+        self.setup_remote_menu_action = config_menu.addAction('Remote Setup', self.configRemote)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -450,6 +443,9 @@ class SexyThymeMainWindow(QMainWindow):
         dialog = PreferencesWindow(self.centralWidget().modeldb, self)
         dialog.setWindowModality(Qt.ApplicationModal)
         dialog.show()
+
+    def configBuilder(self):
+        self.centralWidget().builder.show()
 
     def configRemote(self):
         dialog = RemotesWindow(self.centralWidget().modeldb, self)

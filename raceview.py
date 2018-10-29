@@ -112,7 +112,7 @@ class FieldTableView(QTableView):
         return super().keyPressEvent(event)
 
     def showEvent(self, event):
-        self.resize(450, 600)
+        self.resize(520, 600)
 
     def hideEvent(self, event):
         self.visibleChanged.emit(False)
@@ -204,12 +204,15 @@ class FieldTableView(QTableView):
         # Don't allow using the first column to pop up the racer in field
         # table view, because it's likely the user just wants to edit the
         # field name.
-        if model_index.column() == self.modeldb.field_table_model.fieldIndex(FieldTableModel.NAME):
+        if (model_index.column() == self.modeldb.field_table_model.fieldIndex(FieldTableModel.NAME) or
+            model_index.column() == self.modeldb.field_table_model.fieldIndex(FieldTableModel.SUBFIELDS)):
             return
 
         field_id = self.modeldb.field_table_model.record(model_index.row()).value(FieldTableModel.ID)
 
         self.racer_in_field_table_view_dict[field_id].show()
+
+        self.clearSelection()
 
     # Our non-model columns (provided by FieldProxyModel(ExtraColumnsProxyModel))
     # uses stuff from the racer table model to provide its contents. Therefore,

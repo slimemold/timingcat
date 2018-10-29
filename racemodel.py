@@ -187,6 +187,7 @@ class FieldTableModel(TableModel):
     TABLE = 'field'
     ID = 'id'
     NAME = 'name'
+    SUBFIELDS = 'subfields'
 
     def __init__(self, modeldb, new):
         super().__init__(modeldb)
@@ -205,7 +206,8 @@ class FieldTableModel(TableModel):
         if not query.exec(
             'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
             '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
-             '"%s" TEXT UNIQUE NOT NULL);' % self.NAME):
+             '"%s" TEXT UNIQUE NOT NULL,' % self.NAME +
+             '"%s" TEXT);' % self.SUBFIELDS):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
@@ -236,13 +238,14 @@ class FieldTableModel(TableModel):
 
         return self.data(self.index(index.row(), self.fieldIndex(self.ID)))
 
-    def addField(self, name):
+    def addField(self, name, subfields=None):
         if name == '':
             raise InputError('Field name "%s" is invalid' % name)
 
         record = self.record()
         record.setGenerated(self.ID, False)
         record.setValue(FieldTableModel.NAME, name)
+        record.setValue(FieldTableModel.SUBFIELDS, subfields)
 
         if not self.insertRecord(-1, record):
             raise DatabaseError(self.lastError().text())
@@ -260,6 +263,18 @@ class FieldTableModel(TableModel):
 
         if not self.removeRow(index.row()):
             raise DatabaseError(self.lastError().text())
+
+    def getSubfields(self, name):
+        index_list = self.match(self.index(0, self.fieldIndex(self.NAME)),
+                                Qt.DisplayRole, name, 1, Qt.MatchExactly)
+
+        if not index_list:
+            return None
+
+        index = index_list[0]
+
+        return self.data(self.index(index.row(), self.fieldIndex(self.SUBFIELDS)))
+
 
 class RacerTableModel(TableModel):
     TABLE = 'racer'
