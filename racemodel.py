@@ -104,6 +104,7 @@ class RaceTableModel(TableModel):
     NAME = 'name'
     DATE = 'date'
     NOTES = 'notes'
+    REMOTE_CLASS = 'remote_class'
 
     def __init__(self, modeldb, new):
         super().__init__(modeldb)
@@ -175,7 +176,7 @@ class RaceTableModel(TableModel):
                                 Qt.DisplayRole, key, 1, Qt.MatchExactly)
 
         if not index_list:
-            raise InputError('Failed to find race property with KEY %s' % key)
+            return
 
         index = index_list[0]
 

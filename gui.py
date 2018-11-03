@@ -6,9 +6,9 @@ from PyQt5.QtWidgets import *
 from common import *
 from preferences import PreferencesWindow
 from racebuilder import Builder
-from racemodel import ModelDatabase
+from racemodel import ModelDatabase, RaceTableModel, FieldTableModel, RacerTableModel
 from raceview import FieldTableView, RacerTableView, ResultTableView
-from remotes import get_remote_class_list, AuthError
+import remotes
 from reports import ReportsWindow
 
 INPUT_TEXT_POINT_SIZE = 32
@@ -179,6 +179,10 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
 
+    def setRemote(self, remote):
+        self.remote = remote
+        self.racer_table_view.setRemote(remote)
+
 class SexyThymeMainWindow(QMainWindow):
     def __init__(self, filename=None, parent=None):
         super().__init__(parent=parent)
@@ -187,6 +191,8 @@ class SexyThymeMainWindow(QMainWindow):
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
 
         self.setupMenuBar()
+
+        self.remote = None
 
         if filename:
             self.switchToMain(filename)
@@ -214,8 +220,12 @@ class SexyThymeMainWindow(QMainWindow):
         self.setCentralWidget(MainCentralWidget(model))
 
         self.generate_reports_menu_action.setEnabled(True)
-        self.connect_remote_menu.setEnabled(True)
-        self.disconnect_remote_menu.setEnabled(False)
+
+        remote_class_string = model.race_table_model.getRaceProperty(RaceTableModel.REMOTE_CLASS)
+        if remote_class_string:
+            self.connectRemote(remotes.get_remote_class_from_string(remote_class_string))
+        else:
+            self.setRemote(None)
 
     def setupMenuBar(self):
         # Make a parent-less menubar, so that Qt can use the top-level native
@@ -246,7 +256,7 @@ class SexyThymeMainWindow(QMainWindow):
         config_menu.addSeparator()
 
         self.connect_remote_menu = config_menu.addMenu('Connect Remote')
-        remote_class_list = get_remote_class_list()
+        remote_class_list = remotes.get_remote_class_list()
         for remote_class in remote_class_list:
             receiver = lambda remote_class=remote_class: self.connectRemote(remote_class)
             self.connect_remote_menu.addAction(remote_class.name, receiver)
@@ -415,21 +425,48 @@ class SexyThymeMainWindow(QMainWindow):
         self.centralWidget().builder.show()
 
     def connectRemote(self, remote_class):
-        try:
-            self.remote = remote_class(self.centralWidget().modeldb.race_table_model)
-            self.remote.connect(self)
-        except AuthError as e:
-            QMessageBox.warning(self, 'Error', str(e))
+        remote = remote_class(self.centralWidget().modeldb)
+        # Allow remote setup if okay or timed out (but not rejected).
+        if remote.connect(self) == remotes.Status.Rejected:
+            remote = None
 
-        self.connect_remote_menu.setEnabled(False)
-        self.disconnect_remote_menu.setEnabled(True)
+        self.setRemote(remote)
 
     def disconnectRemote(self):
-        self.remote.disconnect(self)
-        self.remote = None
+        if self.remote:
+            self.remote.disconnect(self)
+        self.setRemote(None)
 
-        self.connect_remote_menu.setEnabled(True)
-        self.disconnect_remote_menu.setEnabled(False)
+    def setRemote(self, remote):
+        race_table_model = self.centralWidget().modeldb.race_table_model
+
+        if remote:
+            race_table_model.setRaceProperty(RaceTableModel.REMOTE_CLASS, type(remote).__name__)
+            self.connect_remote_menu.setEnabled(False)
+            self.disconnect_remote_menu.setEnabled(True)
+            self.setStatusBar(QStatusBar())
+            remote.last_status_changed.connect(self.remoteStatusChanged)
+            self.remoteStatusChanged(remote.last_status)
+        else:
+            race_table_model.deleteRaceProperty(RaceTableModel.REMOTE_CLASS)
+            self.connect_remote_menu.setEnabled(True)
+            self.disconnect_remote_menu.setEnabled(False)
+            if self.remote:
+                self.remote.last_status_changed.disconnect(self.remoteStatusChanged)
+            self.setStatusBar(None)
+
+        self.remote = remote
+        self.centralWidget().setRemote(remote)
+
+    def remoteStatusChanged(self, status):
+        if status == remotes.Status.Ok:
+            self.statusBar().showMessage('Remote: Ok')
+        elif status == remotes.Status.TimedOut:
+            self.statusBar().showMessage('Remote: Timed Out')
+        elif status == remotes.StatuslRejected:
+            self.statusBar().showMessage('Remote: Rejected')
+        else:
+            self.statusBar().showMessage('Remote: Unknown State')
 
     def shouldClose(self):
         # If there are unsubmitted results, give the user a chance to cancel

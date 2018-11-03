@@ -96,6 +96,7 @@ class FieldTableView(QTableView):
         self.modeldb.racer_table_model.dataChanged.connect(self.updateNonModelColumns)
         self.doubleClicked.connect(self.handleShowRacerInFieldTableView)
 
+
     def setupProxyModel(self):
         # Use a proxy model so we can add some interesting columns.
         proxyModel = FieldProxyModel()
@@ -225,21 +226,55 @@ class FieldTableView(QTableView):
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
+class RacerProxyModel(SqlSortFilterProxyModel):
+    def __init__(self):
+        super().__init__()
+        self.remote = None
+
+    def data(self, index, role):
+        if role == Qt.BackgroundRole:
+            row = self.mapToSource(index).row()
+
+            racer_table_model = self.sourceModel()
+
+            record = racer_table_model.record(row)
+
+            start = QTime.fromString(record.value(RacerTableModel.START))
+            finish = QTime.fromString(record.value(RacerTableModel.FINISH))
+
+            if not start.isValid():
+                return QBrush(Qt.red)
+
+            if finish.isValid():
+                if self.remote:
+                    if record.value(RacerTableModel.STATUS) == 'local':
+                        return QBrush(Qt.yellow)
+                    elif record.value(RacerTableModel.STATUS) == 'remote':
+                        return QBrush(Qt.green)
+                else:
+                    return QBrush(Qt.green)
+
+        return super().data(index, role)
+
+    def setRemote(self, remote):
+        self.remote = remote
+
+        # Make views repaint cell backgrounds to reflect remote.
+        self.sourceModel().dataChanged.emit(QModelIndex(), QModelIndex(), [Qt.BackgroundRole])
+
 class RacerTableView(QTableView):
     def __init__(self, modeldb, field_id=None, parent=None):
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
+        self.remote = None
 
         self.field_id = field_id
         model = self.modeldb.racer_table_model
 
-        if self.field_id:
-            self.setModel(QSortFilterProxyModel())
-            self.model().setSourceModel(model)
-            self.model().setFilterKeyColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
-        else:
-            self.setModel(model)
+        self.setModel(RacerProxyModel())
+        self.model().setSourceModel(model)
+        self.model().setFilterKeyColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
 
         self.updateFieldName()
 
@@ -260,13 +295,6 @@ class RacerTableView(QTableView):
         # set up for this race.
         self.hideColumn(model.fieldIndex(RacerTableModel.STATUS))
 
-    def setupProxyModel(self, field_id):
-        # Use a proxy model so we can add some interesting columns.
-        proxyModel = RacerInFieldFilterProxyModel(field_id)
-        proxyModel.setSourceModel(self.model())
-
-        self.setModel(proxyModel)
-
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
             self.close()
@@ -276,7 +304,7 @@ class RacerTableView(QTableView):
         super().keyPressEvent(event)
 
     def showEvent(self, event):
-        self.resize(700, 800)
+        self.resize(1000, 800)
 
     def hideEvent(self, event):
         self.visibleChanged.emit(False)
@@ -321,6 +349,15 @@ class RacerTableView(QTableView):
             self.model().setFilterRegExp(QRegExp(field_name, Qt.CaseSensitive, QRegExp.FixedString))
         else:
             self.setWindowTitle('Racers')
+
+    def setRemote(self, remote):
+        self.remote = remote
+        self.model().setRemote(remote)
+
+        if self.remote:
+            self.showColumn(self.model().fieldIndex(RacerTableModel.STATUS))
+        else:
+            self.hideColumn(self.model().fieldIndex(RacerTableModel.STATUS))
 
     # Signals.
     visibleChanged = pyqtSignal(bool)
