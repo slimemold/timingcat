@@ -6,7 +6,7 @@ from PyQt5.QtWidgets import *
 from common import *
 from racebuilder import *
 from raceview import *
-from remotes import OnTheDayRemote
+import remotes
 import reports
 
 INPUT_TEXT_POINT_SIZE = 32
@@ -251,7 +251,8 @@ class SexyThymeMainWindow(QMainWindow):
         self.setCentralWidget(StartCentralWidget())
 
         self.generate_reports_menu_action.setEnabled(False)
-        self.setup_remote_menu_action.setEnabled(False)
+        self.connect_remote_menu.setEnabled(False)
+        self.disconnect_remote_menu.setEnabled(False)
 
     def switchToMain(self, filename, new=False):
         # Clean up old central widget, which will clean up the model we gave it.
@@ -263,7 +264,8 @@ class SexyThymeMainWindow(QMainWindow):
         self.setCentralWidget(MainCentralWidget(model))
 
         self.generate_reports_menu_action.setEnabled(True)
-        self.setup_remote_menu_action.setEnabled(True)
+        self.connect_remote_menu.setEnabled(True)
+        self.disconnect_remote_menu.setEnabled(False)
 
     def setupMenuBar(self):
         # Make a parent-less menubar, so that Qt can use the top-level native
@@ -271,20 +273,35 @@ class SexyThymeMainWindow(QMainWindow):
         menuBar = QMenuBar()
         self.setMenuBar(menuBar)
 
+        # File menu.
         file_menu = self.menuBar().addMenu('&File');
         file_menu.addAction('New...', self.newFile, QKeySequence.New)
         file_menu.addAction('Open...', self.openFile, QKeySequence.Open)
         file_menu.addAction('Close', self.closeFile, QKeySequence.Close)
+
         file_menu.addSeparator()
+
         self.generate_reports_menu_action = file_menu.addAction('Generate reports', self.generateReports)
+
         file_menu.addSeparator()
+
         file_menu.addAction('Quit', self.close, QKeySequence.Quit)
 
+        # Config menu.
         config_menu = self.menuBar().addMenu('&Config')
         config_menu.addAction('Preferences', self.configPreferences, QKeySequence.Preferences)
         config_menu.addAction('Race Builder', self.configBuilder)
         config_menu.addAction('Import Bikereg csv...', self.importBikeregFile)
-        self.setup_remote_menu_action = config_menu.addAction('Remote Setup', self.configRemote)
+
+        config_menu.addSeparator()
+
+        self.connect_remote_menu = config_menu.addMenu('Connect Remote')
+        remote_class_list = remotes.get_remote_class_list()
+        for remote_class in remote_class_list:
+            receiver = lambda remote_class=remote_class: self.connectRemote(remote_class)
+            self.connect_remote_menu.addAction(remote_class.name, receiver)
+
+        self.disconnect_remote_menu = config_menu.addAction('Disconnect Remote', self.disconnectRemote)
 
     def keyPressEvent(self, event):
         if event.key() == Qt.Key_Escape:
@@ -447,10 +464,19 @@ class SexyThymeMainWindow(QMainWindow):
     def configBuilder(self):
         self.centralWidget().builder.show()
 
-    def configRemote(self):
-        dialog = RemotesWindow(self.centralWidget().modeldb, self)
-        dialog.setWindowModality(Qt.ApplicationModal)
-        dialog.show()
+    def connectRemote(self, remote_class):
+        self.remote = remote_class()
+        self.remote.connect()
+
+        self.connect_remote_menu.setEnabled(False)
+        self.disconnect_remote_menu.setEnabled(True)
+
+    def disconnectRemote(self):
+        self.remote.disconnect()
+        self.remote = None
+
+        self.connect_remote_menu.setEnabled(True)
+        self.disconnect_remote_menu.setEnabled(False)
 
     def shouldClose(self):
         # If there are unsubmitted results, give the user a chance to cancel
