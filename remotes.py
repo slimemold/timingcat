@@ -1,26 +1,31 @@
-import inspect
 import requests
-import sys
+
+class AuthError(Exception):
+    pass
 
 def get_remote_class_list():
-    clsmembers = inspect.getmembers(sys.modules[__name__], inspect.isclass)
+    remote_subclass_list = Remote.__subclasses__()
 
-    remote_classes = []
-    for class_name, class_type in [m for m in clsmembers if m[1].__module__ == 'remotes']:
-        if hasattr(class_type, 'name'):
-            remote_classes.append(class_type)
+    remote_class_list = []
 
-    return remote_classes
+    for remote_subclass in remote_subclass_list:
+        if hasattr(remote_subclass, 'name'):
+            remote_class_list.append(remote_subclass)
+
+    return remote_class_list
 
 class Remote():
-    def connect(self):
+    def __init__(self, race_table_model):
+        self.race_table_model = race_table_model
+
+    def connect(self, parent):
         pass
 
-    def disconnect(self):
+    def disconnect(self, parent):
         pass
 
     def submit_racer_update(self):
-        return NotImplemented
+        pass
 
 class SimulatedRemote(Remote):
     name = 'Simulated Remote'

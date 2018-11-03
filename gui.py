@@ -465,14 +465,17 @@ class SexyThymeMainWindow(QMainWindow):
         self.centralWidget().builder.show()
 
     def connectRemote(self, remote_class):
-        self.remote = remote_class()
-        self.remote.connect()
+        try:
+            self.remote = remote_class(self.centralWidget().modeldb.race_table_model)
+            self.remote.connect(self)
+        except AuthError as e:
+            QMessageBox.warning(self, 'Error', str(e))
 
         self.connect_remote_menu.setEnabled(False)
         self.disconnect_remote_menu.setEnabled(True)
 
     def disconnectRemote(self):
-        self.remote.disconnect()
+        self.remote.disconnect(self)
         self.remote = None
 
         self.connect_remote_menu.setEnabled(True)
