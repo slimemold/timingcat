@@ -1,12 +1,14 @@
 import csv
 import os
+from PyQt5.QtCore import *
 from PyQt5.QtGui import *
-from PyQt5.QtPrintSupport import *
 from PyQt5.QtWidgets import *
 from common import *
-from racebuilder import *
-from raceview import *
-import remotes
+from preferences import PreferencesWindow
+from racebuilder import Builder
+from racemodel import ModelDatabase
+from raceview import FieldTableView, RacerTableView, ResultTableView
+from remotes import get_remote_class_list, AuthError
 from reports import ReportsWindow
 
 INPUT_TEXT_POINT_SIZE = 32
@@ -177,20 +179,6 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
 
-class PreferencesWindow(QDialog):
-    def __init__(self, modeldb, parent=None):
-        super().__init__(parent=parent)
-
-        self.modeldb = modeldb
-
-        self.setWindowTitle('Preferences')
-
-class RemotesWindow(QDialog):
-    def __init__(self, modeldb, parent=None):
-        super().__init__(parent=parent)
-
-        self.setWindowTitle('Setup Remote')
-
 class SexyThymeMainWindow(QMainWindow):
     def __init__(self, filename=None, parent=None):
         super().__init__(parent=parent)
@@ -258,7 +246,7 @@ class SexyThymeMainWindow(QMainWindow):
         config_menu.addSeparator()
 
         self.connect_remote_menu = config_menu.addMenu('Connect Remote')
-        remote_class_list = remotes.get_remote_class_list()
+        remote_class_list = get_remote_class_list()
         for remote_class in remote_class_list:
             receiver = lambda remote_class=remote_class: self.connectRemote(remote_class)
             self.connect_remote_menu.addAction(remote_class.name, receiver)

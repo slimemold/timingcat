@@ -1,11 +1,9 @@
-import requests
+from PyQt5.QtWidgets import *
 
-class Remote():
-    def authenticate(self):
-        return NotImplemented
+class PreferencesWindow(QDialog):
+    def __init__(self, modeldb, parent=None):
+        super().__init__(parent=parent)
 
-    def submit_racer_update(self):
-        return NotImplemented
+        self.modeldb = modeldb
 
-class OnTheDayRemote(Remote):
-    pass
+        self.setWindowTitle('Preferences')
