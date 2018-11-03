@@ -1,6 +1,46 @@
 from PyQt5.QtGui import *
+from PyQt5.QtPrintSupport import *
+from PyQt5.QtWidgets import *
 from racemodel import *
 import re
+
+class ReportsWindow(QDialog):
+    def __init__(self, modeldb, parent=None):
+        super().__init__(parent=parent)
+
+        self.modeldb = modeldb
+
+        self.setWindowTitle('Generate Reports')
+
+        # Finish results by field.
+        self.field_finish_radiobutton = QRadioButton()
+        self.field_combobox = QComboBox()
+        self.field_combobox.setModel(self.modeldb.field_table_model)
+        self.field_combobox.setModelColumn(self.modeldb.field_table_model.fieldIndex(self.modeldb.field_table_model.NAME))
+
+        field_finish_groupbox = QGroupBox('Finish results by field')
+        field_finish_groupbox.setLayout(QHBoxLayout())
+        field_finish_groupbox.layout().addWidget(self.field_finish_radiobutton)
+        field_finish_groupbox.layout().addWidget(self.field_combobox)
+
+        self.field_finish_radiobutton.setChecked(True)
+
+        generateFinish = QPushButton('Generate Report')
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(field_finish_groupbox)
+        self.layout().addWidget(generateFinish)
+
+        generateFinish.clicked.connect(self.generateFinishReport)
+
+    def generateFinishReport(self):
+        document = generate_finish_report(self.modeldb, self.field_combobox.currentText())
+
+        printer = QPrinter()
+
+        print_dialog = QPrintDialog(printer, self)
+        if print_dialog.exec() == QDialog.Accepted:
+            document.print(printer)
 
 def time_delta(finish, start):
     if not start:
@@ -64,7 +104,7 @@ def generate_finish_report(modeldb, field_name):
             if not category or category == '':
                 category = '5'
 
-            if category not in cat_list:
+            if cat_list and (category not in cat_list):
                 continue
 
             bib = model.data(model.index(row, model.fieldIndex(RacerTableModel.BIB)))
