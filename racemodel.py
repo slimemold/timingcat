@@ -131,36 +131,13 @@ class RaceTableModel(TableModel):
 
     def addDefaults(self):
         if not self.getRaceProperty(self.NAME):
-            self.addRaceProperty(self.NAME, defaults.RACE_NAME)
+            self.setRaceProperty(self.NAME, defaults.RACE_NAME)
 
         if not self.getRaceProperty(self.DATE):
-            self.addRaceProperty(self.DATE, QDateTime.currentDateTime().date().toString())
+            self.setRaceProperty(self.DATE, QDateTime.currentDateTime().date().toString())
 
         if not self.getRaceProperty(self.NOTES):
-            self.addRaceProperty(self.NOTES, '')
-
-    def addRaceProperty(self, key, value):
-        record = self.record()
-        record.setGenerated(self.ID, False)
-        record.setValue(self.KEY, key)
-        record.setValue(self.VALUE, value)
-
-        if not self.insertRecord(-1, record):
-            raise DatabaseError(self.lastError().text())
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
-
-    def deleteRaceProperty(self, key):
-        index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
-                                Qt.DisplayRole, key, 1, Qt.MatchExactly)
-
-        if not index_list:
-            raise InputError('Failed to find race property with KEY %s' % key)
-
-        index = index_list[0]
-
-        if not self.removeRow(index.row()):
-            raise DatabaseError(self.lastError().text())
+            self.setRaceProperty(self.NOTES, '')
 
     def getRaceProperty(self, key):
         index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
@@ -178,10 +155,32 @@ class RaceTableModel(TableModel):
                                 Qt.DisplayRole, key, 1, Qt.MatchExactly)
 
         if not index_list:
-            raise InputError('Failed to find race property with KEY %s' % key)
+            record = self.record()
+            record.setGenerated(self.ID, False)
+            record.setValue(self.KEY, key)
+            record.setValue(self.VALUE, value)
+
+            if not self.insertRecord(-1, record):
+                raise DatabaseError(self.lastError().text())
+            if not self.select():
+                raise DatabaseError(self.lastError().text())
+
+            return
 
         index = index_list[0]
         self.setData(self.index(index.row(), self.fieldIndex(self.VALUE)), value)
+
+    def deleteRaceProperty(self, key):
+        index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
+                                Qt.DisplayRole, key, 1, Qt.MatchExactly)
+
+        if not index_list:
+            raise InputError('Failed to find race property with KEY %s' % key)
+
+        index = index_list[0]
+
+        if not self.removeRow(index.row()):
+            raise DatabaseError(self.lastError().text())
 
 class FieldTableModel(TableModel):
     TABLE = 'field'
