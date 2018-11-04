@@ -5,7 +5,6 @@ PyQt5
 requests
 
 ## TODO
-- Add result submit hook.
 - Implement OnTheDay.net result submit hook.
 
 ## Known Bugs
