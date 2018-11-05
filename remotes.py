@@ -1,11 +1,18 @@
+"""Remote Classes
+
+This module contains implementations for the optional remotes that can be used. A remote is a
+remote service on which we can push results (typically, racer finishes).
+"""
+
+from random import random
+import sys
 from PyQt5.QtCore import QObject, QTimer, Qt, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QWidget
 from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
-from random import random
-import requests
-import sys
+#import requests
 
 def enum(**enums):
+    """Simulate an enum."""
     return type('Enum', (), enums)
 
 Status = enum(
@@ -15,6 +22,10 @@ Status = enum(
 )
 
 def get_remote_class_list():
+    """Return a list of remote class types.
+
+    A remote class must be a descendant of class "Remote", and have the "name" attribute.
+    """
     remote_subclass_list = Remote.__subclasses__()
 
     remote_class_list = []
@@ -26,26 +37,44 @@ def get_remote_class_list():
     return remote_class_list
 
 def get_remote_class_from_string(class_string):
+    """Return the class type corresponding to the class name."""
     return getattr(sys.modules[__name__], class_string)
 
 class Remote(QObject):
+    """Parent class of all remotes."""
     last_status = Status.Ok
 
     def __init__(self, modeldb):
+        """Initialize the Remote instance."""
         super().__init__()
 
         self.modeldb = modeldb
 
     def connect(self, parent):
-        return self.setStatus(Status.Rejected)
+        """Connect to the remote. Return status of the connect operation.
+
+        This base class just succeeds this operation.
+        """
+        del parent
+        return self.setStatus(Status.Ok)
 
     def disconnect(self, parent):
+        """Disconnect from the remote."""
         pass
 
-    def submit_racer_update(self):
-        return self.setStatus(Status.Rejected)
+    def submit_racer_update(self, update_list):
+        """Submit a list of racer updates. Return status of the submit operation.
 
-    def setStatus(self, status):
+        This base class just succeeds this operation.
+        """
+        del update_list
+        return self.setStatus(Status.Ok)
+
+    def set_status(self, status):
+        """Set the last_status.
+
+        Emit the last_status_changed signal if the status is different from the last_status.
+        """
         if status != self.last_status:
             self.last_status = status
             self.last_status_changed.emit(self.last_status)
@@ -55,11 +84,18 @@ class Remote(QObject):
     last_status_changed = pyqtSignal(int)
 
 class SimulatedRemote(Remote):
+    """Simulates a remote by implementing submissions to nowhere, with a simulated failure rate."""
     name = 'Simulated Remote'
     failure_rate = 0.9
     interval_ms = 1000 # 1 second
 
     USERNAME = 'username'
+
+    def __init__(self, modeldb):
+        """Initialize the SimulatedRemote instance."""
+        super().__init__(modeldb)
+
+        self.remote_timer = None
 
     def connect(self, parent):
         dialog = QDialog(parent=parent)
@@ -92,7 +128,7 @@ class SimulatedRemote(Remote):
             username_lineedit.setFocus()
 
         if dialog.exec() == QDialog.Rejected:
-            return self.setStatus(Status.Rejected)
+            return self.set_status(Status.Rejected)
 
         username = username_lineedit.text()
         password = password_lineedit.text()
@@ -101,17 +137,17 @@ class SimulatedRemote(Remote):
             self.modeldb.race_table_model.delete_race_property(self.USERNAME)
 
             QMessageBox.warning(parent, 'Error', 'Username or password is incorrect.')
-            return self.setStatus(Status.Rejected)
+            return self.set_status(Status.Rejected)
 
         self.modeldb.race_table_model.set_race_property(self.USERNAME, username)
 
         # Start our update timer.
         self.remote_timer = QTimer(self)
-        self.remote_timer.timeout.connect(self.remoteUpdate)
+        self.remote_timer.timeout.connect(self.remote_update)
         self.remote_timer.start(self.interval_ms)
 
         QMessageBox.information(parent, 'Setup Complete', 'Simulated Remote set up successfully.')
-        return self.setStatus(Status.Ok)
+        return self.set_status(Status.Ok)
 
     def disconnect(self, parent):
         self.modeldb.race_table_model.delete_race_property(self.USERNAME)
@@ -123,8 +159,11 @@ class SimulatedRemote(Remote):
         QMessageBox.information(parent, 'Disconnected',
                                 'Simulated Remote disconnected successfully.')
 
-    # Expects a list of dictionaries each with "bib", "start", and "finish" keys.
     def submit_racer_update(self, update_list):
+        """Submit a list of racer updates.
+
+        Expects a list of dictionaries each with "bib", "start", and "finish" keys.
+        """
         if random() > self.failure_rate:
             self.submit_success(update_list)
             status = Status.Ok
@@ -132,22 +171,24 @@ class SimulatedRemote(Remote):
             self.submit_failure(update_list)
             status = Status.TimedOut
 
-        return self.setStatus(status)
+        return self.set_status(status)
 
     def submit_success(self, update_list):
+        """Print a diagnostic debug message showing submit success."""
         print('Submit SUCCESS:')
         for update in update_list:
             print('    bib = %s, start = %s, finish = %s' %
                   (update['bib'], update['start'], update['finish']))
 
     def submit_failure(self, update_list):
+        """Print a diagnostic debug message showing submit failure."""
         print('Submit FAILURE:')
         for update in update_list:
             print('    bib = %s, start = %s, finish = %s' %
                   (update['bib'], update['start'], update['finish']))
 
-    # Iterate through all racers and push local updates to remote.
-    def remoteUpdate(self):
+    def remote_update(self):
+        """Iterate through all racers and push local updates to remote."""
         racer_table_model = self.modeldb.racer_table_model
         racer_status_column = racer_table_model.fieldIndex(racer_table_model.STATUS)
 
@@ -180,4 +221,5 @@ class SimulatedRemote(Remote):
             racer_table_model.dataChanged.emit(index, index)
 
 class OnTheDayRemote(Remote):
+    """OnTheDay.net remote, to be implemented."""
     name = 'OnTheDay.net Remote'
