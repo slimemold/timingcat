@@ -66,7 +66,7 @@ def time_delta(finish, start):
         return QTime(hours, minutes, secs, msecs).toString('m:ss.zzz')
 
 def generate_finish_report(modeldb, field_name):
-    subfields = modeldb.field_table_model.getSubfields(field_name)
+    subfields = modeldb.field_table_model.get_subfields(field_name)
 
     subfield_list_by_cat = [None]
 
@@ -87,8 +87,8 @@ def generate_finish_report(modeldb, field_name):
     if not model.select():
         raise DatabaseError(model.lastError().text())
 
-    html = '<h1>%s</h1>' % modeldb.race_table_model.getRaceProperty(RaceTableModel.NAME)
-    html += '%s' % modeldb.race_table_model.getRaceProperty(RaceTableModel.DATE)
+    html = '<h1>%s</h1>' % modeldb.race_table_model.get_race_property(RaceTableModel.NAME)
+    html += '%s' % modeldb.race_table_model.get_race_property(RaceTableModel.DATE)
     html += '<h2>Results: %s</h2>' % field_name
 
     for cat_list in subfield_list_by_cat:

@@ -86,12 +86,12 @@ class ModelDatabase(QObject):
         self.db.close()
         QSqlDatabase.removeDatabase(self.filename)
 
-    def addDefaults(self):
+    def add_defaults(self):
         """Add default table entries."""
-        self.race_table_model.addDefaults()
-        self.field_table_model.addDefaults()
-        self.racer_table_model.addDefaults()
-        self.result_table_model.addDefaults()
+        self.race_table_model.add_defaults()
+        self.field_table_model.add_defaults()
+        self.racer_table_model.add_defaults()
+        self.result_table_model.add_defaults()
 
 class TableModel(QSqlRelationalTableModel):
     """Table Model baseclass
@@ -108,15 +108,15 @@ class TableModel(QSqlRelationalTableModel):
         self.column_flags_to_add = {}
         self.column_flags_to_remove = {}
 
-    def createTable(self, new):
+    def create_table(self, new):
         """Create the database table."""
         raise NotImplementedError
 
-    def addDefaults(self):
+    def add_defaults(self):
         """Add default table entries."""
         pass
 
-    def addColumnFlags(self, column, flags):
+    def add_column_flags(self, column, flags):
         """Add flags to specified column.
 
         This is used by the flags() method to modify the column flags that are returned.
@@ -125,7 +125,7 @@ class TableModel(QSqlRelationalTableModel):
             self.column_flags_to_add[column] = 0
         self.column_flags_to_add[column] |= int(flags)
 
-    def removeColumnFlags(self, column, flags):
+    def remove_column_flags(self, column, flags):
         """Remove flags from specified column.
 
         This is used by the flags() method to modify the column flags that are returned.
@@ -173,16 +173,16 @@ class RaceTableModel(TableModel):
         """Initialize the RaceTableModel instance."""
         super().__init__(modeldb)
 
-        self.createTable(new)
+        self.create_table(new)
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-        self.removeColumnFlags(0, Qt.ItemIsEditable | Qt.ItemIsSelectable)
+        self.remove_column_flags(0, Qt.ItemIsEditable | Qt.ItemIsSelectable)
 
-    def createTable(self, new):
+    def create_table(self, new):
         """Create the database table."""
         query = QSqlQuery(self.database())
 
@@ -195,18 +195,18 @@ class RaceTableModel(TableModel):
 
         query.finish()
 
-    def addDefaults(self):
+    def add_defaults(self):
         """Add default table entries."""
-        if not self.getRaceProperty(self.NAME):
-            self.setRaceProperty(self.NAME, defaults.RACE_NAME)
+        if not self.get_race_property(self.NAME):
+            self.set_race_property(self.NAME, defaults.RACE_NAME)
 
-        if not self.getRaceProperty(self.DATE):
-            self.setRaceProperty(self.DATE, QDateTime.currentDateTime().date().toString())
+        if not self.get_race_property(self.DATE):
+            self.set_race_property(self.DATE, QDateTime.currentDateTime().date().toString())
 
-        if not self.getRaceProperty(self.NOTES):
-            self.setRaceProperty(self.NOTES, '')
+        if not self.get_race_property(self.NOTES):
+            self.set_race_property(self.NOTES, '')
 
-    def getRaceProperty(self, key):
+    def get_race_property(self, key):
         """Get the value of the race property corresponding to the "key"."""
         index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
                                 Qt.DisplayRole, key, 1, Qt.MatchExactly)
@@ -218,7 +218,7 @@ class RaceTableModel(TableModel):
 
         return self.data(self.index(index.row(), self.fieldIndex(self.VALUE)))
 
-    def setRaceProperty(self, key, value):
+    def set_race_property(self, key, value):
         """Set/add a value corresponding to "key".
 
         Set the row corresponding to the given "key" to "value". If this row doesn't exist, add a
@@ -243,7 +243,7 @@ class RaceTableModel(TableModel):
         index = index_list[0]
         self.setData(self.index(index.row(), self.fieldIndex(self.VALUE)), value)
 
-    def deleteRaceProperty(self, key):
+    def delete_race_property(self, key):
         """Delete a key/value entry from the database."""
         index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
                                 Qt.DisplayRole, key, 1, Qt.MatchExactly)
@@ -271,7 +271,7 @@ class FieldTableModel(TableModel):
         """Initialize the FieldTableModel instance."""
         super().__init__(modeldb)
 
-        self.createTable(new)
+        self.create_table(new)
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
@@ -279,7 +279,7 @@ class FieldTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def createTable(self, new):
+    def create_table(self, new):
         """Create the database table."""
         query = QSqlQuery(self.database())
 
@@ -292,12 +292,12 @@ class FieldTableModel(TableModel):
 
         query.finish()
 
-    def addDefaults(self):
+    def add_defaults(self):
         """Add default table entries."""
         if self.rowCount() == 0:
-            self.addField(defaults.FIELD_NAME)
+            self.add_field(defaults.FIELD_NAME)
 
-    def nameFromId(self, field_id):
+    def name_from_id(self, field_id):
         """Get field name, from field ID."""
         index_list = self.match(self.index(0, self.fieldIndex(self.ID)),
                                 Qt.DisplayRole, field_id, 1, Qt.MatchExactly)
@@ -309,7 +309,7 @@ class FieldTableModel(TableModel):
 
         return self.data(self.index(index.row(), self.fieldIndex(self.NAME)))
 
-    def idFromName(self, name):
+    def id_from_name(self, name):
         """Get field ID, from field name."""
         index_list = self.match(self.index(0, self.fieldIndex(self.NAME)),
                                 Qt.DisplayRole, name, 1, Qt.MatchExactly)
@@ -321,7 +321,7 @@ class FieldTableModel(TableModel):
 
         return self.data(self.index(index.row(), self.fieldIndex(self.ID)))
 
-    def addField(self, name, subfields=None):
+    def add_field(self, name, subfields=None):
         """Add a row to the database table."""
         if name == '':
             raise InputError('Field name "%s" is invalid' % name)
@@ -336,7 +336,7 @@ class FieldTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def deleteField(self, name):
+    def delete_field(self, name):
         """Delete a row from the database table."""
         index_list = self.match(self.index(0, self.fieldIndex(self.NAME)),
                                 Qt.DisplayRole, name, 1, Qt.MatchExactly)
@@ -349,7 +349,7 @@ class FieldTableModel(TableModel):
         if not self.removeRow(index.row()):
             raise DatabaseError(self.lastError().text())
 
-    def getSubfields(self, name):
+    def get_subfields(self, name):
         """Get the value of the subfields column of the row specified by the field name.
 
         This subfield is used for generating reports for fields that race together but are picked
@@ -390,7 +390,7 @@ class RacerTableModel(TableModel):
         """Initialize the RacerTableModel instance."""
         super().__init__(modeldb)
 
-        self.createTable(new)
+        self.create_table(new)
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
@@ -414,7 +414,7 @@ class RacerTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def createTable(self, new):
+    def create_table(self, new):
         """Create the database table."""
         del new
 
@@ -437,7 +437,7 @@ class RacerTableModel(TableModel):
 
         query.finish()
 
-    def addRacer(self, bib, first_name, last_name, field, category, team, age,
+    def add_racer(self, bib, first_name, last_name, field, category, team, age,
                  start=QTime(), finish=QTime(), status='local'):
         """Add a row to the database table.
 
@@ -459,10 +459,10 @@ class RacerTableModel(TableModel):
 
         # See if the field exists in our Field table.  If not, we add a new
         # field.
-        field_id = self.modeldb.field_table_model.idFromName(field)
+        field_id = self.modeldb.field_table_model.id_from_name(field)
         if not field_id:
-            self.modeldb.field_table_model.addField(field)
-            field_id = self.modeldb.field_table_model.idFromName(field)
+            self.modeldb.field_table_model.add_field(field)
+            field_id = self.modeldb.field_table_model.id_from_name(field)
 
         if field_id is None:
             raise InputError('Racer field "%s" is invalid' % field)
@@ -496,7 +496,7 @@ class RacerTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def deleteRacer(self, bib):
+    def delete_racer(self, bib):
         """Delete a row from the database table."""
         index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
                                 Qt.DisplayRole, bib, 1, Qt.MatchExactly)
@@ -509,7 +509,7 @@ class RacerTableModel(TableModel):
         if not self.removeRow(index.row()):
             raise DatabaseError(self.lastError().text())
 
-    def setRacerStart(self, bib, start):
+    def set_racer_start(self, bib, start):
         """Set start time of the racer identified by "bib"."""
         index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
                                 Qt.DisplayRole, bib, 1, Qt.MatchExactly)
@@ -521,7 +521,7 @@ class RacerTableModel(TableModel):
         self.setData(index, start)
         self.dataChanged.emit(index, index)
 
-    def setRacerFinish(self, bib, finish):
+    def set_racer_finish(self, bib, finish):
         """Set finish time of the racer identified by "bib"."""
         index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
                                 Qt.DisplayRole, bib, 1, Qt.MatchExactly)
@@ -533,7 +533,7 @@ class RacerTableModel(TableModel):
         self.setData(index, finish)
         self.dataChanged.emit(index, index)
 
-    def assignStartTimes(self, field_name, start, interval, dry_run=False):
+    def assign_start_times(self, field_name, start, interval, dry_run=False):
         """Assign start times to racers.
 
         Start times can be for the entire racer table, or it can only apply to racers belonging
@@ -545,7 +545,7 @@ class RacerTableModel(TableModel):
         If dry_run is true, then no action is taken, but we still return the number of racers
         whose start times would have been overwritten.
         """
-        if field_name and not self.modeldb.field_table_model.idFromName(field_name):
+        if field_name and not self.modeldb.field_table_model.id_from_name(field_name):
             raise InputError('Invalid field "%s"' % field_name)
 
         if not isinstance(start, QTime):
@@ -576,11 +576,11 @@ class RacerTableModel(TableModel):
 
         return starts_overwritten
 
-    def racerCount(self):
+    def racer_count(self):
         """Return total racers in the table."""
         return self.rowCount()
 
-    def racerCountTotalInField(self, field_name):
+    def racer_count_total_in_field(self, field_name):
         """Return total racers in the table that belong to the specified field."""
         count = 0
 
@@ -592,7 +592,7 @@ class RacerTableModel(TableModel):
 
         return count
 
-    def racerCountFinishedInField(self, field_name):
+    def racer_count_finished_in_field(self, field_name):
         """Return total finished racers in the table that belong to the specified field."""
         count = 0
 
@@ -623,7 +623,7 @@ class ResultTableModel(TableModel):
         """Initialize the ResultTableModel instance."""
         super().__init__(modeldb)
 
-        self.createTable(new)
+        self.create_table(new)
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
@@ -634,7 +634,7 @@ class ResultTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def createTable(self, new):
+    def create_table(self, new):
         """Create the database table."""
         del new
 
@@ -649,7 +649,7 @@ class ResultTableModel(TableModel):
 
         query.finish()
 
-    def addResult(self, scratchpad, finish):
+    def add_result(self, scratchpad, finish):
         """Add a row to the database table."""
         record = self.record()
         record.setGenerated(self.ID, False)
@@ -661,11 +661,11 @@ class ResultTableModel(TableModel):
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def submitResult(self, row):
+    def submit_result(self, row):
         """Submit a result to the racer table model, and remove from results table model."""
         record = self.record(row)
         bib = record.value(self.SCRATCHPAD)
         finish = record.value(self.FINISH)
 
-        self.modeldb.racer_table_model.setRacerFinish(bib, finish)
+        self.modeldb.racer_table_model.set_racer_finish(bib, finish)
         self.removeRow(row)

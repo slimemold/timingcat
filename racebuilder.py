@@ -60,7 +60,7 @@ class RacerSetup(QWidget):
         self.layout().addWidget(self.confirm_button)
 
         # Signals/slots plumbing.
-        self.confirm_button.clicked.connect(self.handleAddRacer)
+        self.confirm_button.clicked.connect(self.handle_add_racer)
 
     def reset(self):
         """Clear the input widgets."""
@@ -68,15 +68,15 @@ class RacerSetup(QWidget):
         self.name_lineedit.setText('')
         self.team_lineedit.setText('')
 
-    def handleAddRacer(self):
+    def handle_add_racer(self):
         """Add the racer, given the information contained in the input widgets."""
         racer_table_model = self.modeldb.racer_table_model
 
         try:
-            racer_table_model.addRacer(self.bib_lineedit.text(),
-                                       self.name_lineedit.text(),
-                                       self.team_lineedit.text(),
-                                       self.field_combobox.currentText())
+            racer_table_model.add_racer(self.bib_lineedit.text(),
+                                        self.name_lineedit.text(),
+                                        self.team_lineedit.text(),
+                                        self.field_combobox.currentText())
             self.reset()
 
         except InputError as e:
@@ -171,13 +171,13 @@ class StartTimeSetup(QWidget):
         self.layout().addWidget(self.confirm_button)
 
         # Signals/slots plumbing.
-        self.confirm_button.clicked.connect(self.handleAssignStartTimes)
+        self.confirm_button.clicked.connect(self.handle_assign_start_times)
         self.selected_field_radiobutton.toggled.connect(self.selected_field_combobox.setEnabled)
         self.start_time_specified_radiobutton.toggled.connect(self.start_time_timeedit.setEnabled)
         self.interval_start_time_radiobutton.toggled.connect(self.interval_lineedit_group
                                                              .setEnabled)
 
-    def handleAssignStartTimes(self):
+    def handle_assign_start_times(self):
         """Assign the start times, given the contents of the various input widgets."""
         racer_table_model = self.modeldb.racer_table_model
 
@@ -201,13 +201,13 @@ class StartTimeSetup(QWidget):
         try:
             # If we're potentially going to be overwriting existing start times,
             # warn before committing.
-            starts_overwritten = racer_table_model.assignStartTimes(field, start_time, interval,
-                                                                    True)
+            starts_overwritten = racer_table_model.assign_start_times(field, start_time, interval,
+                                                                      True)
             if starts_overwritten > 0:
                 QMessageBox.question(self, 'Question',
                                      'About to overwrite %s existing ' % starts_overwritten +
                                      'start times. Proceed anyway?')
-            racer_table_model.assignStartTimes(field, start_time, interval)
+            racer_table_model.assign_start_times(field, start_time, interval)
         except InputError as e:
             QMessageBox.warning(self, 'Error', str(e))
 
@@ -262,18 +262,18 @@ class FieldSetup(QWidget):
         self.layout().addWidget(self.confirm_button)
 
         # Signals/slots plumbing.
-        self.confirm_button.clicked.connect(self.handleAddField)
+        self.confirm_button.clicked.connect(self.handle_add_field)
 
     def reset(self):
         """Clear the input widgets."""
         self.name_lineedit.setText('')
 
-    def handleAddField(self):
+    def handle_add_field(self):
         """Add a new field."""
         field_table_model = self.modeldb.field_table_model
 
         try:
-            field_table_model.addField(self.name_lineedit.text())
+            field_table_model.add_field(self.name_lineedit.text())
             self.reset()
 
         except InputError as e:
@@ -319,10 +319,10 @@ class RaceInfo(QWidget):
 
         # Signals/slots plumbing.
         race_table_model.dataChanged.connect(self.dataChanged)
-        self.name_lineedit.editingFinished.connect(self.nameEditingFinished)
-        self.date_dateedit.editingFinished.connect(self.dateEditingFinished)
-        self.date_selection_button.clicked.connect(self.dateSelectionStart)
-        self.calendar.clicked.connect(self.dateSelectionFinished)
+        self.name_lineedit.editingFinished.connect(self.name_editing_finished)
+        self.date_dateedit.editingFinished.connect(self.date_editing_finished)
+        self.date_selection_button.clicked.connect(self.date_selection_start)
+        self.calendar.clicked.connect(self.date_selection_finished)
 
     def dataChanged(self, top_left, bottom_right, roles):
         """Respond to a RaceTableModel data change by updating input widgets with current values."""
@@ -330,8 +330,8 @@ class RaceInfo(QWidget):
 
         race_table_model = self.modeldb.race_table_model
 
-        self.name_lineedit.setText(race_table_model.getRaceProperty(RaceTableModel.NAME))
-        date_string = race_table_model.getRaceProperty(RaceTableModel.DATE)
+        self.name_lineedit.setText(race_table_model.get_race_property(RaceTableModel.NAME))
+        date_string = race_table_model.get_race_property(RaceTableModel.DATE)
         self.date_dateedit.setDate(QDate.fromString(date_string))
 
         # The QPlainTextEdit really wants a QPlainTextDocumentLayout as its
@@ -339,29 +339,29 @@ class RaceInfo(QWidget):
         # has a QAbstractTextDocumentLayout, which seems to work, but makes
         # QPlainTextEdit emit a warning. How a supposed abstract class actually
         # got instantiated is a mystery to me.
-        document = QTextDocument(race_table_model.getRaceProperty(RaceTableModel.NOTES))
+        document = QTextDocument(race_table_model.get_race_property(RaceTableModel.NOTES))
         document.setDocumentLayout(QPlainTextDocumentLayout(document))
         self.notes_plaintextedit.setDocument(document)
 
-    def nameEditingFinished(self):
+    def name_editing_finished(self):
         """Commit race name edit to the model."""
         race_table_model = self.modeldb.race_table_model
-        race_table_model.setRaceProperty(RaceTableModel.NAME, self.name_lineedit.text())
+        race_table_model.set_race_property(RaceTableModel.NAME, self.name_lineedit.text())
 
-    def dateEditingFinished(self):
+    def date_editing_finished(self):
         """Commit race date edit to the model."""
         race_table_model = self.modeldb.race_table_model
-        race_table_model.setRaceProperty(RaceTableModel.DATE, self.date_dateedit.text())
+        race_table_model.set_race_property(RaceTableModel.DATE, self.date_dateedit.text())
 
-    def dateSelectionStart(self):
+    def date_selection_start(self):
         """Show the calendar date selection widget."""
         self.calendar.show()
 
-    def dateSelectionFinished(self, date):
+    def date_selection_finished(self, date):
         """Commit the calendar date selection to the model."""
         self.calendar.hide()
         self.date_dateedit.setDate(date)
-        self.dateEditingFinished()
+        self.date_editing_finished()
 
     def hideEvent(self, event):
         """Commit the race notes to the model.
@@ -373,7 +373,7 @@ class RaceInfo(QWidget):
         us to update, which results in firing off another textChanged...
         """
         race_table_model = self.modeldb.race_table_model
-        race_table_model.setRaceProperty(RaceTableModel.NOTES,
+        race_table_model.set_race_property(RaceTableModel.NOTES,
                                          self.notes_plaintextedit.document().toPlainText())
 
         super().hideEvent(event)

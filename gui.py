@@ -174,7 +174,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.updateSubmitButton()
 
     def newResult(self):
-        self.modeldb.result_table_model.addResult(
+        self.modeldb.result_table_model.add_result(
                                self.result_input.text(), QTime.currentTime())
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
@@ -221,7 +221,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.generate_reports_menu_action.setEnabled(True)
 
-        remote_class_string = model.race_table_model.getRaceProperty(RaceTableModel.REMOTE_CLASS)
+        remote_class_string = model.race_table_model.get_race_property(RaceTableModel.REMOTE_CLASS)
         if remote_class_string:
             self.connectRemote(remotes.get_remote_class_from_string(remote_class_string))
         else:
@@ -295,7 +295,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         filename = dialog.selectedFiles()[0]
         self.switchToMain(filename, True)
-        self.centralWidget().modeldb.addDefaults()
+        self.centralWidget().modeldb.add_defaults()
 
         return filename
 
@@ -312,7 +312,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         filename = dialog.selectedFiles()[0]
         self.switchToMain(filename, False)
-        self.centralWidget().modeldb.addDefaults()
+        self.centralWidget().modeldb.add_defaults()
 
         return filename
 
@@ -409,7 +409,7 @@ class SexyThymeMainWindow(QMainWindow):
 
                 racer_table_model.addRacer(bib, first_name,last_name, field, category, team, age)
 
-        self.centralWidget().modeldb.addDefaults()
+        self.centralWidget().modeldb.add_defaults()
 
     def generateReports(self):
         dialog = ReportsWindow(self.centralWidget().modeldb, self)
@@ -441,14 +441,14 @@ class SexyThymeMainWindow(QMainWindow):
         race_table_model = self.centralWidget().modeldb.race_table_model
 
         if remote:
-            race_table_model.setRaceProperty(RaceTableModel.REMOTE_CLASS, type(remote).__name__)
+            race_table_model.set_race_property(RaceTableModel.REMOTE_CLASS, type(remote).__name__)
             self.connect_remote_menu.setEnabled(False)
             self.disconnect_remote_menu.setEnabled(True)
             self.setStatusBar(QStatusBar())
             remote.last_status_changed.connect(self.remoteStatusChanged)
             self.remoteStatusChanged(remote.last_status)
         else:
-            race_table_model.deleteRaceProperty(RaceTableModel.REMOTE_CLASS)
+            race_table_model.delete_race_property(RaceTableModel.REMOTE_CLASS)
             self.connect_remote_menu.setEnabled(True)
             self.disconnect_remote_menu.setEnabled(False)
             if self.remote:

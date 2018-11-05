@@ -1,5 +1,6 @@
-from PyQt5.QtCore import *
-from PyQt5.QtWidgets import *
+from PyQt5.QtCore import QObject, QTimer, Qt, pyqtSignal
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QWidget
+from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
 from random import random
 import requests
 import sys
@@ -8,9 +9,9 @@ def enum(**enums):
     return type('Enum', (), enums)
 
 Status = enum(
-    Ok = 0,
-    Rejected = 1,
-    TimedOut = 2,
+    Ok=0,
+    Rejected=1,
+    TimedOut=2,
 )
 
 def get_remote_class_list():
@@ -65,7 +66,7 @@ class SimulatedRemote(Remote):
         dialog.setWindowModality(Qt.ApplicationModal)
 
         username_lineedit = QLineEdit()
-        username = self.modeldb.race_table_model.getRaceProperty(self.USERNAME)
+        username = self.modeldb.race_table_model.get_race_property(self.USERNAME)
         if username:
             username_lineedit.setText(username)
 
@@ -77,7 +78,7 @@ class SimulatedRemote(Remote):
         form_widget.layout().addRow('Username', username_lineedit)
         form_widget.layout().addRow('Password', password_lineedit)
 
-        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel);
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
         button_box.accepted.connect(dialog.accept)
         button_box.rejected.connect(dialog.reject)
 
@@ -97,12 +98,12 @@ class SimulatedRemote(Remote):
         password = password_lineedit.text()
 
         if username != 'simulated' or password != 'remote':
-            self.modeldb.race_table_model.deleteRaceProperty(self.USERNAME)
+            self.modeldb.race_table_model.delete_race_property(self.USERNAME)
 
             QMessageBox.warning(parent, 'Error', 'Username or password is incorrect.')
             return self.setStatus(Status.Rejected)
 
-        self.modeldb.race_table_model.setRaceProperty(self.USERNAME, username)
+        self.modeldb.race_table_model.set_race_property(self.USERNAME, username)
 
         # Start our update timer.
         self.remote_timer = QTimer(self)
@@ -113,22 +114,25 @@ class SimulatedRemote(Remote):
         return self.setStatus(Status.Ok)
 
     def disconnect(self, parent):
-        self.modeldb.race_table_model.deleteRaceProperty(self.USERNAME)
+        self.modeldb.race_table_model.delete_race_property(self.USERNAME)
 
         # Stop update timer.
         self.remote_timer.stop()
         self.remote_timer = None
 
-        QMessageBox.information(parent, 'Disconnected', 'Simulated Remote disconnected successfully.')
+        QMessageBox.information(parent, 'Disconnected',
+                                'Simulated Remote disconnected successfully.')
 
     # Expects a list of dictionaries each with "bib", "start", and "finish" keys.
     def submit_racer_update(self, update_list):
         if random() > self.failure_rate:
             self.submit_success(update_list)
-            return self.setStatus(Status.Ok)
+            status = Status.Ok
         else:
             self.submit_failure(update_list)
-            return self.setStatus(Status.TimedOut)
+            status = Status.TimedOut
+
+        return self.setStatus(status)
 
     def submit_success(self, update_list):
         print('Submit SUCCESS:')
@@ -145,6 +149,8 @@ class SimulatedRemote(Remote):
     # Iterate through all racers and push local updates to remote.
     def remoteUpdate(self):
         racer_table_model = self.modeldb.racer_table_model
+        racer_status_column = racer_table_model.fieldIndex(racer_table_model.STATUS)
+
         submit_list = []
 
         # First, gather the list of updates and try pushing to remote.
@@ -169,7 +175,7 @@ class SimulatedRemote(Remote):
             return
 
         for racer_update in submit_list:
-            index = racer_table_model.index(racer_update['row'], racer_table_model.fieldIndex(racer_table_model.STATUS))
+            index = racer_table_model.index(racer_update['row'], racer_status_column)
             racer_table_model.setData(index, 'remote')
             racer_table_model.dataChanged.emit(index, index)
 

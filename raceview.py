@@ -26,8 +26,8 @@ class FieldProxyModel(SqlExtraColumnsProxyModel):
 
             field_name = field_table_model.record(row).value(FieldTableModel.NAME)
 
-            total = racer_table_model.racerCountTotalInField(field_name)
-            finished = racer_table_model.racerCountFinishedInField(field_name)
+            total = racer_table_model.racer_count_total_in_field(field_name)
+            finished = racer_table_model.racer_count_finished_in_field(field_name)
 
             if extraColumn == self.FINISHED_SECTION:
                 return finished
@@ -52,8 +52,8 @@ class FieldProxyModel(SqlExtraColumnsProxyModel):
 
             field_name = field_table_model.record(row).value(FieldTableModel.NAME)
 
-            total = racer_table_model.racerCountTotalInField(field_name)
-            finished = racer_table_model.racerCountFinishedInField(field_name)
+            total = racer_table_model.racer_count_total_in_field(field_name)
+            finished = racer_table_model.racer_count_finished_in_field(field_name)
 
             if total != 0:
                 if finished == total:
@@ -133,7 +133,7 @@ class FieldTableView(QTableView):
             field_record = field_table_model.record(selection.row())
             field_id = field_record.value(FieldTableModel.ID)
 
-            racer_count += racer_table_model.racerCountTotalInField(field_id)
+            racer_count += racer_table_model.racer_count_total_in_field(field_id)
 
         # Confirm deletion.
         msg_box = QMessageBox()
@@ -345,7 +345,7 @@ class RacerTableView(QTableView):
 
     def updateFieldName(self):
         if self.field_id:
-            field_name = self.modeldb.field_table_model.nameFromId(self.field_id)
+            field_name = self.modeldb.field_table_model.name_from_id(self.field_id)
             self.setWindowTitle('Racers (%s)' % field_name)
             self.model().setFilterRegExp(QRegExp(field_name, Qt.CaseSensitive, QRegExp.FixedString))
         else:
@@ -435,7 +435,7 @@ class ResultTableView(QTableView):
                 record = model.record(selection.row())
                 scratchpad = record.value(ResultTableModel.SCRATCHPAD)
                 if scratchpad.isdigit():
-                    model.submitResult(selection.row())
+                    model.submit_result(selection.row())
             except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))
 
