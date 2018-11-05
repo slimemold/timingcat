@@ -1,9 +1,10 @@
-from PyQt5.QtGui import *
+from PyQt5.QtCore import QItemSelection, QModelIndex, QRegExp, QTime, Qt, pyqtSignal
+from PyQt5.QtGui import QBrush
 from PyQt5.QtSql import QSqlRelationalDelegate
-from PyQt5.QtWidgets import *
-from common import *
-from proxymodels import *
-from racemodel import *
+from PyQt5.QtWidgets import QMessageBox, QTableView
+from common import APPLICATION_NAME, pluralize, pretty_list
+from proxymodels import SqlExtraColumnsProxyModel, SqlSortFilterProxyModel
+from racemodel import DatabaseError, InputError, RacerTableModel, FieldTableModel, ResultTableModel
 
 # Add a "Finished" column for total racers that have a finish time, and a
 # "Total" column to show total racers in that field.

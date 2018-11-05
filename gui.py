@@ -1,12 +1,14 @@
 import csv
 import os
-from PyQt5.QtCore import *
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from common import *
+from PyQt5.QtCore import QObject, QRegExp, QTime, Qt
+from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
+from PyQt5.QtWidgets import QLabel, QLineEdit, QMenuBar, QPushButton, QStatusBar, QWidget
+from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QMessageBox
+from common import APPLICATION_NAME, pluralize, pretty_list
 from preferences import PreferencesWindow
 from racebuilder import Builder
-from racemodel import ModelDatabase, RaceTableModel, FieldTableModel, RacerTableModel
+from racemodel import DatabaseError, ModelDatabase, RaceTableModel, FieldTableModel, RacerTableModel
 from raceview import FieldTableView, RacerTableView, ResultTableView
 import remotes
 from reports import ReportsWindow
@@ -234,7 +236,7 @@ class SexyThymeMainWindow(QMainWindow):
         self.setMenuBar(menuBar)
 
         # File menu.
-        file_menu = self.menuBar().addMenu('&File');
+        file_menu = self.menuBar().addMenu('&File')
         file_menu.addAction('New...', self.newFile, QKeySequence.New)
         file_menu.addAction('Open...', self.openFile, QKeySequence.Open)
         file_menu.addAction('Close', self.closeFile, QKeySequence.Close)
@@ -407,7 +409,7 @@ class SexyThymeMainWindow(QMainWindow):
 
                 racer_table_model = self.centralWidget().modeldb.racer_table_model
 
-                racer_table_model.addRacer(bib, first_name,last_name, field, category, team, age)
+                racer_table_model.addRacer(bib, first_name, last_name, field, category, team, age)
 
         self.centralWidget().modeldb.add_defaults()
 

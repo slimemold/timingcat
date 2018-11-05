@@ -1,4 +1,6 @@
-from PyQt5.QtCore import *
+from PyQt5.QtCore import QModelIndex, QRegExp, Qt, pyqtSignal
+from PyQt5.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
+from PyQt5.QtCore import QIdentityProxyModel, QSortFilterProxyModel
 
 class ExtraColumnsProxyModel(QIdentityProxyModel):
     def __init__(self, parent=None):
@@ -66,7 +68,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
 
             range = QItemSelectionRange(self.mapToSource(top_left), self.mapToSource(bottom_right))
             new_selection = []
-            new_selectiom.append(range)
+            new_selection.append(range)
             source_selection.merge(new_selection, QItemSelectionModel.Select)
 
         return source_selection
@@ -180,7 +182,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
         if not source_parent.isValid():
             return QModelIndex()
 
-        return createIndex(sourceParent.row(), 0, sourceParent.internalPointer())
+        return self.createIndex(source_parent.row(), 0, source_parent.internalPointer())
 
     def headerData(self, section, orientation, role):
         if orientation == Qt.Horizontal:
