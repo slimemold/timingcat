@@ -1,23 +1,47 @@
-from PyQt5.QtGui import *
-from PyQt5.QtWidgets import *
-from common import *
+"""RaceBuilder Qt Classes
+
+This module implements Qt Widgets that have to do with setting up a race, or
+adding and configuring components of a race, such as racers and fields.
+"""
+
+from PyQt5.QtCore import QDate, QModelIndex, QRegExp, QTime, Qt
+from PyQt5.QtGui import QRegExpValidator, QTextDocument
+from PyQt5.QtWidgets import QComboBox, QLabel, QLineEdit, QPlainTextEdit, \
+                            QPushButton, QRadioButton, QWidget
+from PyQt5.QtWidgets import QCalendarWidget, QDateEdit, QTimeEdit
+from PyQt5.QtWidgets import QFormLayout, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QButtonGroup, QGroupBox, QTabWidget
+from PyQt5.QtWidgets import QCompleter, QMessageBox, QPlainTextDocumentLayout
+
 import defaults
-from racemodel import *
+from racemodel import RaceTableModel, FieldTableModel, RacerTableModel, InputError
 
 class RacerSetup(QWidget):
+    """Racer Setup
+
+    This widget allows the user to add racers.
+    """
+
     def __init__(self, modeldb, parent=None):
+        """Initialize the RacerSetup instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
 
+        racer_table_model = self.modeldb.racer_table_model
+        racer_team_column = racer_table_model.fieldIndex(RacerTableModel.TEAM)
+
+        field_table_model = self.modeldb.field_table_model
+        field_name_column = field_table_model.fieldIndex(FieldTableModel.NAME)
+
         # Racer Information form.
         self.name_lineedit = QLineEdit()
         self.team_lineedit = QLineEdit()
-        self.team_lineedit.setCompleter(QCompleter(self.modeldb.racer_table_model))
-        self.team_lineedit.completer().setCompletionColumn(self.modeldb.racer_table_model.fieldIndex(RacerTableModel.TEAM))
+        self.team_lineedit.setCompleter(QCompleter(racer_table_model))
+        self.team_lineedit.completer().setCompletionColumn(racer_team_column)
         self.field_combobox = QComboBox()
-        self.field_combobox.setModel(self.modeldb.field_table_model)
-        self.field_combobox.setModelColumn(self.modeldb.field_table_model.fieldIndex(FieldTableModel.NAME))
+        self.field_combobox.setModel(field_table_model)
+        self.field_combobox.setModelColumn(field_name_column)
         self.bib_lineedit = QLineEdit()
         self.bib_lineedit.setValidator(QRegExpValidator(QRegExp('[0-9]+')))
 
@@ -39,26 +63,41 @@ class RacerSetup(QWidget):
         self.confirm_button.clicked.connect(self.handleAddRacer)
 
     def reset(self):
+        """Clear the input widgets."""
         self.bib_lineedit.setText('')
         self.name_lineedit.setText('')
         self.team_lineedit.setText('')
 
     def handleAddRacer(self):
+        """Add the racer, given the information contained in the input widgets."""
+        racer_table_model = self.modeldb.racer_table_model
+
         try:
-            self.modeldb.racer_table_model.addRacer(self.bib_lineedit.text(),
-                                                    self.name_lineedit.text(),
-                                                    self.team_lineedit.text(),
-                                                    self.field_combobox.currentText())
+            racer_table_model.addRacer(self.bib_lineedit.text(),
+                                       self.name_lineedit.text(),
+                                       self.team_lineedit.text(),
+                                       self.field_combobox.currentText())
             self.reset()
 
         except InputError as e:
             QMessageBox.warning(self, 'Error', str(e))
 
 class StartTimeSetup(QWidget):
+    """Start Time Setup
+
+    This widget allows the user to set up start times. Start times can be the same for the entire
+    race, or it can be the same for a particular field. Or, the start times can be assigned
+    at a set interval.
+    """
+
     def __init__(self, modeldb, parent=None):
+        """Initialize the StartTimeSetup instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
+
+        field_table_model = self.modeldb.field_table_model
+        field_name_column = field_table_model.fieldIndex(self.modeldb.field_table_model.NAME)
 
         # Scope selection (whole race vs a field).
         self.field_selection_widget = QGroupBox('Set up start times for:')
@@ -71,8 +110,8 @@ class StartTimeSetup(QWidget):
         self.scope_button_group.addButton(self.selected_field_radiobutton)
 
         self.selected_field_combobox = QComboBox()
-        self.selected_field_combobox.setModel(self.modeldb.field_table_model)
-        self.selected_field_combobox.setModelColumn(self.modeldb.field_table_model.fieldIndex(self.modeldb.field_table_model.NAME))
+        self.selected_field_combobox.setModel(field_table_model)
+        self.selected_field_combobox.setModelColumn(field_name_column)
         self.selected_field_combobox.setEnabled(False)
 
         self.field_selection_widget.setLayout(QHBoxLayout())
@@ -110,6 +149,7 @@ class StartTimeSetup(QWidget):
 
         self.interval_lineedit = QLineEdit()
         self.interval_lineedit.setText(str(defaults.START_TIME_INTERVAL_SECS))
+        self.interval_lineedit.setValidator(QRegExpValidator(QRegExp('[0-9]+')))
         self.interval_lineedit_group = QWidget()
         self.interval_lineedit_group.setLayout(QHBoxLayout())
         self.interval_lineedit_group.layout().addWidget(self.interval_lineedit)
@@ -134,12 +174,16 @@ class StartTimeSetup(QWidget):
         self.confirm_button.clicked.connect(self.handleAssignStartTimes)
         self.selected_field_radiobutton.toggled.connect(self.selected_field_combobox.setEnabled)
         self.start_time_specified_radiobutton.toggled.connect(self.start_time_timeedit.setEnabled)
-        self.interval_start_time_radiobutton.toggled.connect(self.interval_lineedit_group.setEnabled)
+        self.interval_start_time_radiobutton.toggled.connect(self.interval_lineedit_group
+                                                             .setEnabled)
 
     def handleAssignStartTimes(self):
+        """Assign the start times, given the contents of the various input widgets."""
+        racer_table_model = self.modeldb.racer_table_model
+
         # Validate inputs.
         if not self.interval_lineedit.text().isdigit:
-            raise
+            raise Exception('Invalid interval')
 
         field = None
         if self.selected_field_radiobutton.isChecked():
@@ -157,10 +201,13 @@ class StartTimeSetup(QWidget):
         try:
             # If we're potentially going to be overwriting existing start times,
             # warn before committing.
-            starts_overwritten = self.modeldb.racer_table_model.assignStartTimes(field, start_time, interval, True)
+            starts_overwritten = racer_table_model.assignStartTimes(field, start_time, interval,
+                                                                    True)
             if starts_overwritten > 0:
-                QMessageBox.question(self, 'Question', 'About to overwrite %s existing start times. Proceed anyway?' % starts_overwritten)
-            self.modeldb.racer_table_model.assignStartTimes(field, start_time, interval)
+                QMessageBox.question(self, 'Question',
+                                     'About to overwrite %s existing ' % starts_overwritten +
+                                     'start times. Proceed anyway?')
+            racer_table_model.assignStartTimes(field, start_time, interval)
         except InputError as e:
             QMessageBox.warning(self, 'Error', str(e))
 
@@ -177,6 +224,11 @@ class StartTimeSetup(QWidget):
         QMessageBox.information(self, 'Success', success_message)
 
     def showEvent(self, event):
+        """Set up input widgets when this widget is shown.
+
+        Basically, this amounts to populating the start time edit box with the current time, plus
+        some time ahead, rounded to the nearest 5 minutes.
+        """
         now = QTime.currentTime().addSecs(defaults.START_TIME_FROM_NOW_SECS)
         now.setHMS(now.hour(), now.minute() + 5 - now.minute()%5, 0, 0)
         self.start_time_timeedit.setTime(now)
@@ -184,7 +236,13 @@ class StartTimeSetup(QWidget):
         super().showEvent(event)
 
 class FieldSetup(QWidget):
+    """Field Setup
+
+    This widget allows the user to add a new field to the race.
+    """
+
     def __init__(self, modeldb, parent=None):
+        """Initialize the FieldSetup instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
@@ -207,27 +265,39 @@ class FieldSetup(QWidget):
         self.confirm_button.clicked.connect(self.handleAddField)
 
     def reset(self):
+        """Clear the input widgets."""
         self.name_lineedit.setText('')
 
     def handleAddField(self):
+        """Add a new field."""
+        field_table_model = self.modeldb.field_table_model
+
         try:
-            self.modeldb.field_table_model.addField(self.name_lineedit.text())
+            field_table_model.addField(self.name_lineedit.text())
             self.reset()
 
         except InputError as e:
             QMessageBox.warning(self, 'Error', str(e))
 
 class RaceInfo(QWidget):
+    """Race Info Setup
+
+    This widget allows the user to name the race, and jot down various notes about the race.
+    """
+
     def __init__(self, modeldb, parent=None):
+        """Initialize the RaceInfo instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
+
+        race_table_model = self.modeldb.race_table_model
 
         self.name_lineedit = QLineEdit()
         self.date_dateedit = QDateEdit()
         self.notes_plaintextedit = QPlainTextEdit()
         self.notes_plaintextedit.setPlaceholderText(defaults.RACE_NOTES_PLACEHOLDER_TEXT)
-        self.dataChanged()
+        self.dataChanged(QModelIndex(), QModelIndex(), [])
 
         self.date_selection_widget = QWidget()
         self.date_selection_widget.setLayout(QHBoxLayout())
@@ -243,55 +313,79 @@ class RaceInfo(QWidget):
         self.setLayout(QFormLayout())
         self.layout().addRow('Race Name', self.name_lineedit)
         self.layout().addRow('Race Date', self.date_selection_widget)
-        self.layout().itemAt(self.layout().rowCount()-1, QFormLayout.LabelRole).setAlignment(Qt.AlignCenter)
+        self.layout().itemAt(self.layout().rowCount() - 1,
+                             QFormLayout.LabelRole).setAlignment(Qt.AlignCenter)
         self.layout().addRow('Notes', self.notes_plaintextedit)
 
         # Signals/slots plumbing.
-        self.modeldb.race_table_model.dataChanged.connect(self.dataChanged)
+        race_table_model.dataChanged.connect(self.dataChanged)
         self.name_lineedit.editingFinished.connect(self.nameEditingFinished)
         self.date_dateedit.editingFinished.connect(self.dateEditingFinished)
         self.date_selection_button.clicked.connect(self.dateSelectionStart)
         self.calendar.clicked.connect(self.dateSelectionFinished)
 
-    def dataChanged(self, top_left=QModelIndex(), bottom_right=QModelIndex(), rolesi=[]):
-        self.name_lineedit.setText(self.modeldb.race_table_model.getRaceProperty(RaceTableModel.NAME))
-        self.date_dateedit.setDate(QDate.fromString(self.modeldb.race_table_model.getRaceProperty(RaceTableModel.DATE)))
+    def dataChanged(self, top_left, bottom_right, roles):
+        """Respond to a RaceTableModel data change by updating input widgets with current values."""
+        del top_left, bottom_right, roles
+
+        race_table_model = self.modeldb.race_table_model
+
+        self.name_lineedit.setText(race_table_model.getRaceProperty(RaceTableModel.NAME))
+        date_string = race_table_model.getRaceProperty(RaceTableModel.DATE)
+        self.date_dateedit.setDate(QDate.fromString(date_string))
 
         # The QPlainTextEdit really wants a QPlainTextDocumentLayout as its
         # document layout. If we don't set this up, by default the document
         # has a QAbstractTextDocumentLayout, which seems to work, but makes
         # QPlainTextEdit emit a warning. How a supposed abstract class actually
         # got instantiated is a mystery to me.
-        document = QTextDocument(self.modeldb.race_table_model.getRaceProperty(RaceTableModel.NOTES))
+        document = QTextDocument(race_table_model.getRaceProperty(RaceTableModel.NOTES))
         document.setDocumentLayout(QPlainTextDocumentLayout(document))
         self.notes_plaintextedit.setDocument(document)
 
     def nameEditingFinished(self):
-        self.modeldb.race_table_model.setRaceProperty(RaceTableModel.NAME, self.name_lineedit.text())
+        """Commit race name edit to the model."""
+        race_table_model = self.modeldb.race_table_model
+        race_table_model.setRaceProperty(RaceTableModel.NAME, self.name_lineedit.text())
 
     def dateEditingFinished(self):
-        self.modeldb.race_table_model.setRaceProperty(RaceTableModel.DATE, self.date_dateedit.text())
+        """Commit race date edit to the model."""
+        race_table_model = self.modeldb.race_table_model
+        race_table_model.setRaceProperty(RaceTableModel.DATE, self.date_dateedit.text())
 
     def dateSelectionStart(self):
+        """Show the calendar date selection widget."""
         self.calendar.show()
 
     def dateSelectionFinished(self, date):
+        """Commit the calendar date selection to the model."""
         self.calendar.hide()
         self.date_dateedit.setDate(date)
         self.dateEditingFinished()
 
-    # The QPlainTextEdit widget is a pain in the ass.  The only notification
-    # signal we can get out of it is textChanged, and that gets emitted on
-    # every single edit, down to the character.  What's worse is, sending the
-    # change to the model causes the model to emit dataChanged, which causes
-    # us to update, which results in firing off another textChanged...
     def hideEvent(self, event):
-        self.modeldb.race_table_model.setRaceProperty(RaceTableModel.NOTES, self.notes_plaintextedit.document().toPlainText())
+        """Commit the race notes to the model.
+
+        The QPlainTextEdit widget is a pain in the ass.  The only notification
+        signal we can get out of it is textChanged, and that gets emitted on
+        every single edit, down to the character.  What's worse is, sending the
+        change to the model causes the model to emit dataChanged, which causes
+        us to update, which results in firing off another textChanged...
+        """
+        race_table_model = self.modeldb.race_table_model
+        race_table_model.setRaceProperty(RaceTableModel.NOTES,
+                                         self.notes_plaintextedit.document().toPlainText())
 
         super().hideEvent(event)
 
 class Builder(QTabWidget):
+    """Top-level Builder widget
+
+    This widget encapsulates all of the subtasks needed to set up a race.
+    """
+
     def __init__(self, modeldb, parent=None):
+        """Initialize the Builder instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
@@ -309,20 +403,18 @@ class Builder(QTabWidget):
         self.addTab(race_info, 'Race Info')
 
     def keyPressEvent(self, event):
+        """Handle key press."""
         if event.key() == Qt.Key_Escape:
             self.close()
 
         super().keyPressEvent(event)
 
     def showEvent(self, event):
+        """Handle show event."""
         self.currentWidget().setVisible(True)
-
-        self.visibleChanged.emit(True)
+        super().showEvent(event)
 
     def hideEvent(self, event):
+        """Handle hide event."""
         self.currentWidget().setVisible(False)
-
-        self.visibleChanged.emit(False)
-
-    # Signals.
-    visibleChanged = pyqtSignal(bool)
+        super().hideEvent(event)
