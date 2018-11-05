@@ -1,22 +1,36 @@
-from PyQt5.QtGui import *
-from PyQt5.QtPrintSupport import *
-from PyQt5.QtWidgets import *
-from racemodel import *
+"""Reports Qt Classes
+
+This module contains the dialog that can be used to generate race reports.
+"""
+
 import re
+from PyQt5.QtCore import QTime
+from PyQt5.QtGui import QTextDocument
+from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
+from PyQt5.QtSql import QSqlRelation, QSqlRelationalTableModel
+from PyQt5.QtWidgets import QComboBox, QDialog, QGroupBox, QPushButton, QRadioButton
+from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
+from racemodel import DatabaseError, RaceTableModel, FieldTableModel, RacerTableModel
 
 class ReportsWindow(QDialog):
+    """This dialog allows the user to generate finish reports."""
+
     def __init__(self, modeldb, parent=None):
+        """Initialize the ReportsWindow instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
+
+        field_table_model = self.modeldb.field_table_model
+        field_name_column = field_table_model.fieldIndex(self.modeldb.field_table_model.NAME)
 
         self.setWindowTitle('Generate Reports')
 
         # Finish results by field.
         self.field_finish_radiobutton = QRadioButton()
         self.field_combobox = QComboBox()
-        self.field_combobox.setModel(self.modeldb.field_table_model)
-        self.field_combobox.setModelColumn(self.modeldb.field_table_model.fieldIndex(self.modeldb.field_table_model.NAME))
+        self.field_combobox.setModel(field_table_model)
+        self.field_combobox.setModelColumn(field_name_column)
 
         field_finish_groupbox = QGroupBox('Finish results by field')
         field_finish_groupbox.setLayout(QHBoxLayout())
@@ -25,15 +39,16 @@ class ReportsWindow(QDialog):
 
         self.field_finish_radiobutton.setChecked(True)
 
-        generateFinish = QPushButton('Generate Report')
+        generate_finish_button = QPushButton('Generate Report')
 
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(field_finish_groupbox)
-        self.layout().addWidget(generateFinish)
+        self.layout().addWidget(generate_finish_button)
 
-        generateFinish.clicked.connect(self.generateFinishReport)
+        generate_finish_button.clicked.connect(self.generate_finish_report)
 
-    def generateFinishReport(self):
+    def generate_finish_report(self):
+        """Generate finish report, using the information from the dialog's input widgets."""
         document = generate_finish_report(self.modeldb, self.field_combobox.currentText())
 
         printer = QPrinter()
@@ -43,6 +58,7 @@ class ReportsWindow(QDialog):
             document.print(printer)
 
 def time_delta(finish, start):
+    """Return a string representing the time difference between the start and the finish."""
     if not start:
         return 'DNS'
 
@@ -61,11 +77,14 @@ def time_delta(finish, start):
     msecs = msecs % 1000
 
     if hours > 0:
-        return QTime(hours, minutes, secs, msecs).toString('h:mm:ss.zzz')
+        time = QTime(hours, minutes, secs, msecs).toString('h:mm:ss.zzz')
     else:
-        return QTime(hours, minutes, secs, msecs).toString('m:ss.zzz')
+        time = QTime(hours, minutes, secs, msecs).toString('m:ss.zzz')
+
+    return time
 
 def generate_finish_report(modeldb, field_name):
+    """ Generate finish report for a particular field."""
     subfields = modeldb.field_table_model.get_subfields(field_name)
 
     subfield_list_by_cat = [None]
@@ -92,12 +111,17 @@ def generate_finish_report(modeldb, field_name):
     html += '<h2>Results: %s</h2>' % field_name
 
     for cat_list in subfield_list_by_cat:
+        # Make sure cat_list is indeed a list.
+        if not cat_list:
+            cat_list = []
+
         if cat_list:
             html += '<div align="center">Cat %s</div>' % ', '.join(cat_list)
 
         html += '<table>'
 
-        html += '<tr><td>Place</td> <td>#</td> <td>First</td> <td>Last</td> <td>Cat</td> <td>Team</td> <td>Finish</td> <td>Age</td> </tr>'
+        html += ('<tr><td>Place</td> <td>#</td> <td>First</td> <td>Last</td> <td>Cat</td> ' +
+                 '<td>Team</td> <td>Finish</td> <td>Age</td> </tr>')
         place = 1
         for row in range(model.rowCount()):
             category = model.data(model.index(row, model.fieldIndex(RacerTableModel.CATEGORY)))
@@ -107,17 +131,31 @@ def generate_finish_report(modeldb, field_name):
             if cat_list and (category not in cat_list):
                 continue
 
-            bib = model.data(model.index(row, model.fieldIndex(RacerTableModel.BIB)))
-            first_name = model.data(model.index(row, model.fieldIndex(RacerTableModel.FIRST_NAME)))
-            last_name = model.data(model.index(row, model.fieldIndex(RacerTableModel.LAST_NAME)))
-            team = model.data(model.index(row, model.fieldIndex(RacerTableModel.TEAM)))
-            start = QTime.fromString(model.data(model.index(row, model.fieldIndex(RacerTableModel.START))))
-            finish = QTime.fromString(model.data(model.index(row, model.fieldIndex(RacerTableModel.FINISH))))
+            racer_bib_column = model.fieldIndex(RacerTableModel.BIB)
+            racer_first_name_column = model.fieldIndex(RacerTableModel.FIRST_NAME)
+            racer_last_name_column = model.fieldIndex(RacerTableModel.LAST_NAME)
+            racer_team_column = model.fieldIndex(RacerTableModel.TEAM)
+            racer_start_column = model.fieldIndex(RacerTableModel.START)
+            racer_finish_column = model.fieldIndex(RacerTableModel.FINISH)
+
+            bib = model.data(model.index(row, racer_bib_column))
+            first_name = model.data(model.index(row, racer_first_name_column))
+            last_name = model.data(model.index(row, racer_last_name_column))
+            team = model.data(model.index(row, racer_team_column))
+            start = QTime.fromString(model.data(model.index(row, racer_start_column)))
+            finish = QTime.fromString(model.data(model.index(row, racer_finish_column)))
             delta = time_delta(finish, start)
             age = model.data(model.index(row, model.fieldIndex(RacerTableModel.AGE)))
 
-            html += ('<tr><td>%s</td> <td>%s</td> <td>%s</td> <td>%s</td> <td>%s</td> <td>%s</td> <td>%s</td> <td>%s</td> </tr>' %
-                     (place, bib, first_name, last_name, category, team, delta, age))
+            html += ('<tr><td>%s</td> ' % place +
+                     '<td>%s</td> ' % bib +
+                     '<td>%s</td> ' % first_name +
+                     '<td>%s</td> ' % last_name +
+                     '<td>%s</td> ' % category +
+                     '<td>%s</td> ' % team +
+                     '<td>%s</td> ' % delta +
+                     '<td>%s</td> ' % age +
+                     '</tr>')
 
             place += 1
 

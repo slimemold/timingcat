@@ -1,3 +1,9 @@
+"""Defaults
+
+This module contains constants for various application defaults. They are provided here as a
+central location for tweaking.
+"""
+
 RACE_NAME = '(race name here)'
 RACE_NOTES_PLACEHOLDER_TEXT = 'Add notes here...'
 FIELD_NAME = 'default'

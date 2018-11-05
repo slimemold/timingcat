@@ -142,6 +142,7 @@ disable=print-statement,
         comprehension-escape,
         too-many-arguments,
         too-many-instance-attributes,
+        too-many-locals,
         too-many-statements,
         bad-continuation,
         no-self-use
@@ -421,6 +422,7 @@ good-names=e,
            j,
            k,
            db,
+           op,
            _
 
 # Include a hint for the correct naming format with invalid-name.
