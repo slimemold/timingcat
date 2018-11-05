@@ -1,4 +1,5 @@
 from PyQt5.QtGui import *
+from PyQt5.QtSql import QSqlRelationalDelegate
 from PyQt5.QtWidgets import *
 from common import *
 from proxymodels import *
@@ -435,7 +436,6 @@ class ResultTableView(QTableView):
                 scratchpad = record.value(ResultTableModel.SCRATCHPAD)
                 if scratchpad.isdigit():
                     model.submitResult(selection.row())
-                    model.removeRow(selection.row())
             except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))
 
