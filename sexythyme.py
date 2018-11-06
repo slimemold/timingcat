@@ -8,7 +8,7 @@ This is the execution entry point for the app.
 import argparse
 import sys
 from PyQt5.QtWidgets import QApplication
-from common import APPLICATION_NAME, VERSION
+from common import APPLICATION_NAME, ORGANIZATION_DOMAIN, ORGANIZATION_NAME, VERSION
 from gui import SexyThymeMainWindow
 
 __author__ = 'Andrew Chew'
@@ -44,8 +44,12 @@ def main():
                         help='Optional racefile to load')
     args = parser.parse_args()
 
+    QApplication.setOrganizationName(ORGANIZATION_NAME)
+    QApplication.setOrganizationDomain(ORGANIZATION_DOMAIN)
+    QApplication.setApplicationName(APPLICATION_NAME)
+    QApplication.setApplicationVersion(VERSION)
+
     app = QApplication(sys.argv)
-    app.setApplicationName(APPLICATION_NAME)
 
     main_window = SexyThymeMainWindow(filename=args.racefile)
     main_window.show()

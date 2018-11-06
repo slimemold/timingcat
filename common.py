@@ -6,6 +6,8 @@ This module is a dumping ground for various utilities and constants that can be 
 the package.
 """
 
+ORGANIZATION_NAME = '5rcc'
+ORGANIZATION_DOMAIN = '5rcc.com'
 APPLICATION_NAME = 'SexyThyme'
 VERSION = '1.0.0'
 
