@@ -8,9 +8,10 @@ central widget, status and menubars, etc.
 
 import csv
 import os
-from PyQt5.QtCore import QObject, QRegExp, QTime, Qt
+from PyQt5.QtCore import QObject, QRegExp, QTime, QTimer, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
-from PyQt5.QtWidgets import QLabel, QLineEdit, QMenuBar, QPushButton, QStatusBar, QWidget
+from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPushButton, QStatusBar
+from PyQt5.QtWidgets import QWidget
 from PyQt5.QtWidgets import QLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from PyQt5.QtWidgets import QApplication, QMainWindow
@@ -54,9 +55,9 @@ INPUT_TEXT_POINT_SIZE = 32
 #     StartCentralWidget
 #     MainCentralWidget
 #         button_row
-#             builder_button
-#             field_button
 #             racer_button
+#             field_button
+#         clock
 #         result_table_view
 #         result_input
 #         submit_button
@@ -90,6 +91,33 @@ class AboutDialog(QDialog):
         self.layout().addWidget(copyright_label)
         self.layout().addWidget(button_box)
         self.layout().setSizeConstraint(QLayout.SetFixedSize)
+
+class DigitalClock(QLCDNumber):
+    """Old-fashioned 7-segment display digital clock showing current time."""
+    def __init__(self, parent=None):
+        """Initialize the DigitalClock instance."""
+        super().__init__(8, parent=parent)
+
+        self.setFrameShape(QFrame.NoFrame)
+        self.setSegmentStyle(QLCDNumber.Filled)
+
+        self.timer = QTimer()
+        self.timer.timeout.connect(self.update)
+        self.update()
+        self.timer.start(100)
+
+        self.setMinimumHeight(48)
+
+    def update(self):
+        """Update text on the LCD display."""
+        time = QTime.currentTime()
+
+        if time.second() % 2:
+            text = time.toString('hh:mm ss')
+        else:
+            text = time.toString('hh:mm:ss')
+
+        self.display(text)
 
 class CentralWidget(QObject):
     """Central Widget baseclass.
@@ -166,6 +194,9 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.button_row.layout().addWidget(self.button_row.racer_button)
         self.button_row.layout().addWidget(self.button_row.field_button)
 
+        # Digital clock.
+        self.digital_clock = DigitalClock()
+
         # Result table.
         self.result_table_view = ResultTableView(self.modeldb)
 
@@ -182,6 +213,7 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Add to top-level layout.
         self.layout().addWidget(self.button_row)
+        self.layout().addWidget(self.digital_clock)
         self.layout().addWidget(self.result_table_view)
         self.layout().addWidget(self.result_input)
         self.layout().addWidget(self.submit_button)
