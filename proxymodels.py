@@ -1,5 +1,16 @@
 #!/usr/bin/env python3
 
+"""Proxy Model Classes
+
+This module contains proxy model subclasses. Some provide novel functionality (such as the
+extra columns proxy model and the rearrange columns proxy model). Some are just SQL-table-ified
+versions of proxy models (basically implementing the fieldIndex() method so that code can pretend
+it is talking to a QSqlTableModel when it's really talking to one of our proxy models).
+
+The ExtraColumnsProxyModel and RearrangeColumnsProxyModel are sloppily ported from C++ versions
+gotten from https://github.com/KDE/kitemmodels.
+"""
+
 from PyQt5.QtCore import QModelIndex, Qt
 from PyQt5.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
 from PyQt5.QtCore import QIdentityProxyModel, QSortFilterProxyModel
@@ -30,7 +41,33 @@ __email__ = 'andrew@5rcc.com'
 __status__ = 'Development'
 
 class ExtraColumnsProxyModel(QIdentityProxyModel):
+    """ExtraColumnsProxyModel
+
+    This proxy appends extra columns (after all existing columns).
+
+    The proxy supports source models that have a tree structure.
+    It also supports editing, and propagating changes from the source model.
+    Row insertion/removal, column insertion/removal in the source model are supported.
+
+    Not supported: adding/removing extra columns at runtime; having a different number of columns
+    in subtrees; drag-n-drop support in the extra columns; moving columns.
+
+    Derive from KExtraColumnsProxyModel, call appendColumn (typically in the constructor) for each
+    extra column, and reimplement extraColumnData() to allow KExtraColumnsProxyModel to retrieve
+    the data to show in the extra columns.
+
+    If you want your new column(s) to be somewhere else than at the right of the existing columns,
+    you can use a KRearrangeColumnsProxyModel on top.
+
+    Author: David Faure, KDAB
+    @since 5.13
+    """
+
     def __init__(self, parent=None):
+        """Base class constructor
+
+        Remember to call setSourceModel afterwards, and appendColumn.
+        """
         super().__init__(parent)
 
         self.extra_headers = []
@@ -38,24 +75,60 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         self.layout_change_proxy_columns = []
 
     def appendColumn(self, header): #pylint: disable=invalid-name
+        """Append an exrra column.
+
+        @param header an optional text for the horizontal header
+        This does not emit any signals - do it in the initial setup phase
+        """
         self.extra_headers.append(header)
 
     def removeExtraColumn(self, idx): #pylint: disable=invalid-name
+        """Removes an extra column.
+
+        @param idx index of the extra column (starting from 0).
+        This does not emit any signals - do it in the initial setup phase
+        @since 5.24
+        """
         del self.extra_headers[idx]
 
     def extraColumnData(self, parent, row, extra_column, role=Qt.DisplayRole): #pylint: disable=invalid-name
+        """Called by data() for extra columns.
+
+        Reimplement this method to return the data for the extra columns.
+
+        @param parent the parent model index in the proxy model (only useful in tree models)
+        @param row the row number for which the proxy model is querying for data (child of @p
+               parent, if set)
+        @param extraColumn the number of the extra column, starting at 0 (this doesn't require
+               knowing how many columns the source model has)
+        @param role the role being queried
+        @return the data at @p row and @p extraColumn
+        """
         del parent, row, extra_column, role
         raise NotImplementedError
 
     def setExtraColumnData(self, parent, row, extra_column, data, role): #pylint: disable=invalid-name
+        """Called by setData() for extra columns.
+
+        Reimplement this method to set the data for the extra columns, if editing is supported.
+        Remember to call extraColumnDataChanged() after changing the data storage.
+        The default implementation returns false.
+        """
         del parent, row, extra_column, data, role
         return False
 
     def extraColumnDataChanged(self, parent, row, extra_column, roles): #pylint: disable=invalid-name
+        """Emit dataChanged signal for extra column.
+
+        This method can be called by your derived class when the data in an extra column has
+        changed. The use case is data that changes "by itself", unrelated to setData.
+        """
+
         idx = QModelIndex(row, self.proxyColumnForExtraColumn(extra_column), parent)
         self.dataChanged.emit(idx, idx, roles)
 
     def mapToSource(self, proxy_index): #pylint: disable=invalid-name
+        """Reimplemented."""
         if not proxy_index.isValid():
             return QModelIndex()
 
@@ -67,6 +140,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return super().mapToSource(proxy_index)
 
     def buddy(self, proxy_index):
+        """Reimplemented."""
         column = proxy_index.column()
         if column >= self.sourceModel().columnCount():
             return proxy_index
@@ -74,12 +148,14 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return super().buddy(proxy_index)
 
     def sibling(self, row, column, idx):
+        """Reimplemented."""
         if row == idx.row() and column == idx.column():
             return idx
 
         return self.index(row, column, self.parent(idx))
 
     def mapSelectionToSource(self, selection): #pylint: disable=invalid-name
+        """Reimplemented."""
         source_selection = QItemSelection()
 
         if not self.sourceModel():
@@ -103,9 +179,11 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return source_selection
 
     def columnCount(self, parent): #pylint: disable=invalid-name
+        """Reimplemented."""
         return super().columnCount(parent) + len(self.extra_headers)
 
     def data(self, index, role):
+        """Reimplemented."""
         extra_col = self.extraColumnForProxyColumn(index.column())
         if extra_col >= 0 and self.extra_headers:
             return self.extraColumnData(index.parent(), index.row(), extra_col, role)
@@ -113,6 +191,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return self.sourceModel().data(self.mapToSource(index), role)
 
     def setData(self, index, value, role): #pylint: disable=invalid-name
+        """Reimplemented."""
         extra_col = self.extraColumnForProxyColumn(index.column())
         if extra_col >= 0 and self.extra_headers:
             return self.setExtraColumnData(index.parent(), index.row(), extra_col, value, role)
@@ -120,6 +199,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return self.sourceModel().setData(self.mapToSource(index), value, role)
 
     def flags(self, index):
+        """Reimplemented."""
         extra_col = self.extraColumnForProxyColumn(index.column())
         if extra_col >= 0 and self.extra_headers:
             return Qt.ItemIsSelectable | Qt.ItemIsEnabled
@@ -127,12 +207,14 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return self.sourceModel().flags(self.mapToSource(index))
 
     def hasChildren(self, index): #pylint: disable=invalid-name
+        """Reimplemented."""
         if index.column() > 0:
             return False
 
         return super().hasChildren(index)
 
     def headerData(self, section, orientation, role): #pylint: disable=invalid-name
+        """Reimplemented."""
         if orientation == Qt.Horizontal:
             extra_col = self.extraColumnForProxyColumn(section)
             if extra_col >= 0:
@@ -143,6 +225,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return super().headerData(section, orientation, role)
 
     def index(self, row, column, parent):
+        """Reimplemented."""
         extra_col = self.extraColumnForProxyColumn(column)
         if extra_col >= 0:
             return self.createIndex(row, column, super().index(row, 0, parent).internalPointer())
@@ -150,6 +233,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return super().index(row, column, parent)
 
     def parent(self, child):
+        """Reimplemented."""
         extra_col = self.extraColumnForProxyColumn(child.column())
         if extra_col >= 0:
             # Create an index for column 0 and use that to get the parent.
@@ -159,6 +243,10 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return super().parent(child)
 
     def extraColumnForProxyColumn(self, proxy_column): #pylint: disable=invalid-name
+        """Returns the extra column number (0, 1, ...) for a given column number of the proxymodel.
+
+        This basically means subtracting the amount of columns in the source model.
+        """
         source_column_count = self.sourceModel().columnCount()
         if proxy_column >= source_column_count:
             return proxy_column - source_column_count
@@ -166,18 +254,50 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return -1
 
     def proxyColumnForExtraColumn(self, extra_column): #pylint: disable=invalid-name
+        """Returns the proxy column number for a given extra column number (starting at 0).
+
+        This basically means adding the amount of columns in the source model.
+        """
         return self.sourceModel().columnCount() + extra_column
 
 class RearrangeColumnsProxyModel(QIdentityProxyModel):
+    """RearrangeColumnsProxyModel
+
+    This proxy shows specific columns from the source model, in any order.
+    This allows to reorder columns, as well as not showing all of them.
+
+    The proxy supports source models that have a tree structure.
+    It also supports editing, and propagating changes from the source model.
+
+    Showing the same source column more than once is not supported.
+
+    Author: David Faure, KDAB
+    @since 5.12
+    """
+
     def __init__(self, parent=None):
+        """Create a KRearrangeColumnsProxyModel proxy.
+
+        Remember to call setSourceModel afterwards.
+        """
         super().__init__(parent)
 
         self.source_columns = []
 
     def setSourceColumns(self, columns): #pylint: disable=invalid-name
+        """Set the chosen source columns.
+
+        Set the chosen source columns, in the desired order for the proxy columns
+        columns[proxyColumn=0] is the source column to show in the first proxy column, etc.
+
+        Example: QVector<int>() << 2 << 1;
+        This examples configures the proxy to hide column 0, show column 2 from the source model,
+        then show column 1 from the source model.
+        """
         self.source_columns = columns
 
     def columnCount(self, parent): #pylint: disable=invalid-name
+        """Reimplemented."""
         del parent
 
         if not self.sourceModel():
@@ -186,6 +306,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
         return len(self.source_columns)
 
     def rowCount(self, parent): #pylint: disable=invalid-name
+        """Reimplemented."""
         if not self.sourceModel():
             return 0
 
@@ -197,6 +318,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
     # its mapFromSource method which has friend access to createIndex() in the source model.
 
     def index(self, row, column, parent):
+        """Reimplemented."""
         # The parent in the source model is on column 0, whatever swapping we are doing
         source_parent = self.mapToSource(parent).sibling(parent.row(), 0)
 
@@ -209,6 +331,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
         return self.createIndex(row, column, source_index.internalPointer())
 
     def parent(self, child):
+        """Reimplemented."""
         source_index = self.mapToSource(child)
         source_parent = source_index.parent()
         if not source_parent.isValid():
@@ -217,6 +340,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
         return self.createIndex(source_parent.row(), 0, source_parent.internalPointer())
 
     def headerData(self, section, orientation, role): #pylint: disable=invalid-name
+        """Reimplemented."""
         if orientation == Qt.Horizontal:
             source_col = self.sourceColumnForProxyColumn(section)
             return self.sourceModel().headerData(source_col, orientation, role)
@@ -224,12 +348,14 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
             return super().headerData(section, orientation, role)
 
     def sibling(self, row, column, idx):
+        """Reimplemented."""
         if column >= self.source_columns.count():
             return QModelIndex()
 
         return self.index(row, column, idx.parent())
 
     def mapFromSource(self, source_index): #pylint: disable=invalid-name
+        """Reimplemented."""
         if not source_index.isValid():
             return QModelIndex()
 
@@ -237,6 +363,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
         return self.createIndex(source_index.row(), proxy_column, source_index.internalPointer())
 
     def mapToSource(self, proxy_index): #pylint: disable=invalid-name
+        """Reimplemented."""
         if not proxy_index.isValid():
             return QModelIndex()
 
@@ -246,6 +373,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
         return super().mapToSource(fake_index)
 
     def proxyColumnForSourceColumn(self, source_column): #pylint: disable=invalid-name
+        """Return proxy column, given source column."""
         # If this is too slow, we could add a second QVector with index=logical_source_column
         # value=desired_pos_in_proxy.
         try:
@@ -254,10 +382,22 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
             return -1
 
     def sourceColumnForProxyColumn(self, proxy_column): #pylint: disable=invalid-name
+        """Return source column, given proxy column."""
         return self.source_columns[proxy_column]
 
 class SqlExtraColumnsProxyModel(ExtraColumnsProxyModel):
+    """SqlExtraColumnsProxyModel
+
+    This is just ExtraColumnsProxyModel, but with fieldIndex(), so that it looks like a
+    QSqlTableModel.
+    """
+
     def fieldIndex(self, field_name): #pylint: disable=invalid-name
+        """Call sourceModel().fieldIndex()
+
+        We assume that the source model is a QSqlTableModel (which is the whole point of this
+        class).
+        """
         try:
             extra_col = self.extra_headers.index(field_name)
         except ValueError:
@@ -266,12 +406,34 @@ class SqlExtraColumnsProxyModel(ExtraColumnsProxyModel):
         return self.proxyColumnForExtraColumn(extra_col)
 
 class SqlRearrangeColumnsProxyModel(RearrangeColumnsProxyModel):
+    """SqlRearrangeColumnsProxyModel
+
+    This is just RearrangeColumnsProxyModel, but with fieldIndex(), so that it looks like a
+    QSqlTableModel.
+    """
+
     def fieldIndex(self, field_name): #pylint: disable=invalid-name
+        """Call sourceModel().fieldIndex()
+
+        We assume that the source model is a QSqlTableModel (which is the whole point of this
+        class).
+        """
         try:
             return self.proxyColumnForSourceColumn(self.sourceModel().fieldIndex(field_name))
         except ValueError:
             return -1
 
 class SqlSortFilterProxyModel(QSortFilterProxyModel):
+    """SqlSortFilterProxyModel
+
+    This is just QSortFilterProxyModel, but with fieldIndex(), so that it looks like a
+    QSqlTableModel.
+    """
+
     def fieldIndex(self, field_name): #pylint: disable=invalid-name
+        """Call sourceModel().fieldIndex()
+
+        We assume that the source model is a QSqlTableModel (which is the whole point of this
+        class).
+        """
         return self.sourceModel().fieldIndex(field_name)

@@ -1,5 +1,12 @@
 #!/usr/bin/env python3
 
+"""SQL Table View Classes
+
+This module contains the various Qt SQL Table Views (field table view, racer table views,
+result scratchpad table view), as well as whatever proxy models are stacked between the views
+and the models.
+"""
+
 from PyQt5.QtCore import QItemSelection, QModelIndex, QRegExp, QTime, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush
 from PyQt5.QtSql import QSqlRelationalDelegate
@@ -35,11 +42,18 @@ __status__ = 'Development'
 # Add a "Finished" column for total racers that have a finish time, and a
 # "Total" column to show total racers in that field.
 class FieldProxyModel(SqlExtraColumnsProxyModel):
+    """Proxy model for the field table model.
+
+    This proxy model adds extra columns to the field table. Extra columns include number of racers
+    finished, number of racers total, and completion status.
+    """
+
     FINISHED_SECTION = 0
     TOTAL_SECTION = 1
     STATUS_SECTION = 2
 
     def __init__(self):
+        """Initialize the FieldProxyModel instance."""
         super().__init__()
 
         self.appendColumn('Finished')
@@ -47,6 +61,7 @@ class FieldProxyModel(SqlExtraColumnsProxyModel):
         self.appendColumn('Status')
 
     def extraColumnData(self, parent, row, extra_column, role=Qt.DisplayRole):
+        """Provide extra columns for racers finished, total racers, and field status."""
         if role == Qt.DisplayRole:
             field_table_model = self.sourceModel()
             racer_table_model = self.sourceModel().modeldb.racer_table_model
@@ -71,6 +86,7 @@ class FieldProxyModel(SqlExtraColumnsProxyModel):
         return None
 
     def data(self, index, role):
+        """Color-code the row according to whether no, some, or all racers have finished."""
         if role == Qt.BackgroundRole:
             row = index.row()
 
@@ -91,7 +107,10 @@ class FieldProxyModel(SqlExtraColumnsProxyModel):
         return super().data(index, role)
 
 class FieldTableView(QTableView):
+    """Table view for the field table model."""
+
     def __init__(self, modeldb, parent=None):
+        """Initialize the FieldTableView instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
@@ -125,13 +144,14 @@ class FieldTableView(QTableView):
 
 
     def setup_proxy_model(self):
-        # Use a proxy model so we can add some interesting columns.
+        """Use a proxy model so we can add some interesting columns."""
         proxy_model = FieldProxyModel()
         proxy_model.setSourceModel(self.model())
 
         self.setModel(proxy_model)
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
+        """Handle keypresses."""
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
@@ -140,14 +160,20 @@ class FieldTableView(QTableView):
         return super().keyPressEvent(event)
 
     def showEvent(self, event): #pylint: disable=invalid-name
+        """Handle show event."""
         del event
         self.resize(520, 600)
 
     def hideEvent(self, event): #pylint: disable=invalid-name
+        """Handle hide event."""
         del event
         self.visibleChanged.emit(False)
 
     def handle_delete(self):
+        """Handle delete keypress.
+
+        On delete keypress, delete the selection.
+        """
         model = self.selectionModel().model()
         selection_list = self.selectionModel().selectedRows()
 
@@ -201,6 +227,13 @@ class FieldTableView(QTableView):
             raise DatabaseError(model.lastError().text())
 
     def dataChanged(self, top_left, bottom_right, roles): #pylint: disable=invalid-name
+        """Handle model data changed.
+
+        One big thing we need to do here is make new field-specific racer table views (or remove
+        existing ones) if a field was added, renamed, or removed. We basically keep a dictionary
+        of field_id:racer_table_view of all field-specific racer table views, and in this method,
+        we scan through the list of fields and update this dictionary accordingly.
+        """
         super().dataChanged(top_left, bottom_right, roles)
 
         field_table_model = self.modeldb.field_table_model
@@ -216,20 +249,24 @@ class FieldTableView(QTableView):
         # Field table model changed. Go through the model to see if we need to
         # make any new racer-in-field-table-views. Drop the ones we don't
         # need anymore.
-        new_racer_in_field_table_view_dict = {}
+        new_racer_table_view_dict = {}
 
         for row in range(field_table_model.rowCount()):
             record = field_table_model.record(row)
             field_id = record.value(FieldTableModel.ID)
             if field_id in self.racer_in_field_table_view_dict:
-                new_racer_in_field_table_view_dict[field_id] = self.racer_in_field_table_view_dict[field_id]
-                new_racer_in_field_table_view_dict[field_id].update_field_name()
+                new_racer_table_view_dict[field_id] = self.racer_in_field_table_view_dict[field_id]
+                new_racer_table_view_dict[field_id].update_field_name()
             else:
-                new_racer_in_field_table_view_dict[field_id] = RacerTableView(self.modeldb, field_id)
+                new_racer_table_view_dict[field_id] = RacerTableView(self.modeldb, field_id)
 
-        self.racer_in_field_table_view_dict = new_racer_in_field_table_view_dict
+        self.racer_in_field_table_view_dict = new_racer_table_view_dict
 
     def handle_show_racer_in_field_table_view(self, model_index):
+        """Handle activation of a field row.
+
+        On activation of a field row, we show its field-specific racer table view.
+        """
         field_table_model = self.modeldb.field_table_model
         field_name_column = field_table_model.fieldIndex(FieldTableModel.NAME)
         field_subfields_column = field_table_model.fieldIndex(FieldTableModel.SUBFIELDS)
@@ -247,10 +284,17 @@ class FieldTableView(QTableView):
 
         self.clearSelection()
 
-    # Our non-model columns (provided by FieldProxyModel(ExtraColumnsProxyModel))
-    # uses stuff from the racer table model to provide its contents. Therefore,
-    # when the racer model changes, we need to pretend our model changed.
     def update_non_model_columns(self, *args):
+        """Handle racer table model change.
+
+        On racer table model change, we tickle our dataChanged() slot to induce this table view
+        to take another look at the extra columns, since the values in these extra columns depends
+        on racer state.
+
+        Our non-model columns (provided by FieldProxyModel(ExtraColumnsProxyModel)) uses stuff from
+        the racer table model to provide its contents. Therefore, when the racer model changes, we
+        need to pretend our model changed.
+        """
         # We don't care about the incoming top_left and bottom_right indexes.
         del args
 
@@ -264,17 +308,30 @@ class FieldTableView(QTableView):
         top_left = self.model().index(row_start, extra_column_start, QModelIndex())
         bottom_right = self.model().index(row_end, extra_column_end, QModelIndex())
 
+        # TODO: Use extraColumnDataChanged for this.
         self.dataChanged(top_left, bottom_right, [Qt.DisplayRole])
 
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
 class RacerProxyModel(SqlSortFilterProxyModel):
+    """Proxy model for racer table model.
+
+    This proxy model filters the racer table by field. It is used by field table views that want
+    to only show racers that belong to a given field.
+    """
+
     def __init__(self):
+        """Initialize the RacerProxyModel instance."""
         super().__init__()
         self.remote = None
 
     def data(self, index, role):
+        """Color-code the row according to whether the racer has finished or not.
+
+        If a remote is connected, also show a different color for local result vs. result that
+        has been submitted successfully to the remote.
+        """
         if role == Qt.BackgroundRole:
             row = self.mapToSource(index).row()
 
@@ -300,13 +357,17 @@ class RacerProxyModel(SqlSortFilterProxyModel):
         return super().data(index, role)
 
     def set_remote(self, remote):
+        """Do everything needed for a remote that has just been connected."""
         self.remote = remote
 
         # Make views repaint cell backgrounds to reflect remote.
         self.sourceModel().dataChanged.emit(QModelIndex(), QModelIndex(), [Qt.BackgroundRole])
 
 class RacerTableView(QTableView):
+    """Table view for the racer table model."""
+
     def __init__(self, modeldb, field_id=None, parent=None):
+        """Initialize the RacerTableView instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
@@ -338,6 +399,7 @@ class RacerTableView(QTableView):
         self.hideColumn(model.fieldIndex(RacerTableModel.STATUS))
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
+        """Handle keypresses."""
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
@@ -346,14 +408,20 @@ class RacerTableView(QTableView):
         super().keyPressEvent(event)
 
     def showEvent(self, event): #pylint: disable=invalid-name
+        """Handle show event."""
         del event
         self.resize(1000, 800)
 
     def hideEvent(self, event): #pylint: disable=invalid-name
+        """Handle hide event."""
         del event
         self.visibleChanged.emit(False)
 
     def handle_delete(self):
+        """Handle delete keypress.
+
+        On delete keypress, delete the selection.
+        """
         model = self.selectionModel().model()
         selection_list = self.selectionModel().selectedRows()
 
@@ -384,6 +452,13 @@ class RacerTableView(QTableView):
             raise DatabaseError(model.lastError().text())
 
     def update_field_name(self):
+        """Update the window title.
+
+        Update the window title with the field name corresponding to the field_id which we are
+        using to filter our racer table view. If this is the general racer table view (not a field-
+        specific one), then there's really not much to be done...the window title will always
+        be the same.
+        """
         if self.field_id:
             field_name = self.modeldb.field_table_model.name_from_id(self.field_id)
             self.setWindowTitle('Racers (%s)' % field_name)
@@ -392,6 +467,7 @@ class RacerTableView(QTableView):
             self.setWindowTitle('Racers')
 
     def set_remote(self, remote):
+        """Do everything needed for a remote that has just been connected."""
         self.remote = remote
         self.model().set_remote(remote)
 
@@ -404,9 +480,12 @@ class RacerTableView(QTableView):
     visibleChanged = pyqtSignal(bool)
 
 class ResultTableView(QTableView):
+    """Table view for the result table model."""
+
     RESULT_TABLE_POINT_SIZE = 20
 
     def __init__(self, modeldb, parent=None):
+        """Initialize the ResultTableView instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
@@ -428,12 +507,17 @@ class ResultTableView(QTableView):
         self.setFont(font)
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
+        """Handle keypresses."""
         if event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
             self.handle_delete()
 
         return super().keyPressEvent(event)
 
     def handle_delete(self):
+        """Handle delete keypress.
+
+        On delete keypress, delete the selection.
+        """
         model = self.selectionModel().model()
         item_selection = self.selectionModel().selection()
         selection_list = self.selectionModel().selectedRows()
@@ -459,6 +543,11 @@ class ResultTableView(QTableView):
                                                     item_selection)
 
     def handle_submit(self):
+        """Handle submit button click.
+
+        On submit button click, we try to push the finish times for the selected rows to the
+        corresponding racer. For each selection that succeeds, we remove that row from this table.
+        """
         model = self.selectionModel().model()
         selection_list = self.selectionModel().selectedRows()
 

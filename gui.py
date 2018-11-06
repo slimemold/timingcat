@@ -1,5 +1,11 @@
 #!/usr/bin/env python3
 
+"""GUI Main Classes
+
+This module contains the top-level Qt GUI classes, such as the main window, the main window's
+central widget, status and menubars, etc.
+"""
+
 import csv
 import os
 from PyQt5.QtCore import QObject, QRegExp, QTime, Qt
@@ -61,23 +67,57 @@ INPUT_TEXT_POINT_SIZE = 32
 #.    RemoteConfig
 
 class CentralWidget(QObject):
+    """Central Widget baseclass.
+
+    Base class for central widgets. Mainly, it has a method has_model() that returns whether a
+    race file (the "model") is connected.
+    """
+
     def __init__(self, parent=None):
+        """Initialize the CentralWidget instance."""
         super().__init__(parent=parent)
 
     def cleanup(self):
+        """Clean up the CentralWidget instance.
+
+        There's nothing to clean up in this base class.
+        """
         pass
 
     def has_model(self):
+        """Return whether we have a race model loaded.
+
+        Obviously, this base class doesn't support a race model, so we return False.
+        """
         return False
 
 class StartCentralWidget(QLabel, CentralWidget):
+    """Start Central Widget.
+
+    This is the central widget for when there is no race database currently connected. It just has
+    a placeholder graphic. The point is to show something, to give an indication that the app has
+    launched, and is waiting to do something useful (like start a new race file, load a race file,
+    import a race setup, etc.)
+    """
+
     def __init__(self, parent=None):
+        """Initialize the StartCentralWidget instance.
+
+        Just shows a pretty title graphic.
+        """
         super().__init__(parent=parent)
 
         self.setPixmap(QPixmap(os.path.join('resources', 'thyme.jpg')))
 
 class MainCentralWidget(QWidget, CentralWidget):
+    """Main Central Widget.
+
+    This is the main race operations window. It presents the results input box, and manages the
+    various "floater" windows like racer and field table views.
+    """
+
     def __init__(self, modeldb, parent=None):
+        """Initialize the MainCentralWidget instance."""
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
@@ -151,6 +191,10 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.submit_button.clicked.connect(self.result_table_view.handle_submit)
 
     def cleanup(self):
+        """Clean up the MainCentralWidget instance.
+
+        Hide all floater widgets, and cleanup (close) the race model.
+        """
         self.builder.hide()
         self.field_table_view.hide()
         self.racer_table_view.hide()
@@ -159,9 +203,11 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.modeldb = None
 
     def has_model(self):
+        """Return whether we have a race model."""
         return self.modeldb is not None
 
     def update_submit_button(self):
+        """Change the result submit button depending on selection in the result table view."""
         if self.result_table_view:
             selection_count = len(self.result_table_view.selectionModel().selectedRows())
             total_count = self.result_table_view.model().rowCount()
@@ -183,15 +229,16 @@ class MainCentralWidget(QWidget, CentralWidget):
             self.submit_button.setEnabled(True)
 
     def field_model_changed(self, *args):
+        """Handle field table model change.
+
+        When someone changes a field name, we have to update the racer model to get the field name
+        change. In addition, there is a combo box in the racer table view that is a view for a
+        relation model inside the racer model. That combo box needs to update as well, to get the
+        field name change.
+        """
         del args
 
         # TODO: We only care here if field name changes.
-
-        # When someone changes a field name, we have to update the racer model
-        # to get the field name change. In addition, there is a combo box
-        # in the racer table view that is a view for a relation model inside
-        # the racer model. That combo box needs to update as well, to get the
-        # field name change.
         racer_table_model = self.modeldb.racer_table_model
         field_relation_model = racer_table_model.relationModel(
                                    racer_table_model.fieldIndex(RacerTableModel.FIELD_ALIAS))
@@ -203,21 +250,34 @@ class MainCentralWidget(QWidget, CentralWidget):
             raise DatabaseError(racer_table_model.lastError().text())
 
     def result_selection_changed(self, selected, deselected):
+        """Hangle result selection change."""
         del selected, deselected
         self.update_submit_button()
 
     def new_result(self):
+        """Handle a new result being entered in the result scratchpad input box."""
         self.modeldb.result_table_model.add_result(
                                self.result_input.text(), QTime.currentTime())
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
 
     def set_remote(self, remote):
+        """Do everything needed for a remote that has just been connected."""
         self.remote = remote
         self.racer_table_view.set_remote(remote)
 
 class SexyThymeMainWindow(QMainWindow):
+    """Main Application Window.
+
+    This is the top-level window of the app. Dismissing it closes the app. The window has a
+    central widget, which is either the main central widget (when there is a race database
+    connected), or the start central widget (when there is no race database currently connected).
+    In addition, this main window manages the menubar, as well as the status bar (when a remote
+    is connected, and is used to show remote status).
+    """
+
     def __init__(self, filename=None, parent=None):
+        """Initialize the SexyThymeMainWindow instance."""
         super().__init__(parent=parent)
 
         self.setWindowTitle(APPLICATION_NAME)
@@ -233,6 +293,7 @@ class SexyThymeMainWindow(QMainWindow):
             self.switch_to_start()
 
     def switch_to_start(self):
+        """Switch to the StartCentralWidget as our central widget."""
         # Clean up old central widget, which will clean up the model we gave it.
         if self.centralWidget():
             self.centralWidget().cleanup()
@@ -244,6 +305,7 @@ class SexyThymeMainWindow(QMainWindow):
         self.disconnect_remote_menu.setEnabled(False)
 
     def switch_to_main(self, filename, new=False):
+        """Switch to the MainCentralWidget as our central widget."""
         # Clean up old central widget, which will clean up the model we gave it.
         if self.centralWidget():
             self.centralWidget().cleanup()
@@ -261,6 +323,7 @@ class SexyThymeMainWindow(QMainWindow):
             self.set_remote(None)
 
     def setup_menubar(self):
+        """Set up our menubar."""
         # Make a parent-less menubar, so that Qt can use the top-level native
         # one (like on OS-X and Ubuntu Unity) if available.
         menubar = QMenuBar()
@@ -299,12 +362,17 @@ class SexyThymeMainWindow(QMainWindow):
                                                             self.disconnect_remote)
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
+        """Handle keypresses."""
         if event.key() == Qt.Key_Escape:
             self.close()
         else:
             super().keyPressEvent(event)
 
     def closeEvent(self, event): #pylint: disable=invalid-name
+        """Handle close event.
+
+        If there are unsubmitted results, ask if we really want to close.
+        """
         if self.should_close():
             # Clean up old central widget, which will clean up the model we gave it.
             if self.centralWidget():
@@ -316,6 +384,11 @@ class SexyThymeMainWindow(QMainWindow):
             event.ignore()
 
     def new_file(self):
+        """Start a new race file.
+
+        Show a file selection dialog for choosing a new file name (or choose an existing file name
+        to overwrite with a new race).
+        """
         dialog = QFileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
         dialog.setDefaultSuffix('rce')
@@ -335,6 +408,10 @@ class SexyThymeMainWindow(QMainWindow):
         return filename
 
     def open_file(self):
+        """Open an existing race file.
+
+        Show a file selection dialog for choosing an existing file name to load.
+        """
         dialog = QFileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         dialog.setFileMode(QFileDialog.ExistingFile)
@@ -352,10 +429,20 @@ class SexyThymeMainWindow(QMainWindow):
         return filename
 
     def close_file(self):
+        """Close the current race.
+
+        This takes us back to the start central widget.
+        """
         if self.should_close():
             self.switch_to_start()
 
     def import_file_prepare(self):
+        """Prepare for importing a race file (exported from some other service).
+
+        Need to show a file selection dialog to choose the import file. Then, show another file
+        selection dialog to choose where to store the race file (with appropriate warning for
+        selecting an existing file).
+        """
         # Pick the import file.
         dialog = QFileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
@@ -419,6 +506,11 @@ class SexyThymeMainWindow(QMainWindow):
         return import_filename
 
     def import_bikereg_file(self):
+        """Import a BikeReg csv racers list export file.
+
+        This starts a new race and populates the field and racer lists with the stuff from the
+        csv file.
+        """
         import_filename = self.import_file_prepare()
 
         if not import_filename:
@@ -447,19 +539,23 @@ class SexyThymeMainWindow(QMainWindow):
         self.centralWidget().modeldb.add_defaults()
 
     def generate_reports(self):
+        """Show the reports window."""
         dialog = ReportsWindow(self.centralWidget().modeldb, self)
         dialog.setWindowModality(Qt.ApplicationModal)
         dialog.show()
 
     def config_preferences(self):
+        """Show the preferences window."""
         dialog = PreferencesWindow(self.centralWidget().modeldb, self)
         dialog.setWindowModality(Qt.ApplicationModal)
         dialog.show()
 
     def config_builder(self):
+        """Show the race builder window."""
         self.centralWidget().builder.show()
 
     def connect_remote(self, remote_class):
+        """Instantiate the given remote class, and use it to connect to the remote service."""
         remote = remote_class(self.centralWidget().modeldb)
         # Allow remote setup if okay or timed out (but not rejected).
         if remote.connect(self) == remotes.Status.Rejected:
@@ -468,11 +564,13 @@ class SexyThymeMainWindow(QMainWindow):
         self.set_remote(remote)
 
     def disconnect_remote(self):
+        """Disconnect the currently connected remote (if any)."""
         if self.remote:
             self.remote.disconnect(self)
         self.set_remote(None)
 
     def set_remote(self, remote):
+        """Do everything needed for a remote that has just been connected."""
         race_table_model = self.centralWidget().modeldb.race_table_model
 
         if remote:
@@ -494,6 +592,10 @@ class SexyThymeMainWindow(QMainWindow):
         self.centralWidget().set_remote(remote)
 
     def remote_status_changed(self, status):
+        """Handle remote status change.
+
+        This amounts to changing the text in the status bar.
+        """
         if status == remotes.Status.Ok:
             self.statusBar().showMessage('Remote: Ok')
         elif status == remotes.Status.TimedOut:
@@ -504,6 +606,7 @@ class SexyThymeMainWindow(QMainWindow):
             self.statusBar().showMessage('Remote: Unknown State')
 
     def should_close(self):
+        """Ask user if we really want to close the app."""
         # If there are unsubmitted results, give the user a chance to cancel
         # the quit...not that the user will lose anything, but just as a heads
         # up that there's unfinished business on the part of the user.
