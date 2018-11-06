@@ -8,7 +8,7 @@ from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QMessageBox
 from common import APPLICATION_NAME, pluralize, pretty_list
 from preferences import PreferencesWindow
 from racebuilder import Builder
-from racemodel import DatabaseError, ModelDatabase, RaceTableModel, FieldTableModel, RacerTableModel
+from racemodel import DatabaseError, ModelDatabase, RaceTableModel, RacerTableModel
 from raceview import FieldTableView, RacerTableView, ResultTableView
 import remotes
 from reports import ReportsWindow
@@ -41,7 +41,7 @@ class CentralWidget(QObject):
     def cleanup(self):
         pass
 
-    def hasModel(self):
+    def has_model(self):
         return False
 
 class StartCentralWidget(QLabel, CentralWidget):
@@ -55,6 +55,8 @@ class MainCentralWidget(QWidget, CentralWidget):
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
+
+        self.remote = None
 
         # Top-level layout. Top to bottom.
         self.setLayout(QVBoxLayout())
@@ -85,7 +87,7 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Submit button.
         self.submit_button = QPushButton()
-        self.updateSubmitButton()
+        self.update_submit_button()
 
         # Add to top-level layout.
         self.layout().addWidget(self.button_row)
@@ -110,17 +112,17 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Signals/slots for field name change notification.
         self.modeldb.field_table_model.dataChanged.connect(
-                                                       self.fieldModelChanged)
+                                                       self.field_model_changed)
 
         # Signals/slots for result table.
         self.result_table_view.selectionModel().selectionChanged.connect(
-                                                  self.resultSelectionChanged)
+                                                  self.result_selection_changed)
 
         # Signals/slots for result input.
-        self.result_input.returnPressed.connect(self.newResult)
+        self.result_input.returnPressed.connect(self.new_result)
 
         # Signals/slots for submit button.
-        self.submit_button.clicked.connect(self.result_table_view.handleSubmit)
+        self.submit_button.clicked.connect(self.result_table_view.handle_submit)
 
     def cleanup(self):
         self.builder.hide()
@@ -130,15 +132,15 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.modeldb.cleanup()
         self.modeldb = None
 
-    def hasModel(self):
+    def has_model(self):
         return self.modeldb is not None
 
-    def updateSubmitButton(self):
+    def update_submit_button(self):
         if self.result_table_view:
             selection_count = len(self.result_table_view.selectionModel().selectedRows())
             total_count = self.result_table_view.model().rowCount()
         else:
-            seletion_count = 0
+            selection_count = 0
             total_count = 0
 
         if selection_count == 0:
@@ -154,7 +156,9 @@ class MainCentralWidget(QWidget, CentralWidget):
             self.submit_button.setText('Submit All')
             self.submit_button.setEnabled(True)
 
-    def fieldModelChanged(self, *args):
+    def field_model_changed(self, *args):
+        del args
+
         # TODO: We only care here if field name changes.
 
         # When someone changes a field name, we have to update the racer model
@@ -172,18 +176,19 @@ class MainCentralWidget(QWidget, CentralWidget):
         if not field_relation_model.select():
             raise DatabaseError(racer_table_model.lastError().text())
 
-    def resultSelectionChanged(self, selected, deselected):
-        self.updateSubmitButton()
+    def result_selection_changed(self, selected, deselected):
+        del selected, deselected
+        self.update_submit_button()
 
-    def newResult(self):
+    def new_result(self):
         self.modeldb.result_table_model.add_result(
                                self.result_input.text(), QTime.currentTime())
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
 
-    def setRemote(self, remote):
+    def set_remote(self, remote):
         self.remote = remote
-        self.racer_table_view.setRemote(remote)
+        self.racer_table_view.set_remote(remote)
 
 class SexyThymeMainWindow(QMainWindow):
     def __init__(self, filename=None, parent=None):
@@ -192,16 +197,16 @@ class SexyThymeMainWindow(QMainWindow):
         self.setWindowTitle(APPLICATION_NAME)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
 
-        self.setupMenuBar()
+        self.setup_menubar()
 
         self.remote = None
 
         if filename:
-            self.switchToMain(filename)
+            self.switch_to_main(filename)
         else:
-            self.switchToStart()
+            self.switch_to_start()
 
-    def switchToStart(self):
+    def switch_to_start(self):
         # Clean up old central widget, which will clean up the model we gave it.
         if self.centralWidget():
             self.centralWidget().cleanup()
@@ -212,7 +217,7 @@ class SexyThymeMainWindow(QMainWindow):
         self.connect_remote_menu.setEnabled(False)
         self.disconnect_remote_menu.setEnabled(False)
 
-    def switchToMain(self, filename, new=False):
+    def switch_to_main(self, filename, new=False):
         # Clean up old central widget, which will clean up the model we gave it.
         if self.centralWidget():
             self.centralWidget().cleanup()
@@ -225,25 +230,26 @@ class SexyThymeMainWindow(QMainWindow):
 
         remote_class_string = model.race_table_model.get_race_property(RaceTableModel.REMOTE_CLASS)
         if remote_class_string:
-            self.connectRemote(remotes.get_remote_class_from_string(remote_class_string))
+            self.connect_remote(remotes.get_remote_class_from_string(remote_class_string))
         else:
-            self.setRemote(None)
+            self.set_remote(None)
 
-    def setupMenuBar(self):
+    def setup_menubar(self):
         # Make a parent-less menubar, so that Qt can use the top-level native
         # one (like on OS-X and Ubuntu Unity) if available.
-        menuBar = QMenuBar()
-        self.setMenuBar(menuBar)
+        menubar = QMenuBar()
+        self.setMenuBar(menubar)
 
         # File menu.
         file_menu = self.menuBar().addMenu('&File')
-        file_menu.addAction('New...', self.newFile, QKeySequence.New)
-        file_menu.addAction('Open...', self.openFile, QKeySequence.Open)
-        file_menu.addAction('Close', self.closeFile, QKeySequence.Close)
+        file_menu.addAction('New...', self.new_file, QKeySequence.New)
+        file_menu.addAction('Open...', self.open_file, QKeySequence.Open)
+        file_menu.addAction('Close', self.close_file, QKeySequence.Close)
 
         file_menu.addSeparator()
 
-        self.generate_reports_menu_action = file_menu.addAction('Generate reports', self.generateReports)
+        self.generate_reports_menu_action = file_menu.addAction('Generate reports',
+                                                                self.generate_reports)
 
         file_menu.addSeparator()
 
@@ -251,19 +257,20 @@ class SexyThymeMainWindow(QMainWindow):
 
         # Config menu.
         config_menu = self.menuBar().addMenu('&Config')
-        config_menu.addAction('Preferences', self.configPreferences, QKeySequence.Preferences)
-        config_menu.addAction('Race Builder', self.configBuilder)
-        config_menu.addAction('Import Bikereg csv...', self.importBikeregFile)
+        config_menu.addAction('Preferences', self.config_preferences, QKeySequence.Preferences)
+        config_menu.addAction('Race Builder', self.config_builder)
+        config_menu.addAction('Import Bikereg csv...', self.import_bikereg_file)
 
         config_menu.addSeparator()
 
         self.connect_remote_menu = config_menu.addMenu('Connect Remote')
         remote_class_list = remotes.get_remote_class_list()
         for remote_class in remote_class_list:
-            receiver = lambda remote_class=remote_class: self.connectRemote(remote_class)
+            receiver = lambda remote_class=remote_class: self.connect_remote(remote_class)
             self.connect_remote_menu.addAction(remote_class.name, receiver)
 
-        self.disconnect_remote_menu = config_menu.addAction('Disconnect Remote', self.disconnectRemote)
+        self.disconnect_remote_menu = config_menu.addAction('Disconnect Remote',
+                                                            self.disconnect_remote)
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
         if event.key() == Qt.Key_Escape:
@@ -271,8 +278,8 @@ class SexyThymeMainWindow(QMainWindow):
         else:
             super().keyPressEvent(event)
 
-    def closeEvent(self, event):
-        if self.shouldClose():
+    def closeEvent(self, event): #pylint: disable=invalid-name
+        if self.should_close():
             # Clean up old central widget, which will clean up the model we gave it.
             if self.centralWidget():
                 self.centralWidget().cleanup()
@@ -282,7 +289,7 @@ class SexyThymeMainWindow(QMainWindow):
         else:
             event.ignore()
 
-    def newFile(self):
+    def new_file(self):
         dialog = QFileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
         dialog.setDefaultSuffix('rce')
@@ -296,12 +303,12 @@ class SexyThymeMainWindow(QMainWindow):
             return None
 
         filename = dialog.selectedFiles()[0]
-        self.switchToMain(filename, True)
+        self.switch_to_main(filename, True)
         self.centralWidget().modeldb.add_defaults()
 
         return filename
 
-    def openFile(self):
+    def open_file(self):
         dialog = QFileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         dialog.setFileMode(QFileDialog.ExistingFile)
@@ -313,16 +320,16 @@ class SexyThymeMainWindow(QMainWindow):
             return None
 
         filename = dialog.selectedFiles()[0]
-        self.switchToMain(filename, False)
+        self.switch_to_main(filename, False)
         self.centralWidget().modeldb.add_defaults()
 
         return filename
 
-    def closeFile(self):
-        if self.shouldClose():
-            self.switchToStart()
+    def close_file(self):
+        if self.should_close():
+            self.switch_to_start()
 
-    def importFilePrepare(self):
+    def import_file_prepare(self):
         # Pick the import file.
         dialog = QFileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
@@ -337,7 +344,7 @@ class SexyThymeMainWindow(QMainWindow):
         import_filename = dialog.selectedFiles()[0]
 
         # If we are not yet initialized, pick a new race file.
-        if not self.centralWidget().hasModel():
+        if not self.centralWidget().has_model():
             dialog = QFileDialog(self)
             dialog.setAcceptMode(QFileDialog.AcceptSave)
             dialog.setDefaultSuffix('rce')
@@ -349,7 +356,7 @@ class SexyThymeMainWindow(QMainWindow):
 
             if dialog.exec():
                 filename = dialog.selectedFiles()[0]
-                self.switchToMain(filename, True)
+                self.switch_to_main(filename, True)
                 return import_filename
             else:
                 return None
@@ -381,12 +388,12 @@ class SexyThymeMainWindow(QMainWindow):
 
         # Reuse old filename.
         filename = self.centralWidget().modeldb.filename
-        self.switchToMain(filename, True)
+        self.switch_to_main(filename, True)
 
         return import_filename
 
-    def importBikeregFile(self):
-        import_filename = self.importFilePrepare()
+    def import_bikereg_file(self):
+        import_filename = self.import_file_prepare()
 
         if not import_filename:
             return
@@ -413,33 +420,33 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.centralWidget().modeldb.add_defaults()
 
-    def generateReports(self):
+    def generate_reports(self):
         dialog = ReportsWindow(self.centralWidget().modeldb, self)
         dialog.setWindowModality(Qt.ApplicationModal)
         dialog.show()
 
-    def configPreferences(self):
+    def config_preferences(self):
         dialog = PreferencesWindow(self.centralWidget().modeldb, self)
         dialog.setWindowModality(Qt.ApplicationModal)
         dialog.show()
 
-    def configBuilder(self):
+    def config_builder(self):
         self.centralWidget().builder.show()
 
-    def connectRemote(self, remote_class):
+    def connect_remote(self, remote_class):
         remote = remote_class(self.centralWidget().modeldb)
         # Allow remote setup if okay or timed out (but not rejected).
         if remote.connect(self) == remotes.Status.Rejected:
             remote = None
 
-        self.setRemote(remote)
+        self.set_remote(remote)
 
-    def disconnectRemote(self):
+    def disconnect_remote(self):
         if self.remote:
             self.remote.disconnect(self)
-        self.setRemote(None)
+        self.set_remote(None)
 
-    def setRemote(self, remote):
+    def set_remote(self, remote):
         race_table_model = self.centralWidget().modeldb.race_table_model
 
         if remote:
@@ -447,34 +454,34 @@ class SexyThymeMainWindow(QMainWindow):
             self.connect_remote_menu.setEnabled(False)
             self.disconnect_remote_menu.setEnabled(True)
             self.setStatusBar(QStatusBar())
-            remote.last_status_changed.connect(self.remoteStatusChanged)
-            self.remoteStatusChanged(remote.last_status)
+            remote.last_status_changed.connect(self.remote_status_changed)
+            self.remote_status_changed(remote.last_status)
         else:
             race_table_model.delete_race_property(RaceTableModel.REMOTE_CLASS)
             self.connect_remote_menu.setEnabled(True)
             self.disconnect_remote_menu.setEnabled(False)
             if self.remote:
-                self.remote.last_status_changed.disconnect(self.remoteStatusChanged)
+                self.remote.last_status_changed.disconnect(self.remote_status_changed)
             self.setStatusBar(None)
 
         self.remote = remote
-        self.centralWidget().setRemote(remote)
+        self.centralWidget().set_remote(remote)
 
-    def remoteStatusChanged(self, status):
+    def remote_status_changed(self, status):
         if status == remotes.Status.Ok:
             self.statusBar().showMessage('Remote: Ok')
         elif status == remotes.Status.TimedOut:
             self.statusBar().showMessage('Remote: Timed Out')
-        elif status == remotes.StatuslRejected:
+        elif status == remotes.Status.Rejected:
             self.statusBar().showMessage('Remote: Rejected')
         else:
             self.statusBar().showMessage('Remote: Unknown State')
 
-    def shouldClose(self):
+    def should_close(self):
         # If there are unsubmitted results, give the user a chance to cancel
         # the quit...not that the user will lose anything, but just as a heads
         # up that there's unfinished business on the part of the user.
-        if (self.centralWidget().hasModel() and
+        if (self.centralWidget().has_model() and
             (self.centralWidget().result_table_view.model().rowCount() != 0)):
             msg_box = QMessageBox()
             msg_box.setWindowTitle(APPLICATION_NAME)

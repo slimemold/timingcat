@@ -204,9 +204,10 @@ class StartTimeSetup(QWidget):
             starts_overwritten = racer_table_model.assign_start_times(field, start_time, interval,
                                                                       True)
             if starts_overwritten > 0:
-                QMessageBox.question(self, 'Question',
-                                     'About to overwrite %s existing ' % starts_overwritten +
-                                     'start times. Proceed anyway?')
+                if QMessageBox.question(self, 'Question',
+                                        'About to overwrite %s existing ' % starts_overwritten +
+                                        'start times. Proceed anyway?') != QMessageBox.Yes:
+                    return
             racer_table_model.assign_start_times(field, start_time, interval)
         except InputError as e:
             QMessageBox.warning(self, 'Error', str(e))
