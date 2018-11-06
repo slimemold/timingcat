@@ -11,8 +11,9 @@ import os
 from PyQt5.QtCore import QObject, QRegExp, QTime, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
 from PyQt5.QtWidgets import QLabel, QLineEdit, QMenuBar, QPushButton, QStatusBar, QWidget
-from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
-from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QMessageBox
+from PyQt5.QtWidgets import QLayout, QHBoxLayout, QVBoxLayout
+from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
+from PyQt5.QtWidgets import QApplication, QMainWindow
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 from preferences import PreferencesWindow
 from racebuilder import Builder
@@ -65,6 +66,25 @@ INPUT_TEXT_POINT_SIZE = 32
 #     ResultTableView
 #.    Preferences
 #.    RemoteConfig
+
+class AboutDialog(QDialog):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+
+        application_label = QLabel('<h1>' + APPLICATION_NAME + '</h1>')
+        application_label.setAlignment(Qt.AlignCenter)
+
+        copyright_label = QLabel(__copyright__)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok)
+        button_box.setCenterButtons(True)
+        button_box.accepted.connect(self.accept)
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(application_label)
+        self.layout().addWidget(copyright_label)
+        self.layout().addWidget(button_box)
+        self.layout().setSizeConstraint(QLayout.SetFixedSize)
 
 class CentralWidget(QObject):
     """Central Widget baseclass.
@@ -361,6 +381,9 @@ class SexyThymeMainWindow(QMainWindow):
         self.disconnect_remote_menu = config_menu.addAction('Disconnect Remote',
                                                             self.disconnect_remote)
 
+        help_menu = self.menuBar().addMenu('&Help')
+        help_menu.addAction('About', self.help_about)
+
     def keyPressEvent(self, event): #pylint: disable=invalid-name
         """Handle keypresses."""
         if event.key() == Qt.Key_Escape:
@@ -604,6 +627,9 @@ class SexyThymeMainWindow(QMainWindow):
             self.statusBar().showMessage('Remote: Rejected')
         else:
             self.statusBar().showMessage('Remote: Unknown State')
+
+    def help_about(self):
+        AboutDialog(self).show()
 
     def should_close(self):
         """Ask user if we really want to close the app."""
