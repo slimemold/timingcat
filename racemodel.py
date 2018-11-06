@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """RaceModel Qt Classes
 
 This module contains the model-side of the model-view pattern. In particular, it is a wrapper

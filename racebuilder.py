@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """RaceBuilder Qt Classes
 
 This module implements Qt Widgets that have to do with setting up a race, or

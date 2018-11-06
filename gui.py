@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import csv
 import os
 from PyQt5.QtCore import QObject, QRegExp, QTime, Qt

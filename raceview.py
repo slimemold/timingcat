@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from PyQt5.QtCore import QItemSelection, QModelIndex, QRegExp, QTime, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush
 from PyQt5.QtSql import QSqlRelationalDelegate

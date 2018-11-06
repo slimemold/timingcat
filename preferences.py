@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Preferences Qt Classes
 
 This module implements a QDialog that can be used to set application preferences.

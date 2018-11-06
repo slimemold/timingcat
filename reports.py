@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Reports Qt Classes
 
 This module contains the dialog that can be used to generate race reports.

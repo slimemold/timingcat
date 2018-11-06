@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Remote Classes
 
 This module contains implementations for the optional remotes that can be used. A remote is a

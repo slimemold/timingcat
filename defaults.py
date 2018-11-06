@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Defaults
 
 This module contains constants for various application defaults. They are provided here as a

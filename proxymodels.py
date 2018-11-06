@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 from PyQt5.QtCore import QModelIndex, Qt
 from PyQt5.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
 from PyQt5.QtCore import QIdentityProxyModel, QSortFilterProxyModel

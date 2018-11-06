@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """Common
 
 This module is a dumping ground for various utilities and constants that can be used throughout
