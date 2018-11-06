@@ -1,6 +1,7 @@
 # SexyThyme - Time trial timing software with OnTheDay.net integration
 
 # Prerequisites
+pylint
 PyQt5
 requests
 
