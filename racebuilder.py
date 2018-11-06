@@ -223,7 +223,7 @@ class StartTimeSetup(QWidget):
 
         QMessageBox.information(self, 'Success', success_message)
 
-    def showEvent(self, event):
+    def showEvent(self, event): #pylint: disable=invalid-name
         """Set up input widgets when this widget is shown.
 
         Basically, this amounts to populating the start time edit box with the current time, plus
@@ -324,7 +324,7 @@ class RaceInfo(QWidget):
         self.date_selection_button.clicked.connect(self.date_selection_start)
         self.calendar.clicked.connect(self.date_selection_finished)
 
-    def dataChanged(self, top_left, bottom_right, roles):
+    def dataChanged(self, top_left, bottom_right, roles): #pylint: disable=invalid-name
         """Respond to a RaceTableModel data change by updating input widgets with current values."""
         del top_left, bottom_right, roles
 
@@ -363,7 +363,7 @@ class RaceInfo(QWidget):
         self.date_dateedit.setDate(date)
         self.date_editing_finished()
 
-    def hideEvent(self, event):
+    def hideEvent(self, event): #pylint: disable=invalid-name
         """Commit the race notes to the model.
 
         The QPlainTextEdit widget is a pain in the ass.  The only notification
@@ -402,19 +402,19 @@ class Builder(QTabWidget):
         self.addTab(field_setup, 'Field Setup')
         self.addTab(race_info, 'Race Info')
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event): #pylint: disable=invalid-name
         """Handle key press."""
         if event.key() == Qt.Key_Escape:
             self.close()
 
         super().keyPressEvent(event)
 
-    def showEvent(self, event):
+    def showEvent(self, event): #pylint: disable=invalid-name
         """Handle show event."""
         self.currentWidget().setVisible(True)
         super().showEvent(event)
 
-    def hideEvent(self, event):
+    def hideEvent(self, event): #pylint: disable=invalid-name
         """Handle hide event."""
         self.currentWidget().setVisible(False)
         super().hideEvent(event)

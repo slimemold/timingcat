@@ -92,7 +92,7 @@ class FieldTableView(QTableView):
         # the model is not considered a data change, but we need to do this
         # anyway to populate racer_in_field_table_view_dict.
         self.racer_in_field_table_view_dict = {}
-        self.dataChanged()
+        self.dataChanged(QModelIndex(), QModelIndex(), [])
 
         # Signals/slots to handle racer in field table views.
         self.modeldb.racer_table_model.dataChanged.connect(self.updateNonModelColumns)
@@ -106,7 +106,7 @@ class FieldTableView(QTableView):
 
         self.setModel(proxyModel)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event): #pylint: disable=invalid-name
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
@@ -114,10 +114,10 @@ class FieldTableView(QTableView):
 
         return super().keyPressEvent(event)
 
-    def showEvent(self, event):
+    def showEvent(self, event): #pylint: disable=invalid-name
         self.resize(520, 600)
 
-    def hideEvent(self, event):
+    def hideEvent(self, event): #pylint: disable=invalid-name
         self.visibleChanged.emit(False)
 
     def handleDelete(self):
@@ -174,7 +174,7 @@ class FieldTableView(QTableView):
         if not self.modeldb.field_table_model.select():
             raise DatabaseError(model.lastError().text())
 
-    def dataChanged(self, top_left=QModelIndex(), bottom_right=QModelIndex(), roles=[]):
+    def dataChanged(self, top_left, bottom_right, roles): #pylint: disable=invalid-name
         super().dataChanged(top_left, bottom_right, roles)
 
         field_table_model = self.modeldb.field_table_model
@@ -297,7 +297,7 @@ class RacerTableView(QTableView):
         # set up for this race.
         self.hideColumn(model.fieldIndex(RacerTableModel.STATUS))
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event): #pylint: disable=invalid-name
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
@@ -305,10 +305,10 @@ class RacerTableView(QTableView):
 
         super().keyPressEvent(event)
 
-    def showEvent(self, event):
+    def showEvent(self, event): #pylint: disable=invalid-name
         self.resize(1000, 800)
 
-    def hideEvent(self, event):
+    def hideEvent(self, event): #pylint: disable=invalid-name
         self.visibleChanged.emit(False)
 
     def handleDelete(self):
@@ -389,7 +389,7 @@ class ResultTableView(QTableView):
         font.setPointSize(self.RESULT_TABLE_POINT_SIZE)
         self.setFont(font)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event): #pylint: disable=invalid-name
         if event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
             self.handleDelete()
 

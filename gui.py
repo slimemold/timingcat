@@ -265,7 +265,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.disconnect_remote_menu = config_menu.addAction('Disconnect Remote', self.disconnectRemote)
 
-    def keyPressEvent(self, event):
+    def keyPressEvent(self, event): #pylint: disable=invalid-name
         if event.key() == Qt.Key_Escape:
             self.close()
         else:
@@ -409,7 +409,7 @@ class SexyThymeMainWindow(QMainWindow):
 
                 racer_table_model = self.centralWidget().modeldb.racer_table_model
 
-                racer_table_model.addRacer(bib, first_name, last_name, field, category, team, age)
+                racer_table_model.add_racer(bib, first_name, last_name, field, category, team, age)
 
         self.centralWidget().modeldb.add_defaults()
 
