@@ -68,6 +68,11 @@ INPUT_TEXT_POINT_SIZE = 32
 #.    RemoteConfig
 
 class AboutDialog(QDialog):
+    """About Dialog.
+
+    Should show application name and copyright notice.
+    """
+
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
@@ -629,6 +634,7 @@ class SexyThymeMainWindow(QMainWindow):
             self.statusBar().showMessage('Remote: Unknown State')
 
     def help_about(self):
+        """Show about dialog."""
         AboutDialog(self).show()
 
     def should_close(self):
