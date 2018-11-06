@@ -7,11 +7,12 @@ result scratchpad table view), as well as whatever proxy models are stacked betw
 and the models.
 """
 
-from PyQt5.QtCore import QItemSelection, QModelIndex, QRegExp, QTime, Qt, pyqtSignal
+from PyQt5.QtCore import QItemSelection, QModelIndex, QRegExp, QSettings, QTime, Qt, pyqtSignal
 from PyQt5.QtGui import QBrush
 from PyQt5.QtSql import QSqlRelationalDelegate
 from PyQt5.QtWidgets import QMessageBox, QTableView
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
+import defaults
 from proxymodels import SqlExtraColumnsProxyModel, SqlSortFilterProxyModel
 from racemodel import DatabaseError, InputError, RacerTableModel, FieldTableModel, ResultTableModel
 
@@ -142,6 +143,7 @@ class FieldTableView(QTableView):
         self.modeldb.racer_table_model.dataChanged.connect(self.update_non_model_columns)
         self.doubleClicked.connect(self.handle_show_racer_in_field_table_view)
 
+        self.read_settings()
 
     def setup_proxy_model(self):
         """Use a proxy model so we can add some interesting columns."""
@@ -159,14 +161,10 @@ class FieldTableView(QTableView):
 
         return super().keyPressEvent(event)
 
-    def showEvent(self, event): #pylint: disable=invalid-name
-        """Handle show event."""
-        del event
-        self.resize(520, 600)
-
     def hideEvent(self, event): #pylint: disable=invalid-name
         """Handle hide event."""
         del event
+        self.write_settings()
         self.visibleChanged.emit(False)
 
     def handle_delete(self):
@@ -311,6 +309,29 @@ class FieldTableView(QTableView):
         # TODO: Use extraColumnDataChanged for this.
         self.dataChanged(top_left, bottom_right, [Qt.DisplayRole])
 
+    def read_settings(self):
+        """Read settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        self.resize(settings.value('size', defaults.FIELD_TABLE_VIEW_SIZE))
+        if settings.contains('pos'):
+            self.move(settings.value('pos'))
+
+        settings.endGroup()
+
+    def write_settings(self):
+        """Write settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        settings.setValue('size', self.size())
+        settings.setValue('pos', self.pos())
+
+        settings.endGroup()
+
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
@@ -398,6 +419,8 @@ class RacerTableView(QTableView):
         # set up for this race.
         self.hideColumn(model.fieldIndex(RacerTableModel.STATUS))
 
+        self.read_settings()
+
     def keyPressEvent(self, event): #pylint: disable=invalid-name
         """Handle keypresses."""
         if event.key() == Qt.Key_Escape:
@@ -407,14 +430,10 @@ class RacerTableView(QTableView):
 
         super().keyPressEvent(event)
 
-    def showEvent(self, event): #pylint: disable=invalid-name
-        """Handle show event."""
-        del event
-        self.resize(1000, 800)
-
     def hideEvent(self, event): #pylint: disable=invalid-name
         """Handle hide event."""
         del event
+        self.write_settings()
         self.visibleChanged.emit(False)
 
     def handle_delete(self):
@@ -476,6 +495,35 @@ class RacerTableView(QTableView):
         else:
             self.hideColumn(self.model().fieldIndex(RacerTableModel.STATUS))
 
+    def read_settings(self):
+        """Read settings."""
+        group_name = self.__class__.__name__
+        if self.field_id:
+            field_name = self.modeldb.field_table_model.name_from_id(self.field_id)
+            group_name = '_'.join([group_name, field_name])
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        self.resize(settings.value('size', defaults.RACER_TABLE_VIEW_SIZE))
+        if settings.contains('pos'):
+            self.move(settings.value('pos'))
+
+        settings.endGroup()
+
+    def write_settings(self):
+        """Write settings."""
+        group_name = self.__class__.__name__
+        if self.field_id:
+            field_name = self.modeldb.field_table_model.name_from_id(self.field_id)
+            group_name = '_'.join([group_name, field_name])
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        settings.setValue('size', self.size())
+        settings.setValue('pos', self.pos())
+
+        settings.endGroup()
+
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
@@ -506,12 +554,20 @@ class ResultTableView(QTableView):
         font.setPointSize(self.RESULT_TABLE_POINT_SIZE)
         self.setFont(font)
 
+        self.read_settings()
+
     def keyPressEvent(self, event): #pylint: disable=invalid-name
         """Handle keypresses."""
         if event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
             self.handle_delete()
 
         return super().keyPressEvent(event)
+
+    def hideEvent(self, event): #pylint: disable=invalid-name
+        """Handle hide event."""
+        del event
+        self.write_settings()
+        self.visibleChanged.emit(False)
 
     def handle_delete(self):
         """Handle delete keypress.
@@ -570,3 +626,29 @@ class ResultTableView(QTableView):
         # Model retains blank rows until we select() again.
         if not model.select():
             raise DatabaseError(model.lastError().text())
+
+    def read_settings(self):
+        """Read settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        self.resize(settings.value('size', defaults.RESULT_TABLE_VIEW_SIZE))
+        if settings.contains('pos'):
+            self.move(settings.value('pos'))
+
+        settings.endGroup()
+
+    def write_settings(self):
+        """Write settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        settings.setValue('size', self.size())
+        settings.setValue('pos', self.pos())
+
+        settings.endGroup()
+
+    # Signals.
+    visibleChanged = pyqtSignal(bool)

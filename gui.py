@@ -8,7 +8,7 @@ central widget, status and menubars, etc.
 
 import csv
 import os
-from PyQt5.QtCore import QObject, QRegExp, QTime, QTimer, Qt
+from PyQt5.QtCore import QObject, QRegExp, QSettings, QTime, QTimer, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
 from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPushButton, QStatusBar
 from PyQt5.QtWidgets import QWidget
@@ -256,6 +256,10 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.field_table_view.hide()
         self.racer_table_view.hide()
 
+        racer_in_field_table_view_dict = self.field_table_view.racer_in_field_table_view_dict
+        for _, racer_table_view in racer_in_field_table_view_dict.items():
+            racer_table_view.hide()
+
         self.modeldb.cleanup()
         self.modeldb = None
 
@@ -336,6 +340,8 @@ class SexyThymeMainWindow(QMainWindow):
     def __init__(self, filename=None, parent=None):
         """Initialize the SexyThymeMainWindow instance."""
         super().__init__(parent=parent)
+
+        self.read_settings()
 
         self.setWindowTitle(APPLICATION_NAME)
         self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
@@ -438,8 +444,11 @@ class SexyThymeMainWindow(QMainWindow):
             if self.centralWidget():
                 self.centralWidget().cleanup()
 
-            QApplication.quit()
+            self.write_settings()
             event.accept()
+
+            # This is needed to get all other top-level windows to close as well.
+            QApplication.quit()
         else:
             event.ignore()
 
@@ -688,3 +697,27 @@ class SexyThymeMainWindow(QMainWindow):
             return msg_box.exec() == QMessageBox.Ok
 
         return True
+
+    def read_settings(self):
+        """Read settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        if settings.contains('size'):
+            self.resize(settings.value('size'))
+        if settings.contains('pos'):
+            self.move(settings.value('pos'))
+
+        settings.endGroup()
+
+    def write_settings(self):
+        """Write settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        settings.setValue('size', self.size())
+        settings.setValue('pos', self.pos())
+
+        settings.endGroup()

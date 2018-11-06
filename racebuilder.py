@@ -6,7 +6,7 @@ This module implements Qt Widgets that have to do with setting up a race, or
 adding and configuring components of a race, such as racers and fields.
 """
 
-from PyQt5.QtCore import QDate, QModelIndex, QRegExp, QTime, Qt
+from PyQt5.QtCore import QDate, QModelIndex, QRegExp, QSettings, QTime, Qt
 from PyQt5.QtGui import QRegExpValidator, QTextDocument
 from PyQt5.QtWidgets import QComboBox, QLabel, QLineEdit, QPlainTextEdit, \
                             QPushButton, QRadioButton, QWidget
@@ -429,6 +429,8 @@ class Builder(QTabWidget):
         self.addTab(field_setup, 'Field Setup')
         self.addTab(race_info, 'Race Info')
 
+        self.read_settings()
+
     def keyPressEvent(self, event): #pylint: disable=invalid-name
         """Handle key press."""
         if event.key() == Qt.Key_Escape:
@@ -444,4 +446,26 @@ class Builder(QTabWidget):
     def hideEvent(self, event): #pylint: disable=invalid-name
         """Handle hide event."""
         self.currentWidget().setVisible(False)
+        self.write_settings()
         super().hideEvent(event)
+
+    def read_settings(self):
+        """Read settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        if settings.contains('pos'):
+            self.move(settings.value('pos'))
+
+        settings.endGroup()
+
+    def write_settings(self):
+        """Write settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        settings.setValue('pos', self.pos())
+
+        settings.endGroup()

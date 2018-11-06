@@ -6,7 +6,7 @@ This module contains the dialog that can be used to generate race reports.
 """
 
 import re
-from PyQt5.QtCore import QTime
+from PyQt5.QtCore import QSettings, QTime
 from PyQt5.QtGui import QTextDocument
 from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt5.QtSql import QSqlRelation, QSqlRelationalTableModel
@@ -74,6 +74,8 @@ class ReportsWindow(QDialog):
 
         generate_finish_button.clicked.connect(self.generate_finish_report)
 
+        self.read_settings()
+
     def generate_finish_report(self):
         """Generate finish report, using the information from the dialog's input widgets."""
         document = generate_finish_report(self.modeldb, self.field_combobox.currentText())
@@ -83,6 +85,32 @@ class ReportsWindow(QDialog):
         print_dialog = QPrintDialog(printer, self)
         if print_dialog.exec() == QDialog.Accepted:
             document.print(printer)
+
+    def hideEvent(self, event): #pylint: disable=invalid-name
+        """Handle hide event."""
+        self.write_settings()
+        super().hideEvent(event)
+
+    def read_settings(self):
+        """Read settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        if settings.contains('pos'):
+            self.move(settings.value('pos'))
+
+        settings.endGroup()
+
+    def write_settings(self):
+        """Write settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        settings.setValue('pos', self.pos())
+
+        settings.endGroup()
 
 def time_delta(finish, start):
     """Return a string representing the time difference between the start and the finish."""

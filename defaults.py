@@ -6,6 +6,7 @@ This module contains constants for various application defaults. They are provid
 central location for tweaking.
 """
 
+from PyQt5.QtCore import QSize
 from common import VERSION
 
 __author__ = 'Andrew Chew'
@@ -38,3 +39,6 @@ FIELD_NAME = 'default'
 START_TIME_FROM_NOW_SECS = 300 # 5 minutes
 START_TIME_INTERVAL_SECS = 60
 TIME_FORMAT = 'hh:mm:ss.zzz AP'
+FIELD_TABLE_VIEW_SIZE = QSize(520, 600)
+RACER_TABLE_VIEW_SIZE = QSize(1000, 800)
+RESULT_TABLE_VIEW_SIZE = QSize(280, 400)
