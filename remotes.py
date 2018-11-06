@@ -5,11 +5,36 @@ remote service on which we can push results (typically, racer finishes).
 """
 
 from random import random
+#import requests
 import sys
 from PyQt5.QtCore import QObject, QTimer, Qt, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QWidget
 from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
-#import requests
+from common import VERSION
+
+__author__ = 'Andrew Chew'
+__copyright__ = '''
+    Copyright (C) 2018 Andrew Chew
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+'''
+__credits__ = ['Andrew Chew', 'Colleen Chew']
+__license__ = 'GPLv3'
+__version__ = VERSION
+__maintainer__ = 'Andrew Chew'
+__email__ = 'andrew@5rcc.com'
+__status__ = 'Development'
 
 def enum(**enums):
     """Simulate an enum."""

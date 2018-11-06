@@ -5,13 +5,37 @@ from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
 from PyQt5.QtWidgets import QLabel, QLineEdit, QMenuBar, QPushButton, QStatusBar, QWidget
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QApplication, QFileDialog, QMainWindow, QMessageBox
-from common import APPLICATION_NAME, pluralize, pretty_list
+from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 from preferences import PreferencesWindow
 from racebuilder import Builder
 from racemodel import DatabaseError, ModelDatabase, RaceTableModel, RacerTableModel
 from raceview import FieldTableView, RacerTableView, ResultTableView
 import remotes
 from reports import ReportsWindow
+
+__author__ = 'Andrew Chew'
+__copyright__ = '''
+    Copyright (C) 2018 Andrew Chew
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+'''
+__credits__ = ['Andrew Chew', 'Colleen Chew']
+__license__ = 'GPLv3'
+__version__ = VERSION
+__maintainer__ = 'Andrew Chew'
+__email__ = 'andrew@5rcc.com'
+__status__ = 'Development'
 
 INPUT_TEXT_POINT_SIZE = 32
 

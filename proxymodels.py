@@ -1,6 +1,31 @@
 from PyQt5.QtCore import QModelIndex, Qt
 from PyQt5.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
 from PyQt5.QtCore import QIdentityProxyModel, QSortFilterProxyModel
+from common import VERSION
+
+__author__ = 'Andrew Chew'
+__copyright__ = '''
+    Copyright (C) 2018 Andrew Chew
+
+    This program is free software: you can redistribute it and/or modify
+    it under the terms of the GNU General Public License as published by
+    the Free Software Foundation, either version 3 of the License, or
+    (at your option) any later version.
+
+    This program is distributed in the hope that it will be useful,
+    but WITHOUT ANY WARRANTY; without even the implied warranty of
+    MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+    GNU General Public License for more details.
+
+    You should have received a copy of the GNU General Public License
+    along with this program.  If not, see <https://www.gnu.org/licenses/>.
+'''
+__credits__ = ['Andrew Chew', 'Colleen Chew']
+__license__ = 'GPLv3'
+__version__ = VERSION
+__maintainer__ = 'Andrew Chew'
+__email__ = 'andrew@5rcc.com'
+__status__ = 'Development'
 
 class ExtraColumnsProxyModel(QIdentityProxyModel):
     def __init__(self, parent=None):
