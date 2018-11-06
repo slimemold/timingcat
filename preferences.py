@@ -6,7 +6,7 @@ This module implements a QDialog that can be used to set application preferences
 """
 
 from PyQt5.QtCore import QSettings
-from PyQt5.QtWidgets import QCheckBox, QDialog, QGroupBox
+from PyQt5.QtWidgets import QCheckBox, QGroupBox, QWidget
 from PyQt5.QtWidgets import QVBoxLayout
 from common import VERSION
 
@@ -34,14 +34,12 @@ __maintainer__ = 'Andrew Chew'
 __email__ = 'andrew@5rcc.com'
 __status__ = 'Development'
 
-class PreferencesWindow(QDialog):
+class PreferencesWindow(QWidget):
     """This dialog allows the user to set application preferences."""
 
-    def __init__(self, modeldb, parent=None):
+    def __init__(self, parent=None):
         """Initialize the PreferencesWindow instance."""
         super().__init__(parent=parent)
-
-        self.modeldb = modeldb
 
         self.setWindowTitle('Preferences')
 

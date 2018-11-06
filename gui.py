@@ -130,13 +130,6 @@ class CentralWidget(QObject):
         """Initialize the CentralWidget instance."""
         super().__init__(parent=parent)
 
-    def cleanup(self):
-        """Clean up the CentralWidget instance.
-
-        There's nothing to clean up in this base class.
-        """
-        pass
-
     def has_model(self):
         """Return whether we have a race model loaded.
 
@@ -247,7 +240,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         # Signals/slots for submit button.
         self.submit_button.clicked.connect(self.result_table_view.handle_submit)
 
-    def cleanup(self):
+    def closeEvent(self, event): #pylint: disable=invalid-name
         """Clean up the MainCentralWidget instance.
 
         Hide all floater widgets, and cleanup (close) the race model.
@@ -262,6 +255,8 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         self.modeldb.cleanup()
         self.modeldb = None
+
+        super().closeEvent(event)
 
     def has_model(self):
         """Return whether we have a race model."""
@@ -350,6 +345,8 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.remote = None
 
+        self.preferences_window = PreferencesWindow()
+
         if filename:
             self.switch_to_main(filename)
         else:
@@ -359,7 +356,7 @@ class SexyThymeMainWindow(QMainWindow):
         """Switch to the StartCentralWidget as our central widget."""
         # Clean up old central widget, which will clean up the model we gave it.
         if self.centralWidget():
-            self.centralWidget().cleanup()
+            self.centralWidget().close()
 
         self.setCentralWidget(StartCentralWidget())
 
@@ -371,7 +368,7 @@ class SexyThymeMainWindow(QMainWindow):
         """Switch to the MainCentralWidget as our central widget."""
         # Clean up old central widget, which will clean up the model we gave it.
         if self.centralWidget():
-            self.centralWidget().cleanup()
+            self.centralWidget().close()
 
         # Make a new model, and give it to a new central widget.
         model = ModelDatabase(filename, new)
@@ -442,7 +439,9 @@ class SexyThymeMainWindow(QMainWindow):
         if self.should_close():
             # Clean up old central widget, which will clean up the model we gave it.
             if self.centralWidget():
-                self.centralWidget().cleanup()
+                self.centralWidget().close()
+
+            self.preferences_window.hide()
 
             self.write_settings()
             event.accept()
@@ -615,9 +614,7 @@ class SexyThymeMainWindow(QMainWindow):
 
     def config_preferences(self):
         """Show the preferences window."""
-        dialog = PreferencesWindow(self.centralWidget().modeldb, self)
-        dialog.setWindowModality(Qt.ApplicationModal)
-        dialog.show()
+        self.preferences_window.show()
 
     def config_builder(self):
         """Show the race builder window."""
