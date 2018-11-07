@@ -290,7 +290,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
         Set the chosen source columns, in the desired order for the proxy columns
         columns[proxyColumn=0] is the source column to show in the first proxy column, etc.
 
-        Example: QVector<int>() << 2 << 1;
+        Example: [2, 1]
         This examples configures the proxy to hide column 0, show column 2 from the source model,
         then show column 1 from the source model.
         """
@@ -374,7 +374,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
 
     def proxyColumnForSourceColumn(self, source_column): #pylint: disable=invalid-name
         """Return proxy column, given source column."""
-        # If this is too slow, we could add a second QVector with index=logical_source_column
+        # If this is too slow, we could add a second list with index=logical_source_column
         # value=desired_pos_in_proxy.
         try:
             return self.source_columns.index(source_column)
