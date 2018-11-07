@@ -38,6 +38,7 @@ class PreferencesWindow(QWidget):
     """This dialog allows the user to set application preferences."""
 
     # QSettings keys.
+    ALWAYS_ON_TOP = 'always_on_top'
     DIGITAL_CLOCK = 'digital_clock'
 
     def __init__(self, parent=None):
@@ -46,11 +47,13 @@ class PreferencesWindow(QWidget):
 
         self.setWindowTitle('Preferences')
 
-        # Appearance preferences.
+        # Window Appearance and Behavior preferences.
+        self.always_on_top_checkbox = QCheckBox('Main Window Always On Top')
         self.digital_clock_checkbox = QCheckBox('LCD clock')
 
-        appearance_groupbox = QGroupBox('Appearance')
+        appearance_groupbox = QGroupBox('Window Appearance and Behavior')
         appearance_groupbox.setLayout(QVBoxLayout())
+        appearance_groupbox.layout().addWidget(self.always_on_top_checkbox)
         appearance_groupbox.layout().addWidget(self.digital_clock_checkbox)
 
         self.setLayout(QVBoxLayout())
@@ -71,6 +74,10 @@ class PreferencesWindow(QWidget):
 
         if settings.contains('pos'):
             self.move(settings.value('pos'))
+
+        if settings.contains(self.ALWAYS_ON_TOP):
+            self.always_on_top_checkbox.setCheckState(int(settings.value(self.ALWAYS_ON_TOP)))
+
         if settings.contains(self.DIGITAL_CLOCK):
             self.digital_clock_checkbox.setCheckState(int(settings.value(self.DIGITAL_CLOCK)))
 
@@ -83,6 +90,9 @@ class PreferencesWindow(QWidget):
         settings.beginGroup(group_name)
 
         settings.setValue('pos', self.pos())
+
+        settings.setValue(self.ALWAYS_ON_TOP, self.always_on_top_checkbox.checkState())
+
         settings.setValue(self.DIGITAL_CLOCK, self.digital_clock_checkbox.checkState())
 
         settings.endGroup()

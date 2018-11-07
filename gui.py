@@ -370,13 +370,13 @@ class SexyThymeMainWindow(QMainWindow):
         self.read_settings()
 
         self.setWindowTitle(APPLICATION_NAME)
-        self.setWindowFlag(Qt.WindowStaysOnTopHint, True)
 
         self.setup_menubar()
 
         self.remote = None
 
         self.preferences_window = PreferencesWindow()
+        self.connect_preferences(self.preferences_window)
 
         if filename:
             self.switch_to_main(filename)
@@ -727,6 +727,21 @@ class SexyThymeMainWindow(QMainWindow):
             return msg_box.exec() == QMessageBox.Ok
 
         return True
+
+    def set_window_flag_stays_on_top(self, state):
+        """Change the Qt.WindowStaysOnTop window flag.
+
+        Couldn't use a lambda for this since I have to show() afterwards.
+        Still, there's issues with this...it doesn't really work. Supposedly,
+        worked in Qt4, so this is a regression.
+        """
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, state)
+        self.show()
+
+    def connect_preferences(self, preferences):
+        """Connect preferences signals to the various slots that care."""
+        preferences.always_on_top_checkbox.stateChanged.connect(self.set_window_flag_stays_on_top)
+        self.setWindowFlag(Qt.WindowStaysOnTopHint, preferences.always_on_top_checkbox.checkState())
 
     def read_settings(self):
         """Read settings."""
