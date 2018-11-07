@@ -14,7 +14,8 @@ from PyQt5.QtWidgets import QMessageBox, QTableView
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 import defaults
 from proxymodels import SqlExtraColumnsProxyModel, SqlSortFilterProxyModel
-from racemodel import DatabaseError, InputError, RacerTableModel, FieldTableModel, ResultTableModel
+from racemodel import DatabaseError, InputError, FieldTableModel, JournalTableModel, \
+                      RacerTableModel, ResultTableModel
 
 __author__ = 'Andrew Chew'
 __copyright__ = '''
@@ -39,6 +40,61 @@ __version__ = VERSION
 __maintainer__ = 'Andrew Chew'
 __email__ = 'andrew@5rcc.com'
 __status__ = 'Development'
+
+class JournalTableView(QTableView):
+    """Table view for the journal table model."""
+
+    def __init__(self, modeldb, parent=None):
+        """Initialize the JournalTableView instance."""
+        super().__init__(parent=parent)
+
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+
+        self.modeldb = modeldb
+
+        self.setModel(self.modeldb.journal_table_model)
+
+        self.setItemDelegate(QSqlRelationalDelegate())
+        self.setAlternatingRowColors(True)
+        self.setSortingEnabled(True)
+        self.horizontalHeader().setHighlightSections(False)
+        self.horizontalHeader().setStretchLastSection(True)
+        self.verticalHeader().setVisible(False)
+        self.hideColumn(self.model().fieldIndex(JournalTableModel.ID))
+
+        self.read_settings()
+
+    def hideEvent(self, event): #pylint: disable=invalid-name
+        """Handle hide event."""
+        del event
+        self.write_settings()
+        self.visibleChanged.emit(False)
+
+    def read_settings(self):
+        """Read settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        self.resize(settings.value('size', defaults.RESULT_TABLE_VIEW_SIZE))
+        if settings.contains('pos'):
+            self.move(settings.value('pos'))
+
+        settings.endGroup()
+
+    def write_settings(self):
+        """Write settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        settings.setValue('size', self.size())
+        settings.setValue('pos', self.pos())
+
+        settings.endGroup()
+
+    # Signals.
+    visibleChanged = pyqtSignal(bool)
 
 # Add a "Finished" column for total racers that have a finish time, and a
 # "Total" column to show total racers in that field.

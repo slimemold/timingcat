@@ -103,6 +103,9 @@ class ModelDatabase(QObject):
         if not self.db.open():
             raise DatabaseError(self.db.lastError().text())
 
+        # Make sure we make the journal table first, so we can immediately
+        # start to use it.
+        self.journal_table_model = JournalTableModel(self, new)
         self.race_table_model = RaceTableModel(self, new)
         self.field_table_model = FieldTableModel(self, new)
         self.racer_table_model = RacerTableModel(self, new)
@@ -115,10 +118,35 @@ class ModelDatabase(QObject):
 
     def add_defaults(self):
         """Add default table entries."""
+        self.journal_table_model.add_defaults()
         self.race_table_model.add_defaults()
         self.field_table_model.add_defaults()
         self.racer_table_model.add_defaults()
         self.result_table_model.add_defaults()
+
+class Journal(QObject):
+    """Journal helper class.
+
+    This class is meant to simplify the use of the journal database table.
+    With this class, you don't have to keep referring to the journal table
+    model...just pass it in once when we make an instance of this class. We
+    can also give it a topic (or not).
+
+    After making one of these, simply do:
+    journal.log(message, context)
+
+    Message and context is optional.
+    """
+    def __init__(self, journal_table_model, topic=None):
+        """Initialize the Journal instance."""
+        super().__init__()
+
+        self.journal_table_model = journal_table_model
+        self.topic = topic
+
+    def log(self, message=None, context=None):
+        """Log a journal entry."""
+        self.journal_table_model.add_entry(self.topic, message, context)
 
 class TableModel(QSqlRelationalTableModel):
     """Table Model base class
@@ -134,6 +162,12 @@ class TableModel(QSqlRelationalTableModel):
         self.modeldb = modeldb
         self.column_flags_to_add = {}
         self.column_flags_to_remove = {}
+
+        if hasattr(modeldb, 'journal_table_model'):
+            self.journal = Journal(modeldb.journal_table_model)
+
+        self.beforeInsert.connect(self.handle_before_insert)
+        self.beforeDelete.connect(self.handle_before_delete)
 
     def create_table(self, new):
         """Create the database table."""
@@ -176,6 +210,110 @@ class TableModel(QSqlRelationalTableModel):
         flags &= ~self.column_flags_to_remove[model_index.column()]
 
         return flags
+
+    def setData(self, index, value, role=Qt.EditRole):
+        """Override parent to have an opportunity to log the old value."""
+        if role==Qt.EditRole:
+            old_value = index.data(Qt.DisplayRole)
+            if value != old_value:
+                self.handle_before_update(index, old_value, value)
+
+        return super().setData(index, value, role)
+
+    def handle_before_insert(self, record):
+        """This gets called right before a record is inserted.
+
+        We use QtSqlTableModel's beforeInsert signal for this.
+        """
+        pass
+
+    def handle_before_delete(self, row):
+        """This gets called right before a record is deleted.
+
+        We use QtSqlTableModel's beforeInsert signal for this.
+        """
+        pass
+
+    def handle_before_update(self, index, old_value, new_value):
+        """This gets called when the value at the specified index is about to change.
+
+        Subclasses can log the change in this method.
+        """
+        pass
+
+class JournalTableModel(TableModel):
+    """Journal Table Model
+
+    This table contains an activity journal (model transactions, etc). Since we are too lazy to
+    implement proper undo support, this journal can be used to manually correct mistakes in the
+    race scoring process. Views of this model should hopefully provide sufficiently rich sorting
+    and filtering to make this useful.
+
+    TOPIC is meant to be a general facility code, for coarse filtering. For example, "racer".
+    MESSAGE is the long, detailed message.
+    CONTEXT is meant to be a small piece of data that's highly relevant to any message of a
+    particular topic. For example, if the TOPIC was "racer", the CONTEXT could be bib#.
+    """
+
+    TABLE = 'journal'
+    ID = 'id'
+    TIMESTAMP = 'timestamp'
+    TOPIC = 'topic'
+    MESSAGE = 'message'
+    CONTEXT = 'context'
+
+    def __init__(self, modeldb, new):
+        """Initialize the ResultTableModel instance."""
+        super().__init__(modeldb)
+
+        self.create_table(new)
+
+        self.setEditStrategy(QSqlTableModel.OnFieldChange)
+        self.setTable(self.TABLE)
+        self.setHeaderData(self.fieldIndex(self.TIMESTAMP),
+                           Qt.Horizontal, 'Timestamp')
+        self.setHeaderData(self.fieldIndex(self.TOPIC),
+                           Qt.Horizontal, 'Topic')
+        self.setHeaderData(self.fieldIndex(self.MESSAGE),
+                           Qt.Horizontal, 'Message')
+        self.setHeaderData(self.fieldIndex(self.CONTEXT),
+                           Qt.Horizontal, 'Context')
+        if not self.select():
+            raise DatabaseError(self.lastError().text())
+
+    def create_table(self, new):
+        """Create the database table."""
+        del new
+
+        query = QSqlQuery(self.database())
+
+        if not query.exec(
+            'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
+            '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
+             '"%s" DATETIME NOT NULL, ' % self.TIMESTAMP +
+             '"%s" TEXT, ' % self.TOPIC +
+             '"%s" TEXT, ' % self.MESSAGE +
+             '"%s" TEXT);' % self.CONTEXT):
+            raise DatabaseError(query.lastError().text())
+
+        query.finish()
+
+    def add_entry(self, topic=None, message=None, context=None):
+        """Add a row to the database table."""
+        # Generate our time stamp here...no need for the caller to make one.
+        timestamp = QDateTime.currentDateTime()
+
+        record = self.record()
+        record.setGenerated(self.ID, False)
+        record.setValue(self.TIMESTAMP, timestamp)
+        record.setValue(self.TOPIC, topic)
+        record.setValue(self.MESSAGE, message)
+        record.setValue(self.CONTEXT, context)
+
+        if not self.insertRecord(-1, record):
+            raise DatabaseError(self.lastError().text())
+        if not self.select():
+            raise DatabaseError(self.lastError().text())
 
 class RaceTableModel(TableModel):
     """Race Table Model
@@ -298,6 +436,8 @@ class FieldTableModel(TableModel):
         """Initialize the FieldTableModel instance."""
         super().__init__(modeldb)
 
+        self.journal.topic = 'field'
+
         self.create_table(new)
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
@@ -416,6 +556,8 @@ class RacerTableModel(TableModel):
     def __init__(self, modeldb, new):
         """Initialize the RacerTableModel instance."""
         super().__init__(modeldb)
+
+        self.journal.topic = 'racer'
 
         self.create_table(new)
 
@@ -640,6 +782,34 @@ class RacerTableModel(TableModel):
 
         return count
 
+    def handle_before_insert(self, record):
+        """Log the insertion."""
+        bib = record.value(self.BIB)
+        first_name = record.value(self.FIRST_NAME)
+        last_name = record.value(self.LAST_NAME)
+        self.journal.log('Racer %s added.' % ' '.join([first_name, last_name]), bib)
+
+    def handle_before_delete(self, row):
+        """Log the deletion."""
+        record = self.record(row)
+
+        bib = record.value(self.BIB)
+        first_name = record.value(self.FIRST_NAME)
+        last_name = record.value(self.LAST_NAME)
+
+        self.journal.log('Racer %s deleted.' % ' '.join([first_name, last_name]), bib)
+
+    def handle_before_update(self, index, old_value, new_value):
+        """Log the change."""
+        # This is just to get the column name.
+        record = self.record()
+
+        bib = index.siblingAtColumn(self.fieldIndex(self.BIB)).data()
+        column_name = self.headerData(index.column(), Qt.Horizontal) #record.fieldName(index.column())
+
+        self.journal.log('Racer changed %s from %s to %s' %
+                         (column_name, old_value, new_value), bib)
+
 class ResultTableModel(TableModel):
     """Result Table Model
 
@@ -657,6 +827,8 @@ class ResultTableModel(TableModel):
     def __init__(self, modeldb, new):
         """Initialize the ResultTableModel instance."""
         super().__init__(modeldb)
+
+        self.journal.topic = 'result'
 
         self.create_table(new)
 

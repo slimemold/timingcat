@@ -19,7 +19,7 @@ from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 from preferences import PreferencesWindow
 from racebuilder import Builder
 from racemodel import DatabaseError, ModelDatabase, RaceTableModel, RacerTableModel
-from raceview import FieldTableView, RacerTableView, ResultTableView
+from raceview import FieldTableView, JournalTableView, RacerTableView, ResultTableView
 import remotes
 from reports import ReportsWindow
 
@@ -65,8 +65,9 @@ INPUT_TEXT_POINT_SIZE = 32
 #     FieldTableView
 #     RacerTableView
 #     ResultTableView
-#.    Preferences
-#.    RemoteConfig
+#     Preferences
+#     RemoteConfig
+#     Journal
 
 class AboutDialog(QDialog):
     """About Dialog.
@@ -217,6 +218,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.builder = Builder(self.modeldb)
         self.field_table_view = FieldTableView(self.modeldb)
         self.racer_table_view = RacerTableView(self.modeldb)
+        self.journal_table_view = JournalTableView(self.modeldb)
 
         # Try to keep focus on the result input.
         self.setFocusPolicy(Qt.StrongFocus)
@@ -258,6 +260,9 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.shortcut = QShortcut(QKeySequence('CTRL+F'), self)
         self.shortcut.activated.connect(self.handle_field_shortcut)
 
+        self.shortcut = QShortcut(QKeySequence('CTRL+J'), self)
+        self.shortcut.activated.connect(self.handle_journal_shortcut)
+
     def closeEvent(self, event): #pylint: disable=invalid-name
         """Clean up the MainCentralWidget instance.
 
@@ -266,6 +271,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.builder.hide()
         self.field_table_view.hide()
         self.racer_table_view.hide()
+        self.journal_table_view.hide()
 
         racer_in_field_table_view_dict = self.field_table_view.racer_in_field_table_view_dict
         for _, racer_table_view in racer_in_field_table_view_dict.items():
@@ -371,6 +377,10 @@ class MainCentralWidget(QWidget, CentralWidget):
         """Handle show field table shortcut."""
         self.button_row.field_button.click()
 
+    def handle_journal_shortcut(self):
+        """Handle show journal table shortcut."""
+        self.journal_table_view.setVisible(not self.journal_table_view.isVisible())
+
     def set_remote(self, remote):
         """Do everything needed for a remote that has just been connected."""
         self.remote = remote
@@ -420,6 +430,7 @@ class SexyThymeMainWindow(QMainWindow):
         self.setCentralWidget(StartCentralWidget())
 
         self.generate_reports_menu_action.setEnabled(False)
+        self.journal_action.setEnabled(False)
         self.connect_remote_menu.setEnabled(False)
         self.disconnect_remote_menu.setEnabled(False)
 
@@ -434,6 +445,7 @@ class SexyThymeMainWindow(QMainWindow):
         self.setCentralWidget(MainCentralWidget(model))
 
         self.generate_reports_menu_action.setEnabled(True)
+        self.journal_action.setEnabled(True)
 
         remote_class_string = model.race_table_model.get_race_property(RaceTableModel.REMOTE_CLASS)
         if remote_class_string:
@@ -484,6 +496,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         help_menu = self.menuBar().addMenu('&Help')
         help_menu.addAction('About', self.help_about)
+        self.journal_action = help_menu.addAction('Show Journal', self.help_journal)
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
         """Handle key presses."""
@@ -737,6 +750,10 @@ class SexyThymeMainWindow(QMainWindow):
     def help_about(self):
         """Show about dialog."""
         AboutDialog(self).show()
+
+    def help_journal(self):
+        """Show about dialog."""
+        self.centralWidget().journal_table_view.show()
 
     def should_close(self):
         """Ask user if we really want to close the app."""
