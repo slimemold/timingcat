@@ -354,7 +354,9 @@ class RacerProxyModel(SqlSortFilterProxyModel):
         has been submitted successfully to the remote.
         """
         if role == Qt.BackgroundRole:
-            row = self.mapToSource(index).row()
+            source_index = self.mapToSource(index)
+            row = source_index.row()
+            column = source_index.column()
 
             racer_table_model = self.sourceModel()
 
@@ -363,7 +365,7 @@ class RacerProxyModel(SqlSortFilterProxyModel):
             start = QTime.fromString(record.value(RacerTableModel.START))
             finish = QTime.fromString(record.value(RacerTableModel.FINISH))
 
-            if not start.isValid():
+            if column == self.fieldIndex(RacerTableModel.START) and not start.isValid():
                 return QBrush(Qt.red)
 
             if finish.isValid():
