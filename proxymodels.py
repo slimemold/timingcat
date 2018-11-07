@@ -3,7 +3,7 @@
 """Proxy Model Classes
 
 This module contains proxy model subclasses. Some provide novel functionality (such as the
-extra columns proxy model and the rearrange columns proxy model). Some are just SQL-table-ified
+extra columns proxy model and the rearrange columns proxy model). Some are just QSqlTableModel
 versions of proxy models (basically implementing the fieldIndex() method so that code can pretend
 it is talking to a QSqlTableModel when it's really talking to one of our proxy models).
 
@@ -75,21 +75,21 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         self.layout_change_proxy_columns = []
 
     def appendColumn(self, header): #pylint: disable=invalid-name
-        """Append an exrra column.
+        """Append an extra column.
 
         @param header an optional text for the horizontal header
         This does not emit any signals - do it in the initial setup phase
         """
         self.extra_headers.append(header)
 
-    def removeExtraColumn(self, idx): #pylint: disable=invalid-name
+    def removeExtraColumn(self, index): #pylint: disable=invalid-name
         """Removes an extra column.
 
-        @param idx index of the extra column (starting from 0).
+        @param index index of the extra column (starting from 0).
         This does not emit any signals - do it in the initial setup phase
         @since 5.24
         """
-        del self.extra_headers[idx]
+        del self.extra_headers[index]
 
     def extraColumnData(self, parent, row, extra_column, role=Qt.DisplayRole): #pylint: disable=invalid-name
         """Called by data() for extra columns.
@@ -243,7 +243,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
         return super().parent(child)
 
     def extraColumnForProxyColumn(self, proxy_column): #pylint: disable=invalid-name
-        """Returns the extra column number (0, 1, ...) for a given column number of the proxymodel.
+        """Returns the extra column number (0, 1, ...) for a given column number of the proxy model.
 
         This basically means subtracting the amount of columns in the source model.
         """

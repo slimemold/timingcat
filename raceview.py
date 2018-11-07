@@ -3,7 +3,7 @@
 """SQL Table View Classes
 
 This module contains the various Qt SQL Table Views (field table view, racer table views,
-result scratchpad table view), as well as whatever proxy models are stacked between the views
+result scratch pad table view), as well as whatever proxy models are stacked between the views
 and the models.
 """
 
@@ -155,7 +155,7 @@ class FieldTableView(QTableView):
         self.setModel(proxy_model)
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
-        """Handle keypresses."""
+        """Handle key presses."""
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
@@ -170,9 +170,9 @@ class FieldTableView(QTableView):
         self.visibleChanged.emit(False)
 
     def handle_delete(self):
-        """Handle delete keypress.
+        """Handle delete key press.
 
-        On delete keypress, delete the selection.
+        On delete key press, delete the selection.
         """
         model = self.selectionModel().model()
         selection_list = self.selectionModel().selectedRows()
@@ -436,7 +436,7 @@ class RacerTableView(QTableView):
         self.read_settings()
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
-        """Handle keypresses."""
+        """Handle key presses."""
         if event.key() == Qt.Key_Escape:
             self.close()
         elif event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
@@ -451,9 +451,9 @@ class RacerTableView(QTableView):
         self.visibleChanged.emit(False)
 
     def handle_delete(self):
-        """Handle delete keypress.
+        """Handle delete key press.
 
-        On delete keypress, delete the selection.
+        On delete key press, delete the selection.
         """
         model = self.selectionModel().model()
         selection_list = self.selectionModel().selectedRows()
@@ -573,7 +573,7 @@ class ResultTableView(QTableView):
         self.read_settings()
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
-        """Handle keypresses."""
+        """Handle key presses."""
         if event.key() == Qt.Key_Backspace or event.key() == Qt.Key_Delete:
             self.handle_delete()
 
@@ -586,9 +586,9 @@ class ResultTableView(QTableView):
         self.visibleChanged.emit(False)
 
     def handle_delete(self):
-        """Handle delete keypress.
+        """Handle delete key press.
 
-        On delete keypress, delete the selection.
+        On delete key press, delete the selection.
         """
         model = self.selectionModel().model()
         item_selection = self.selectionModel().selection()

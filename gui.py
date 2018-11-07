@@ -3,7 +3,7 @@
 """GUI Main Classes
 
 This module contains the top-level Qt GUI classes, such as the main window, the main window's
-central widget, status and menubars, etc.
+central widget, status and menu bars, etc.
 """
 
 import csv
@@ -120,7 +120,7 @@ class DigitalClock(QLCDNumber):
         self.display(text)
 
 class CentralWidget(QObject):
-    """Central Widget baseclass.
+    """Central Widget base class.
 
     Base class for central widgets. Mainly, it has a method has_model() that returns whether a
     race file (the "model") is connected.
@@ -248,7 +248,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         # Signals/slots for submit button.
         self.submit_button.clicked.connect(self.handle_result_submit)
 
-        # Signals/slots for keyboard shurtcuts.
+        # Signals/slots for keyboard shortcuts.
         self.shortcut = QShortcut(QKeySequence('CTRL+S'), self)
         self.shortcut.activated.connect(self.handle_submit_shortcut)
 
@@ -326,7 +326,7 @@ class MainCentralWidget(QWidget, CentralWidget):
             self.submit_button.setEnabled(True)
 
     def new_result(self):
-        """Handle a new result being entered in the result scratchpad input box."""
+        """Handle a new result being entered in the result scratch pad input box."""
         self.modeldb.result_table_model.add_result(
                                self.result_input.text(), QTime.currentTime())
         self.result_table_view.scrollToBottom()
@@ -387,7 +387,7 @@ class SexyThymeMainWindow(QMainWindow):
     This is the top-level window of the app. Dismissing it closes the app. The window has a
     central widget, which is either the main central widget (when there is a race database
     connected), or the start central widget (when there is no race database currently connected).
-    In addition, this main window manages the menubar, as well as the status bar (when a remote
+    In addition, this main window manages the menu bar, as well as the status bar (when a remote
     is connected, and is used to show remote status).
     """
 
@@ -444,8 +444,8 @@ class SexyThymeMainWindow(QMainWindow):
         self.centralWidget().connect_preferences(self.preferences_window)
 
     def setup_menubar(self):
-        """Set up our menubar."""
-        # Make a parent-less menubar, so that Qt can use the top-level native
+        """Set up our menu bar."""
+        # Make a parent-less menu bar, so that Qt can use the top-level native
         # one (like on OS-X and Ubuntu Unity) if available.
         menubar = QMenuBar()
         self.setMenuBar(menubar)
@@ -486,7 +486,7 @@ class SexyThymeMainWindow(QMainWindow):
         help_menu.addAction('About', self.help_about)
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
-        """Handle keypresses."""
+        """Handle key presses."""
         if event.key() == Qt.Key_Escape:
             self.close()
         else:

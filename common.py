@@ -38,7 +38,7 @@ __status__ = 'Development'
 def pretty_list(lst, op='and'):
     """Takes a list of words and returns a comma-separated conjunction (with oxford comma)."""
 
-    # Filter out any None's.
+    # Filter out any "None"s.
     lst = list(filter(None.__ne__, lst))
 
     if not lst:

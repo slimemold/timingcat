@@ -41,6 +41,8 @@ def main():
     os.chdir(run_dir)
 
     pylint_opts = []
+    pylint_opts.append('--spelling-private-dict-file=%s' %
+                       os.path.join(script_dir, 'pylint.dict'))
     pylint_opts.append(package_name)
     pylint.lint.Run(pylint_opts)
 

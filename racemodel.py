@@ -49,7 +49,7 @@ __status__ = 'Development'
 class DatabaseError(Exception):
     """Database Error exception
 
-    This exception is thrown when Qt's datavase stuff encounters an error. Qt likes to have their
+    This exception is thrown when Qt's database stuff encounters an error. Qt likes to have their
     functions/methods return True or False to denote return status, and this is basically an
     exception wrapper around that.
     """
@@ -121,7 +121,7 @@ class ModelDatabase(QObject):
         self.result_table_model.add_defaults()
 
 class TableModel(QSqlRelationalTableModel):
-    """Table Model baseclass
+    """Table Model base class
 
     This is the parent class of the database table classes. Basically, it commonizes the management
     of column flags. I'm not sure why the Qt SQL table model classes don't have these already.
@@ -508,12 +508,12 @@ class RacerTableModel(TableModel):
         record.setValue(self.FIRST_NAME, first_name)
         record.setValue(self.LAST_NAME, last_name)
 
-        # OMFG I can't believe I have to do this...but Qt is not retranslating
+        # OMFG I can't believe I have to do this...but Qt is not re-translating
         # this stupid field_name_2 alias back to its original field name,
         # so the database ends up getting the alias instead of the proper
         # one, failing the transaction. This piece of code switches the
         # field back from the field_name_2 alias to the original field_id,
-        # so that the ensuing sql query can work.
+        # so that the ensuing SQL query can work.
         sql_field = record.field(self.fieldIndex(self.FIELD_ALIAS))
         sql_field.setName(self.FIELD)
         record.replace(self.fieldIndex(self.FIELD_ALIAS), sql_field)
@@ -643,8 +643,8 @@ class RacerTableModel(TableModel):
 class ResultTableModel(TableModel):
     """Result Table Model
 
-    This table contains the result scratchpad contents (before they are submitted to the racer
-    table). As such, there is a scratchpad field that should eventually be a bib number, but
+    This table contains the result scratch pad contents (before they are submitted to the racer
+    table). As such, there is a scratch pad field that should eventually be a bib number, but
     until it is submitted to the racer table, can be anything (and is often just blank at first,
     and filled in with a proper bib number later).
     """
