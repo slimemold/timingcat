@@ -154,9 +154,9 @@ def generate_finish_report(modeldb, field_name):
     model = QSqlRelationalTableModel(db=modeldb.db)
     model.setTable(RacerTableModel.TABLE)
     model.setRelation(model.fieldIndex(RacerTableModel.FIELD),
-        QSqlRelation(FieldTableModel.TABLE,
-                     FieldTableModel.ID,
-                     FieldTableModel.NAME))
+                      QSqlRelation(FieldTableModel.TABLE,
+                                   FieldTableModel.ID,
+                                   FieldTableModel.NAME))
     model.setFilter('%s = "%s"' % (RacerTableModel.FIELD_ALIAS, field_name))
     if not model.select():
         raise DatabaseError(model.lastError().text())
