@@ -365,7 +365,15 @@ class RacerProxyModel(SqlSortFilterProxyModel):
             start = QTime.fromString(record.value(RacerTableModel.START))
             finish = QTime.fromString(record.value(RacerTableModel.FINISH))
 
-            if column == self.fieldIndex(RacerTableModel.START) and not start.isValid():
+            # No start time. Paint the cell red.
+            if (column == self.fieldIndex(RacerTableModel.START) and
+                not start.isValid()):
+                return QBrush(Qt.red)
+
+            # Finish time is before the start time. Paint the cell red.
+            if (column == self.fieldIndex(RacerTableModel.FINISH) and
+                finish.isValid() and
+                finish < start):
                 return QBrush(Qt.red)
 
             if finish.isValid():
