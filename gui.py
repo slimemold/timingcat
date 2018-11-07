@@ -178,11 +178,12 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.button_row.setLayout(QHBoxLayout())
 
         # Race Info, Fields, Racers
-        self.button_row.field_button = QPushButton('Fields')
-        self.button_row.field_button.setCheckable(True)
         self.button_row.racer_button = QPushButton('Racers')
         self.button_row.racer_button.setCheckable(True)
-
+        self.button_row.racer_button.setToolTip('Toggle racers table')
+        self.button_row.field_button = QPushButton('Fields')
+        self.button_row.field_button.setCheckable(True)
+        self.button_row.field_button.setToolTip('Toggle fields table')
         # Add to button row.
         self.button_row.layout().addWidget(self.button_row.racer_button)
         self.button_row.layout().addWidget(self.button_row.field_button)
@@ -202,6 +203,7 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Submit button.
         self.submit_button = QPushButton()
+        self.submit_button.setToolTip('Submit selected results')
         self.result_selection_changed(QItemSelection(), QItemSelection())
 
         # Add to top-level layout.
