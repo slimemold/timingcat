@@ -7,7 +7,7 @@ adding and configuring components of a race, such as racers and fields.
 """
 
 from PyQt5.QtCore import QDate, QModelIndex, QRegExp, QSettings, QTime, Qt
-from PyQt5.QtGui import QRegExpValidator, QTextDocument
+from PyQt5.QtGui import QRegExpValidator, QTextDocument, QValidator
 from PyQt5.QtWidgets import QComboBox, QLabel, QLineEdit, QPlainTextEdit, \
                             QPushButton, QRadioButton, QWidget
 from PyQt5.QtWidgets import QCalendarWidget, QDateEdit, QTimeEdit
@@ -61,20 +61,29 @@ class RacerSetup(QWidget):
         field_name_column = field_table_model.fieldIndex(FieldTableModel.NAME)
 
         # Racer Information form.
-        self.name_lineedit = QLineEdit()
+        self.first_name_lineedit = QLineEdit()
+        self.first_name_lineedit.setValidator(QRegExpValidator(QRegExp('.+')))
+        self.last_name_lineedit = QLineEdit()
+        self.last_name_lineedit.setValidator(QRegExpValidator(QRegExp('.+')))
         self.team_lineedit = QLineEdit()
         self.team_lineedit.setCompleter(QCompleter(racer_table_model))
         self.team_lineedit.completer().setCompletionColumn(racer_team_column)
+        self.category_lineedit = QLineEdit()
+        self.age_lineedit = QLineEdit()
+        self.age_lineedit.setValidator(QRegExpValidator(QRegExp('[1-9][0-9]*')))
         self.field_combobox = QComboBox()
         self.field_combobox.setModel(field_table_model)
         self.field_combobox.setModelColumn(field_name_column)
         self.bib_lineedit = QLineEdit()
-        self.bib_lineedit.setValidator(QRegExpValidator(QRegExp('[0-9]+')))
+        self.bib_lineedit.setValidator(QRegExpValidator(QRegExp('[1-9][0-9]*')))
 
         self.racer_information_form_widget = QWidget()
         self.racer_information_form_widget.setLayout(QFormLayout())
-        self.racer_information_form_widget.layout().addRow('Name', self.name_lineedit)
+        self.racer_information_form_widget.layout().addRow('First name', self.first_name_lineedit)
+        self.racer_information_form_widget.layout().addRow('Last name', self.last_name_lineedit)
         self.racer_information_form_widget.layout().addRow('Team', self.team_lineedit)
+        self.racer_information_form_widget.layout().addRow('Category', self.category_lineedit)
+        self.racer_information_form_widget.layout().addRow('Age', self.age_lineedit)
         self.racer_information_form_widget.layout().addRow('Field', self.field_combobox)
         self.racer_information_form_widget.layout().addRow('Bib', self.bib_lineedit)
 
@@ -91,18 +100,51 @@ class RacerSetup(QWidget):
     def reset(self):
         """Clear the input widgets."""
         self.bib_lineedit.setText('')
-        self.name_lineedit.setText('')
+        self.first_name_lineedit.setText('')
+        self.last_name_lineedit.setText('')
+        self.age_lineedit.setText('')
         self.team_lineedit.setText('')
 
     def handle_add_racer(self):
         """Add the racer, given the information contained in the input widgets."""
         racer_table_model = self.modeldb.racer_table_model
+        field_table_model = self.modeldb.field_table_model
+
+        # Do some validation.
+        first_name_okay = False
+        first_name = self.first_name_lineedit.text()
+        validator = self.first_name_lineedit.validator()
+        state, _, _ = validator.validate(first_name, self.first_name_lineedit.cursorPosition())
+        first_name_okay = state == QValidator.Acceptable
+
+        last_name = self.last_name_lineedit.text()
+        validator = self.last_name_lineedit.validator()
+        state, _, _ = validator.validate(last_name, self.last_name_lineedit.cursorPosition())
+        last_name_okay = state == QValidator.Acceptable
+
+        if not first_name_okay and not last_name_okay:
+            QMessageBox.warning(self, 'Error',
+                                'Invalid first and last name (need at least a first or last name).')
+            return
+
+        team = self.team_lineedit.text() # Team can be blank.
+        category = self.category_lineedit.text()
+        age = self.age_lineedit.text()
+
+        field = self.field_combobox.currentText()
+        if not field_table_model.id_from_name(field):
+            QMessageBox.warning(self, 'Error', 'Invalid field %s.' % field)
+            return
+
+        bib = self.bib_lineedit.text()
+        validator = self.bib_lineedit.validator()
+        state, _, _ = validator.validate(bib, self.bib_lineedit.cursorPosition())
+        if state != QValidator.Acceptable:
+            QMessageBox.warning(self, 'Error', 'Invalid bib %s.' % bib)
+            return
 
         try:
-            racer_table_model.add_racer(self.bib_lineedit.text(),
-                                        self.name_lineedit.text(),
-                                        self.team_lineedit.text(),
-                                        self.field_combobox.currentText())
+            racer_table_model.add_racer(bib, first_name, last_name, field, category, team, age)
             self.reset()
 
         except InputError as e:
@@ -175,7 +217,7 @@ class StartTimeSetup(QWidget):
 
         self.interval_lineedit = QLineEdit()
         self.interval_lineedit.setText(str(defaults.START_TIME_INTERVAL_SECS))
-        self.interval_lineedit.setValidator(QRegExpValidator(QRegExp('[0-9]+')))
+        self.interval_lineedit.setValidator(QRegExpValidator(QRegExp('[1-9][0-9]*')))
         self.interval_lineedit_group = QWidget()
         self.interval_lineedit_group.setLayout(QHBoxLayout())
         self.interval_lineedit_group.layout().addWidget(self.interval_lineedit)

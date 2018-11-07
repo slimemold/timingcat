@@ -476,13 +476,21 @@ class RacerTableModel(TableModel):
         the table, which is what we want.
         """
         if not bib.isdigit():
-            raise InputError('Racer bib "%s" is invalid' % bib)
+            raise InputError('Racer bib "%s" is invalid.' % bib)
 
-        if first_name == '':
-            raise InputError('Racer first name "%s" is invalid' % first_name)
+        duplicate_racer_index = self.match(self.index(0, self.fieldIndex(self.BIB)),
+                                           Qt.DisplayRole, bib, 1, Qt.MatchExactly)
+        if duplicate_racer_index:
+            duplicate_racer_first_name = self.index(duplicate_racer_index[0].row(),
+                                                    self.fieldIndex(self.FIRST_NAME)).data()
+            duplicate_racer_last_name = self.index(duplicate_racer_index[0].row(),
+                                                   self.fieldIndex(self.LAST_NAME)).data()
+            duplicate_racer_name = ' '.join([duplicate_racer_first_name, duplicate_racer_last_name])
+            raise InputError('Racer bib "%s" is already being used by %s.' %
+                             (bib, duplicate_racer_name))
 
-        if last_name == '':
-            raise InputError('Racer last name "%s" is invalid' % last_name)
+        if first_name == '' and last_name == '':
+            raise InputError('Racer first and last name is .')
 
         # See if the field exists in our Field table.  If not, we add a new
         # field.
@@ -492,7 +500,7 @@ class RacerTableModel(TableModel):
             field_id = self.modeldb.field_table_model.id_from_name(field)
 
         if field_id is None:
-            raise InputError('Racer field "%s" is invalid' % field)
+            raise InputError('Racer field "%s" is invalid.' % field)
 
         record = self.record()
         record.setGenerated(self.ID, False)
