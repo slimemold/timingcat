@@ -10,8 +10,8 @@ import csv
 import os
 from PyQt5.QtCore import QItemSelection, QObject, QRegExp, QSettings, QTime, QTimer, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
-from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPushButton, QStatusBar
-from PyQt5.QtWidgets import QWidget
+from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPushButton, \
+                            QShortcut, QStatusBar, QWidget
 from PyQt5.QtWidgets import QLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from PyQt5.QtWidgets import QApplication, QMainWindow
@@ -246,6 +246,16 @@ class MainCentralWidget(QWidget, CentralWidget):
         # Signals/slots for submit button.
         self.submit_button.clicked.connect(self.handle_result_submit)
 
+        # Signals/slots for keyboard shurtcuts.
+        self.shortcut = QShortcut(QKeySequence('CTRL+S'), self)
+        self.shortcut.activated.connect(self.handle_submit_shortcut)
+
+        self.shortcut = QShortcut(QKeySequence('CTRL+R'), self)
+        self.shortcut.activated.connect(self.handle_racer_shortcut)
+
+        self.shortcut = QShortcut(QKeySequence('CTRL+F'), self)
+        self.shortcut.activated.connect(self.handle_field_shortcut)
+
     def closeEvent(self, event): #pylint: disable=invalid-name
         """Clean up the MainCentralWidget instance.
 
@@ -342,6 +352,22 @@ class MainCentralWidget(QWidget, CentralWidget):
             self.result_table_view.setFocusProxy(None)
         else:
             self.result_table_view.setFocusProxy(self.result_input)
+
+    def handle_submit_shortcut(self):
+        """Handle submit all shortcut.
+
+        Just try to submit everything in the results list.
+        """
+        self.result_table_view.selectAll()
+        self.handle_result_submit()
+
+    def handle_racer_shortcut(self):
+        """Handle show racer table shortcut."""
+        self.button_row.racer_button.click()
+
+    def handle_field_shortcut(self):
+        """Handle show field table shortcut."""
+        self.button_row.field_button.click()
 
     def set_remote(self, remote):
         """Do everything needed for a remote that has just been connected."""

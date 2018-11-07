@@ -114,6 +114,8 @@ class FieldTableView(QTableView):
         """Initialize the FieldTableView instance."""
         super().__init__(parent=parent)
 
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+
         self.modeldb = modeldb
 
         self.setModel(self.modeldb.field_table_model)
@@ -401,6 +403,8 @@ class RacerTableView(QTableView):
         """Initialize the RacerTableView instance."""
         super().__init__(parent=parent)
 
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
+
         self.modeldb = modeldb
         self.remote = None
 
@@ -545,6 +549,8 @@ class ResultTableView(QTableView):
     def __init__(self, modeldb, parent=None):
         """Initialize the ResultTableView instance."""
         super().__init__(parent=parent)
+
+        self.setAttribute(Qt.WA_ShowWithoutActivating)
 
         self.modeldb = modeldb
 
