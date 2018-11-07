@@ -9,6 +9,7 @@ from PyQt5.QtCore import QSettings
 from PyQt5.QtWidgets import QCheckBox, QGroupBox, QWidget
 from PyQt5.QtWidgets import QVBoxLayout
 from common import VERSION
+import defaults
 
 __author__ = 'Andrew Chew'
 __copyright__ = '''
@@ -75,11 +76,11 @@ class PreferencesWindow(QWidget):
         if settings.contains('pos'):
             self.move(settings.value('pos'))
 
-        if settings.contains(self.ALWAYS_ON_TOP):
-            self.always_on_top_checkbox.setCheckState(int(settings.value(self.ALWAYS_ON_TOP)))
+        self.always_on_top_checkbox.setCheckState(int(settings.value(self.ALWAYS_ON_TOP,
+                                                                     defaults.ALWAYS_ON_TOP)))
 
-        if settings.contains(self.DIGITAL_CLOCK):
-            self.digital_clock_checkbox.setCheckState(int(settings.value(self.DIGITAL_CLOCK)))
+        self.digital_clock_checkbox.setCheckState(int(settings.value(self.DIGITAL_CLOCK,
+                                                                     defaults.DIGITAL_CLOCK)))
 
         settings.endGroup()
 
