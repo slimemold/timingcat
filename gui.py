@@ -648,10 +648,12 @@ class SexyThymeMainWindow(QMainWindow):
     def config_preferences(self):
         """Show the preferences window."""
         self.preferences_window.show()
+        self.preferences_window.raise_()
 
     def config_builder(self):
         """Show the race builder window."""
         self.centralWidget().builder.show()
+        self.centralWidget().builder.raise_()
 
     def connect_remote(self, remote_class):
         """Instantiate the given remote class, and use it to connect to the remote service."""
