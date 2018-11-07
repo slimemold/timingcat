@@ -37,6 +37,9 @@ __status__ = 'Development'
 class PreferencesWindow(QWidget):
     """This dialog allows the user to set application preferences."""
 
+    # QSettings keys.
+    DIGITAL_CLOCK = 'digital_clock'
+
     def __init__(self, parent=None):
         """Initialize the PreferencesWindow instance."""
         super().__init__(parent=parent)
@@ -68,6 +71,8 @@ class PreferencesWindow(QWidget):
 
         if settings.contains('pos'):
             self.move(settings.value('pos'))
+        if settings.contains(self.DIGITAL_CLOCK):
+            self.digital_clock_checkbox.setCheckState(int(settings.value(self.DIGITAL_CLOCK)))
 
         settings.endGroup()
 
@@ -78,5 +83,6 @@ class PreferencesWindow(QWidget):
         settings.beginGroup(group_name)
 
         settings.setValue('pos', self.pos())
+        settings.setValue(self.DIGITAL_CLOCK, self.digital_clock_checkbox.checkState())
 
         settings.endGroup()

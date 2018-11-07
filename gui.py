@@ -322,6 +322,11 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.remote = remote
         self.racer_table_view.set_remote(remote)
 
+    def connect_preferences(self, preferences):
+        """Connect preferences signals to the various slots that care."""
+        preferences.digital_clock_checkbox.stateChanged.connect(self.digital_clock.setVisible)
+        self.digital_clock.setVisible(preferences.digital_clock_checkbox.checkState())
+
 class SexyThymeMainWindow(QMainWindow):
     """Main Application Window.
 
@@ -381,6 +386,8 @@ class SexyThymeMainWindow(QMainWindow):
             self.connect_remote(remotes.get_remote_class_from_string(remote_class_string))
         else:
             self.set_remote(None)
+
+        self.centralWidget().connect_preferences(self.preferences_window)
 
     def setup_menubar(self):
         """Set up our menubar."""
