@@ -598,6 +598,12 @@ class ResultTableView(QTableView):
         self.selectionModel().selectionChanged.emit(QItemSelection(),
                                                     item_selection)
 
+        # Emit resultDeleted signal.
+        self.resultDeleted.emit()
+
+    # Signals.
+    resultDeleted = pyqtSignal()
+
     def handle_submit(self):
         """Handle submit button click.
 
@@ -611,6 +617,7 @@ class ResultTableView(QTableView):
         # immediately, and cause the rest of the rows to shift, invalidating
         # any row number that's higher than the currently removed one.
         selection_list.sort(key=lambda selection: selection.row(), reverse=True)
+        deleted_selection = QItemSelection()
         for selection in selection_list:
             try:
                 # Only try to submit it if it's a non-negative integer.
@@ -620,12 +627,20 @@ class ResultTableView(QTableView):
                 scratchpad = record.value(ResultTableModel.SCRATCHPAD)
                 if scratchpad.isdigit():
                     model.submit_result(selection.row())
+                    deleted_selection.select(selection, selection)
             except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))
 
         # Model retains blank rows until we select() again.
         if not model.select():
             raise DatabaseError(model.lastError().text())
+
+        # Surprisingly, when the model changes such that our selection changes
+        # (for example, when the selected result gets submitted to the racer
+        # table model and gets deleted from the result table model), the
+        # selectionChanged signal is NOT emitted. So, we have to emit that
+        # ourselves here.
+        self.selectionModel().selectionChanged.emit(QItemSelection(), deleted_selection)
 
     def read_settings(self):
         """Read settings."""

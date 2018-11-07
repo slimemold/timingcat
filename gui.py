@@ -8,7 +8,7 @@ central widget, status and menubars, etc.
 
 import csv
 import os
-from PyQt5.QtCore import QObject, QRegExp, QSettings, QTime, QTimer, Qt
+from PyQt5.QtCore import QItemSelection, QObject, QRegExp, QSettings, QTime, QTimer, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
 from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPushButton, QStatusBar
 from PyQt5.QtWidgets import QWidget
@@ -202,7 +202,7 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Submit button.
         self.submit_button = QPushButton()
-        self.update_submit_button()
+        self.result_selection_changed(QItemSelection(), QItemSelection())
 
         # Add to top-level layout.
         self.layout().addWidget(self.button_row)
@@ -215,6 +215,11 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.builder = Builder(self.modeldb)
         self.field_table_view = FieldTableView(self.modeldb)
         self.racer_table_view = RacerTableView(self.modeldb)
+
+        # Try to keep focus on the result input.
+        self.setFocusPolicy(Qt.StrongFocus)
+        self.setFocusProxy(self.result_input)
+        self.return_focus_to_result_input()
 
         # Signals/slots for button row toggle buttons.
         self.button_row.field_button.toggled.connect(self.field_table_view
@@ -233,12 +238,13 @@ class MainCentralWidget(QWidget, CentralWidget):
         # Signals/slots for result table.
         self.result_table_view.selectionModel().selectionChanged.connect(
                                                   self.result_selection_changed)
+        self.result_table_view.resultDeleted.connect(self.return_focus_to_result_input)
 
         # Signals/slots for result input.
         self.result_input.returnPressed.connect(self.new_result)
 
         # Signals/slots for submit button.
-        self.submit_button.clicked.connect(self.result_table_view.handle_submit)
+        self.submit_button.clicked.connect(self.handle_result_submit)
 
     def closeEvent(self, event): #pylint: disable=invalid-name
         """Clean up the MainCentralWidget instance.
@@ -262,28 +268,6 @@ class MainCentralWidget(QWidget, CentralWidget):
         """Return whether we have a race model."""
         return self.modeldb is not None
 
-    def update_submit_button(self):
-        """Change the result submit button depending on selection in the result table view."""
-        if self.result_table_view:
-            selection_count = len(self.result_table_view.selectionModel().selectedRows())
-            total_count = self.result_table_view.model().rowCount()
-        else:
-            selection_count = 0
-            total_count = 0
-
-        if selection_count == 0:
-            self.submit_button.setText('Submit')
-            self.submit_button.setEnabled(False)
-        elif selection_count == 1:
-            self.submit_button.setText('Submit')
-            self.submit_button.setEnabled(True)
-        elif selection_count < total_count:
-            self.submit_button.setText('Submit Selected')
-            self.submit_button.setEnabled(True)
-        else:
-            self.submit_button.setText('Submit All')
-            self.submit_button.setEnabled(True)
-
     def field_model_changed(self, *args):
         """Handle field table model change.
 
@@ -306,9 +290,28 @@ class MainCentralWidget(QWidget, CentralWidget):
             raise DatabaseError(racer_table_model.lastError().text())
 
     def result_selection_changed(self, selected, deselected):
-        """Hangle result selection change."""
+        """Handle result selection change.
+
+        Change the result submit button depending on selection in the result
+        table view.
+        """
         del selected, deselected
-        self.update_submit_button()
+
+        selection_count = len(self.result_table_view.selectionModel().selectedRows())
+        total_count = self.result_table_view.model().rowCount()
+
+        if selection_count == 0:
+            self.submit_button.setText('Submit')
+            self.submit_button.setEnabled(False)
+        elif selection_count == 1:
+            self.submit_button.setText('Submit')
+            self.submit_button.setEnabled(True)
+        elif selection_count < total_count:
+            self.submit_button.setText('Submit Selected')
+            self.submit_button.setEnabled(True)
+        else:
+            self.submit_button.setText('Submit All')
+            self.submit_button.setEnabled(True)
 
     def new_result(self):
         """Handle a new result being entered in the result scratchpad input box."""
@@ -316,6 +319,29 @@ class MainCentralWidget(QWidget, CentralWidget):
                                self.result_input.text(), QTime.currentTime())
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
+        self.result_table_view.setFocusProxy(None)
+
+    def handle_result_submit(self):
+        """Handle result submit.
+
+        Need to intercept the result submit here so that we can give the input focus back to the
+        result input.
+        """
+        self.result_table_view.handle_submit()
+        self.return_focus_to_result_input()
+
+    def return_focus_to_result_input(self):
+        """Give focus back to the result input box.
+
+        Also a good time to tweak focus policy and proxies.
+        """
+        self.result_input.setFocus()
+
+        total_count = self.result_table_view.model().rowCount()
+        if total_count:
+            self.result_table_view.setFocusProxy(None)
+        else:
+            self.result_table_view.setFocusProxy(self.result_input)
 
     def set_remote(self, remote):
         """Do everything needed for a remote that has just been connected."""
