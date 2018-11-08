@@ -164,12 +164,6 @@ class TableModel(QSqlRelationalTableModel):
         self.column_flags_to_add = {}
         self.column_flags_to_remove = {}
 
-        if hasattr(modeldb, 'journal_table_model'):
-            self.journal = Journal(modeldb.journal_table_model)
-
-        self.beforeInsert.connect(self.handle_before_insert)
-        self.beforeDelete.connect(self.handle_before_delete)
-
     def create_table(self, new):
         """Create the database table."""
         raise NotImplementedError
@@ -211,36 +205,6 @@ class TableModel(QSqlRelationalTableModel):
         flags &= ~self.column_flags_to_remove[model_index.column()]
 
         return flags
-
-    def handle_before_insert(self, record):
-        """This gets called right before a record is inserted.
-
-        We use QtSqlTableModel's beforeInsert signal for this.
-        """
-        pass
-
-    def handle_before_delete(self, row):
-        """This gets called right before a record is deleted.
-
-        We use QtSqlTableModel's beforeInsert signal for this.
-        """
-        pass
-
-    def handle_before_update(self, index, old_value, new_value):
-        """This gets called when the value at the specified index is about to change.
-
-        Subclasses can log the change in this method.
-        """
-        pass
-
-    def setData(self, index, value, role=Qt.EditRole): #pylint: disable=invalid-name
-        """Override parent to have an opportunity to log the old value."""
-        if role == Qt.EditRole:
-            old_value = index.data(Qt.DisplayRole)
-            if value != old_value:
-                self.handle_before_update(index, old_value, value)
-
-        return super().setData(index, value, role)
 
 class JournalTableModel(TableModel):
     """Journal Table Model
@@ -407,7 +371,7 @@ class RaceTableModel(TableModel):
             return
 
         index = index_list[0]
-        self.setData(self.index(index.row(), self.fieldIndex(self.VALUE)), value)
+        self.setData(index.siblingAtColumn(self.fieldIndex(self.VALUE)), value)
 
     def delete_race_property(self, key):
         """Delete a key/value entry from the database."""
@@ -436,8 +400,6 @@ class FieldTableModel(TableModel):
     def __init__(self, modeldb, new):
         """Initialize the FieldTableModel instance."""
         super().__init__(modeldb)
-
-        self.journal.topic = 'field'
 
         self.create_table(new)
 
@@ -575,7 +537,6 @@ class RacerTableModel(TableModel):
         """Initialize the RacerTableModel instance."""
         super().__init__(modeldb)
 
-        self.journal.topic = 'racer'
         self.remote = None
 
         self.create_table(new)
@@ -801,31 +762,6 @@ class RacerTableModel(TableModel):
 
         return count
 
-    def handle_before_insert(self, record):
-        """Log the insertion."""
-        bib = record.value(self.BIB)
-        first_name = record.value(self.FIRST_NAME)
-        last_name = record.value(self.LAST_NAME)
-        self.journal.log('Racer %s added.' % ' '.join([first_name, last_name]), bib)
-
-    def handle_before_delete(self, row):
-        """Log the deletion."""
-        record = self.record(row)
-
-        bib = record.value(self.BIB)
-        first_name = record.value(self.FIRST_NAME)
-        last_name = record.value(self.LAST_NAME)
-
-        self.journal.log('Racer %s deleted.' % ' '.join([first_name, last_name]), bib)
-
-    def handle_before_update(self, index, old_value, new_value):
-        """Log the change."""
-        bib = index.siblingAtColumn(self.fieldIndex(self.BIB)).data()
-        column_name = self.headerData(index.column(), Qt.Horizontal)
-
-        self.journal.log('Racer changed %s from %s to %s' %
-                         (column_name, old_value, new_value), bib)
-
     def set_remote(self, remote):
         """Do everything needed for a remote that has just been connected."""
         self.remote = remote
@@ -884,8 +820,6 @@ class ResultTableModel(TableModel):
     def __init__(self, modeldb, new):
         """Initialize the ResultTableModel instance."""
         super().__init__(modeldb)
-
-        self.journal.topic = 'result'
 
         self.create_table(new)
 
