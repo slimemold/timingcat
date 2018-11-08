@@ -56,8 +56,10 @@ class JournalTableView(QTableView):
         self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True)
+        self.sortByColumn(self.model().fieldIndex(JournalTableModel.TIMESTAMP), Qt.DescendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.model().fieldIndex(JournalTableModel.ID))
 
@@ -76,8 +78,12 @@ class JournalTableView(QTableView):
         settings.beginGroup(group_name)
 
         self.resize(settings.value('size', defaults.RESULT_TABLE_VIEW_SIZE))
+
         if settings.contains('pos'):
             self.move(settings.value('pos'))
+
+        if settings.contains('horizontal_header_state'):
+            self.horizontalHeader().restoreState(settings.value('horizontal_header_state'))
 
         settings.endGroup()
 
@@ -89,6 +95,7 @@ class JournalTableView(QTableView):
 
         settings.setValue('size', self.size())
         settings.setValue('pos', self.pos())
+        settings.setValue('horizontal_header_state', self.horizontalHeader().saveState())
 
         settings.endGroup()
 
@@ -165,6 +172,7 @@ class FieldTableView(QTableView):
         self.sortByColumn(self.model().fieldIndex(FieldTableModel.NAME), Qt.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.model().fieldIndex(FieldTableModel.ID))
 
@@ -355,6 +363,9 @@ class FieldTableView(QTableView):
         if settings.contains('pos'):
             self.move(settings.value('pos'))
 
+        if settings.contains('horizontal_header_state'):
+            self.horizontalHeader().restoreState(settings.value('horizontal_header_state'))
+
         settings.endGroup()
 
     def write_settings(self):
@@ -365,6 +376,7 @@ class FieldTableView(QTableView):
 
         settings.setValue('size', self.size())
         settings.setValue('pos', self.pos())
+        settings.setValue('horizontal_header_state', self.horizontalHeader().saveState())
 
         settings.endGroup()
 
@@ -403,6 +415,7 @@ class RacerTableView(QTableView):
         self.sortByColumn(model.fieldIndex(RacerTableModel.BIB), Qt.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(model.fieldIndex(RacerTableModel.ID))
         if self.field_id:
@@ -501,6 +514,9 @@ class RacerTableView(QTableView):
         if settings.contains('pos'):
             self.move(settings.value('pos'))
 
+        if settings.contains('horizontal_header_state'):
+            self.horizontalHeader().restoreState(settings.value('horizontal_header_state'))
+
         settings.endGroup()
 
     def write_settings(self):
@@ -514,6 +530,7 @@ class RacerTableView(QTableView):
 
         settings.setValue('size', self.size())
         settings.setValue('pos', self.pos())
+        settings.setValue('horizontal_header_state', self.horizontalHeader().saveState())
 
         settings.endGroup()
 
@@ -544,6 +561,7 @@ class ResultTableView(QTableView):
         self.sortByColumn(self.model().fieldIndex(ResultTableModel.FINISH), Qt.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
+        self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.model().fieldIndex(ResultTableModel.ID))
 
@@ -657,6 +675,9 @@ class ResultTableView(QTableView):
         if settings.contains('pos'):
             self.move(settings.value('pos'))
 
+        if settings.contains('horizontal_header_state'):
+            self.horizontalHeader().restoreState(settings.value('horizontal_header_state'))
+
         settings.endGroup()
 
     def write_settings(self):
@@ -667,6 +688,7 @@ class ResultTableView(QTableView):
 
         settings.setValue('size', self.size())
         settings.setValue('pos', self.pos())
+        settings.setValue('horizontal_header_state', self.horizontalHeader().saveState())
 
         settings.endGroup()
 
