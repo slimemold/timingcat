@@ -364,9 +364,12 @@ class MainCentralWidget(QWidget, CentralWidget):
     def handle_submit_shortcut(self):
         """Handle submit all shortcut.
 
-        Just try to submit everything in the results list.
+        If there is no selection, then just try to submit everything in the results list.
+        Otherwise, this is basically a shortcut to the submit button.
         """
-        self.result_table_view.selectAll()
+        if not self.result_table_view.selectedIndexes():
+            self.result_table_view.selectAll()
+
         self.handle_result_submit()
 
     def handle_racer_shortcut(self):
