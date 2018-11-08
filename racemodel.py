@@ -134,20 +134,19 @@ class Journal(QObject):
     can also give it a topic (or not).
 
     After making one of these, simply do:
-    journal.log(message, context)
+    journal.log(message)
 
-    Message and context is optional.
     """
-    def __init__(self, journal_table_model, topic=None):
+    def __init__(self, journal_table_model, topic):
         """Initialize the Journal instance."""
         super().__init__()
 
         self.journal_table_model = journal_table_model
         self.topic = topic
 
-    def log(self, message=None, context=None):
+    def log(self, message):
         """Log a journal entry."""
-        self.journal_table_model.add_entry(self.topic, message, context)
+        self.journal_table_model.add_entry(self.topic, message)
 
 class TableModel(QSqlRelationalTableModel):
     """Table Model base class
@@ -216,8 +215,6 @@ class JournalTableModel(TableModel):
 
     TOPIC is meant to be a general facility code, for coarse filtering. For example, "racer".
     MESSAGE is the long, detailed message.
-    CONTEXT is meant to be a small piece of data that's highly relevant to any message of a
-    particular topic. For example, if the TOPIC was "racer", the CONTEXT could be bib#.
     """
 
     TABLE = 'journal'
@@ -225,7 +222,6 @@ class JournalTableModel(TableModel):
     TIMESTAMP = 'timestamp'
     TOPIC = 'topic'
     MESSAGE = 'message'
-    CONTEXT = 'context'
 
     def __init__(self, modeldb, new):
         """Initialize the ResultTableModel instance."""
@@ -241,8 +237,6 @@ class JournalTableModel(TableModel):
                            Qt.Horizontal, 'Topic')
         self.setHeaderData(self.fieldIndex(self.MESSAGE),
                            Qt.Horizontal, 'Message')
-        self.setHeaderData(self.fieldIndex(self.CONTEXT),
-                           Qt.Horizontal, 'Context')
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
@@ -256,14 +250,13 @@ class JournalTableModel(TableModel):
             'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
             '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
              '"%s" DATETIME NOT NULL, ' % self.TIMESTAMP +
-             '"%s" TEXT, ' % self.TOPIC +
-             '"%s" TEXT, ' % self.MESSAGE +
-             '"%s" TEXT);' % self.CONTEXT):
+             '"%s" TEXT NOT NULL, ' % self.TOPIC +
+             '"%s" TEXT NOT NULL);' % self.MESSAGE):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
 
-    def add_entry(self, topic=None, message=None, context=None):
+    def add_entry(self, topic=None, message=None):
         """Add a row to the database table."""
         # Generate our time stamp here...no need for the caller to make one.
         timestamp = QDateTime.currentDateTime()
@@ -273,7 +266,6 @@ class JournalTableModel(TableModel):
         record.setValue(self.TIMESTAMP, timestamp)
         record.setValue(self.TOPIC, topic)
         record.setValue(self.MESSAGE, message)
-        record.setValue(self.CONTEXT, context)
 
         if not self.insertRecord(-1, record):
             raise DatabaseError(self.lastError().text())
