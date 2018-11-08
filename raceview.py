@@ -13,7 +13,7 @@ from PyQt5.QtWidgets import QMessageBox, QTableView
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 import defaults
 from proxymodels import SqlExtraColumnsProxyModel, SqlSortFilterProxyModel
-from racemodel import DatabaseError, InputError, FieldTableModel, JournalTableModel, \
+from racemodel import DatabaseError, InputError, FieldTableModel, Journal, JournalTableModel, \
                       RacerTableModel, ResultTableModel
 
 __author__ = 'Andrew Chew'
@@ -529,6 +529,8 @@ class ResultTableView(QTableView):
         """Initialize the ResultTableView instance."""
         super().__init__(parent=parent)
 
+        self.journal = Journal(modeldb.journal_table_model, 'results')
+
         self.setAttribute(Qt.WA_ShowWithoutActivating)
 
         self.modeldb = modeldb
@@ -578,6 +580,11 @@ class ResultTableView(QTableView):
         # any row number that's higher than the currently removed one.
         selection_list.sort(key=lambda selection: selection.row(), reverse=True)
         for selection in selection_list:
+            record = model.record(selection.row())
+            self.journal.log('Result with bib "%s" and time "%s" deleted.' %
+                             (record.value(ResultTableModel.SCRATCHPAD),
+                              record.value(ResultTableModel.FINISH)))
+
             model.removeRow(selection.row())
 
         # Model retains blank rows until we select() again.
@@ -590,8 +597,7 @@ class ResultTableView(QTableView):
         #
         # Not gonna bother calculating selected and deselected. Hopefully,
         # slots that receive this signal won't care...
-        self.selectionModel().selectionChanged.emit(QItemSelection(),
-                                                    item_selection)
+        self.selectionModel().selectionChanged.emit(QItemSelection(), item_selection)
 
         # Emit resultDeleted signal.
         self.resultDeleted.emit()
@@ -623,6 +629,10 @@ class ResultTableView(QTableView):
                 if scratchpad.isdigit():
                     model.submit_result(selection.row())
                     deleted_selection.select(selection, selection)
+                    self.journal.log('Result with bib "%s" and time "%s" submitted.' %
+                                     (record.value(ResultTableModel.SCRATCHPAD),
+                                      record.value(ResultTableModel.FINISH)))
+
             except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))
 

@@ -12,6 +12,7 @@ pylint
 
 ## TODO
 - Implement OnTheDay.net result submit hook.
+- Implement 12-hour time.
 
 ## Known Bugs
 - Clear button on result_input doesn't always erase text. (OS X)
