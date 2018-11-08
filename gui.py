@@ -262,6 +262,8 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         self.shortcut = QShortcut(QKeySequence('CTRL+J'), self)
         self.shortcut.activated.connect(self.handle_journal_shortcut)
+        self.shortcut = QShortcut(QKeySequence('CTRL+L'), self)
+        self.shortcut.activated.connect(self.handle_journal_shortcut)
 
     def closeEvent(self, event): #pylint: disable=invalid-name
         """Clean up the MainCentralWidget instance.
