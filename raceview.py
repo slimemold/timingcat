@@ -7,9 +7,10 @@ result scratch pad table view), as well as whatever proxy models are stacked bet
 and the models.
 """
 
-from PyQt5.QtCore import QItemSelection, QModelIndex, QRegExp, QSettings, Qt, pyqtSignal
+import os
+from PyQt5.QtCore import QEvent, QItemSelection, QModelIndex, QRegExp, QSettings, Qt, pyqtSignal
 from PyQt5.QtSql import QSqlRelationalDelegate
-from PyQt5.QtWidgets import QMessageBox, QTableView
+from PyQt5.QtWidgets import QDialog, QLabel, QMessageBox, QTableView, QVBoxLayout
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 import defaults
 from proxymodels import SqlExtraColumnsProxyModel, SqlSortFilterProxyModel
@@ -565,6 +566,8 @@ class ResultTableView(QTableView):
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.model().fieldIndex(ResultTableModel.ID))
 
+        self.setup_tooltip()
+
         font = self.font()
         font.setPointSize(self.RESULT_TABLE_POINT_SIZE)
         self.setFont(font)
@@ -583,6 +586,81 @@ class ResultTableView(QTableView):
         del event
         self.write_settings()
         self.visibleChanged.emit(False)
+
+    def eventFilter(self, watched, event): #pylint: disable=invalid-name
+        """Event filter for showing/hiding a tool tip."""
+        if self.viewport() == watched:
+            if event.type() == QEvent.MouseMove:
+                index = self.indexAt(event.pos())
+                if index.isValid():
+                    result_scratchpad_column = self.model().fieldIndex(self.model().SCRATCHPAD)
+                    column = self.horizontalHeader().logicalIndex(result_scratchpad_column)
+                    self.show_popup(index.siblingAtColumn(column))
+                else:
+                    self.popup.hide()
+            elif event.type() == QEvent.Leave:
+                self.popup.hide()
+        elif self.popup == watched:
+            if event.type() == QEvent.Leave:
+                self.popup.hide()
+
+        return super().eventFilter(watched, event)
+
+    def setup_tooltip(self):
+        """Set up the state required for supporting the racer info on hover tool tip."""
+        self.popup = QDialog(self, Qt.Popup | Qt.ToolTip)
+
+        layout = QVBoxLayout()
+        self.popup_label = QLabel(self.popup)
+        self.popup_label.setWordWrap(True)
+        layout.addWidget(self.popup_label)
+        self.popup.setLayout(layout)
+        self.popup.installEventFilter(self)
+
+        self.viewport().installEventFilter(self)
+        self.setMouseTracking(True)
+
+    def show_popup(self, index):
+        """Show the racer info tool tip.
+
+        The contents of the tool tip are gotten from trying to look up the racer at the index.
+        If the scratch pad contents are not a proper bib number, then this won't work; display
+        an appropriate message in the tool tip.
+        """
+        result_scratchpad_column = self.model().fieldIndex(self.model().SCRATCHPAD)
+        bib = index.siblingAtColumn(result_scratchpad_column).data(Qt.DisplayRole)
+
+        if not bib.isdigit():
+            text = 'Invalid bib number'
+        else:
+            racer_table_model = self.modeldb.racer_table_model
+            racer_bib_column = racer_table_model.fieldIndex(racer_table_model.BIB)
+            racer_match_start = racer_table_model.index(0, racer_bib_column)
+            racer_index_list = racer_table_model.match(racer_match_start, Qt.DisplayRole, bib, 1,
+                                                       Qt.MatchExactly)
+            if not racer_index_list:
+                text = 'Unknown bib number'
+            else:
+                racer_index = racer_index_list[0]
+                racer_first_name_column = racer_table_model.fieldIndex(racer_table_model.FIRST_NAME)
+                racer_first_name_index = racer_index.siblingAtColumn(racer_first_name_column)
+                racer_first_name = racer_first_name_index.data(Qt.DisplayRole)
+                racer_last_name_column = racer_table_model.fieldIndex(racer_table_model.LAST_NAME)
+                racer_last_name_index = racer_index.siblingAtColumn(racer_last_name_column)
+                racer_last_name = racer_last_name_index.data(Qt.DisplayRole)
+                racer_team_column = racer_table_model.fieldIndex(racer_table_model.TEAM)
+                racer_team_index = racer_index.siblingAtColumn(racer_team_column)
+                racer_team = racer_team_index.data(Qt.DisplayRole)
+
+                text = ' '.join([racer_first_name, racer_last_name])
+                if racer_team:
+                    text = (os.linesep+os.linesep).join([text, racer_team])
+
+        rect = self.visualRect(index)
+        self.popup.move(self.viewport().mapToGlobal(rect.bottomLeft()))
+        self.popup_label.setText(text)
+        self.popup.adjustSize()
+        self.popup.show()
 
     def handle_delete(self):
         """Handle delete key press.
