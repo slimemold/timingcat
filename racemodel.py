@@ -17,6 +17,7 @@ and they get to sibling tables via the ModelDatabase instance.
 
 import os
 from PyQt5.QtCore import QDateTime, QModelIndex, QObject, QTime, Qt
+from PyQt5.QtGui import QBrush
 from PyQt5.QtSql  import QSqlDatabase, QSqlQuery, QSqlRelation, \
                          QSqlRelationalTableModel, QSqlTableModel
 from common import VERSION
@@ -211,15 +212,6 @@ class TableModel(QSqlRelationalTableModel):
 
         return flags
 
-    def setData(self, index, value, role=Qt.EditRole):
-        """Override parent to have an opportunity to log the old value."""
-        if role==Qt.EditRole:
-            old_value = index.data(Qt.DisplayRole)
-            if value != old_value:
-                self.handle_before_update(index, old_value, value)
-
-        return super().setData(index, value, role)
-
     def handle_before_insert(self, record):
         """This gets called right before a record is inserted.
 
@@ -240,6 +232,15 @@ class TableModel(QSqlRelationalTableModel):
         Subclasses can log the change in this method.
         """
         pass
+
+    def setData(self, index, value, role=Qt.EditRole): #pylint: disable=invalid-name
+        """Override parent to have an opportunity to log the old value."""
+        if role == Qt.EditRole:
+            old_value = index.data(Qt.DisplayRole)
+            if value != old_value:
+                self.handle_before_update(index, old_value, value)
+
+        return super().setData(index, value, role)
 
 class JournalTableModel(TableModel):
     """Journal Table Model
@@ -532,6 +533,23 @@ class FieldTableModel(TableModel):
 
         return self.data(self.index(index.row(), self.fieldIndex(self.SUBFIELDS)))
 
+    def data(self, index, role=Qt.DisplayRole):
+        """Color-code the row according to whether no, some, or all racers have finished."""
+        if role == Qt.BackgroundRole:
+            racer_table_model = self.modeldb.racer_table_model
+
+            field_name = self.record(index.row()).value(FieldTableModel.NAME)
+
+            total = racer_table_model.racer_count_total_in_field(field_name)
+            finished = racer_table_model.racer_count_finished_in_field(field_name)
+
+            if total != 0:
+                if finished == total:
+                    return QBrush(Qt.green)
+                elif finished > 0:
+                    return QBrush(Qt.yellow)
+
+        return super().data(index, role)
 
 class RacerTableModel(TableModel):
     """Racer Table Model
@@ -558,6 +576,7 @@ class RacerTableModel(TableModel):
         super().__init__(modeldb)
 
         self.journal.topic = 'racer'
+        self.remote = None
 
         self.create_table(new)
 
@@ -801,14 +820,52 @@ class RacerTableModel(TableModel):
 
     def handle_before_update(self, index, old_value, new_value):
         """Log the change."""
-        # This is just to get the column name.
-        record = self.record()
-
         bib = index.siblingAtColumn(self.fieldIndex(self.BIB)).data()
-        column_name = self.headerData(index.column(), Qt.Horizontal) #record.fieldName(index.column())
+        column_name = self.headerData(index.column(), Qt.Horizontal)
 
         self.journal.log('Racer changed %s from %s to %s' %
                          (column_name, old_value, new_value), bib)
+
+    def set_remote(self, remote):
+        """Do everything needed for a remote that has just been connected."""
+        self.remote = remote
+
+        # Make views repaint cell backgrounds to reflect remote.
+        self.dataChanged.emit(QModelIndex(), QModelIndex(), [Qt.BackgroundRole])
+
+    def data(self, index, role=Qt.DisplayRole):
+        """Color-code the row according to whether the racer has finished or not.
+
+        If a remote is connected, also show a different color for local result vs. result that
+        has been submitted successfully to the remote.
+        """
+        if role == Qt.BackgroundRole:
+            record = self.record(index.row())
+
+            start = QTime.fromString(record.value(RacerTableModel.START))
+            finish = QTime.fromString(record.value(RacerTableModel.FINISH))
+
+            # No start time. Paint the cell red.
+            if (index.column() == self.fieldIndex(RacerTableModel.START) and
+                not start.isValid()):
+                return QBrush(Qt.red)
+
+            # Finish time is before the start time. Paint the cell red.
+            if (index.column() == self.fieldIndex(RacerTableModel.FINISH) and
+                finish.isValid() and
+                finish < start):
+                return QBrush(Qt.red)
+
+            if finish.isValid():
+                if self.remote:
+                    if record.value(RacerTableModel.STATUS) == 'local':
+                        return QBrush(Qt.yellow)
+                    elif record.value(RacerTableModel.STATUS) == 'remote':
+                        return QBrush(Qt.green)
+                else:
+                    return QBrush(Qt.green)
+
+        return super().data(index, role)
 
 class ResultTableModel(TableModel):
     """Result Table Model

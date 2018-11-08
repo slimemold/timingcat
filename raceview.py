@@ -7,8 +7,7 @@ result scratch pad table view), as well as whatever proxy models are stacked bet
 and the models.
 """
 
-from PyQt5.QtCore import QItemSelection, QModelIndex, QRegExp, QSettings, QTime, Qt, pyqtSignal
-from PyQt5.QtGui import QBrush
+from PyQt5.QtCore import QItemSelection, QModelIndex, QRegExp, QSettings, Qt, pyqtSignal
 from PyQt5.QtSql import QSqlRelationalDelegate
 from PyQt5.QtWidgets import QMessageBox, QTableView
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
@@ -141,27 +140,6 @@ class FieldProxyModel(SqlExtraColumnsProxyModel):
                     return 'Complete'
 
         return None
-
-    def data(self, index, role):
-        """Color-code the row according to whether no, some, or all racers have finished."""
-        if role == Qt.BackgroundRole:
-            row = index.row()
-
-            field_table_model = self.sourceModel()
-            racer_table_model = self.sourceModel().modeldb.racer_table_model
-
-            field_name = field_table_model.record(row).value(FieldTableModel.NAME)
-
-            total = racer_table_model.racer_count_total_in_field(field_name)
-            finished = racer_table_model.racer_count_finished_in_field(field_name)
-
-            if total != 0:
-                if finished == total:
-                    return QBrush(Qt.green)
-                elif finished > 0:
-                    return QBrush(Qt.yellow)
-
-        return super().data(index, role)
 
 class FieldTableView(QTableView):
     """Table view for the field table model."""
@@ -393,65 +371,6 @@ class FieldTableView(QTableView):
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
-class RacerProxyModel(SqlSortFilterProxyModel):
-    """Proxy model for racer table model.
-
-    This proxy model filters the racer table by field. It is used by field table views that want
-    to only show racers that belong to a given field.
-    """
-
-    def __init__(self):
-        """Initialize the RacerProxyModel instance."""
-        super().__init__()
-        self.remote = None
-
-    def data(self, index, role):
-        """Color-code the row according to whether the racer has finished or not.
-
-        If a remote is connected, also show a different color for local result vs. result that
-        has been submitted successfully to the remote.
-        """
-        if role == Qt.BackgroundRole:
-            source_index = self.mapToSource(index)
-            row = source_index.row()
-            column = source_index.column()
-
-            racer_table_model = self.sourceModel()
-
-            record = racer_table_model.record(row)
-
-            start = QTime.fromString(record.value(RacerTableModel.START))
-            finish = QTime.fromString(record.value(RacerTableModel.FINISH))
-
-            # No start time. Paint the cell red.
-            if (column == self.fieldIndex(RacerTableModel.START) and
-                not start.isValid()):
-                return QBrush(Qt.red)
-
-            # Finish time is before the start time. Paint the cell red.
-            if (column == self.fieldIndex(RacerTableModel.FINISH) and
-                finish.isValid() and
-                finish < start):
-                return QBrush(Qt.red)
-
-            if finish.isValid():
-                if self.remote:
-                    if record.value(RacerTableModel.STATUS) == 'local':
-                        return QBrush(Qt.yellow)
-                    elif record.value(RacerTableModel.STATUS) == 'remote':
-                        return QBrush(Qt.green)
-                else:
-                    return QBrush(Qt.green)
-
-        return super().data(index, role)
-
-    def set_remote(self, remote):
-        """Do everything needed for a remote that has just been connected."""
-        self.remote = remote
-
-        # Make views repaint cell backgrounds to reflect remote.
-        self.sourceModel().dataChanged.emit(QModelIndex(), QModelIndex(), [Qt.BackgroundRole])
-
 class RacerTableView(QTableView):
     """Table view for the racer table model."""
 
@@ -467,9 +386,12 @@ class RacerTableView(QTableView):
         self.field_id = field_id
         model = self.modeldb.racer_table_model
 
-        self.setModel(RacerProxyModel())
-        self.model().setSourceModel(model)
-        self.model().setFilterKeyColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
+        if self.field_id:
+            self.setModel(SqlSortFilterProxyModel())
+            self.model().setSourceModel(model)
+            self.model().setFilterKeyColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
+        else:
+            self.setModel(model)
 
         self.update_field_name()
 
@@ -558,7 +480,8 @@ class RacerTableView(QTableView):
     def set_remote(self, remote):
         """Do everything needed for a remote that has just been connected."""
         self.remote = remote
-        self.model().set_remote(remote)
+
+        self.model().dataChanged.emit(QModelIndex(), QModelIndex(), [Qt.BackgroundRole])
 
         if self.remote:
             self.showColumn(self.model().fieldIndex(RacerTableModel.STATUS))

@@ -1,10 +1,14 @@
 # SexyThyme - Time trial timing software with OnTheDay.net integration
 
 # Prerequisites
-pyenchant
-pylint
+
+## For Running
 PyQt5
 requests
+
+## For Linting
+pyenchant
+pylint
 
 ## TODO
 - Implement OnTheDay.net result submit hook.
