@@ -140,7 +140,7 @@ class RacerSetup(QWidget):
         validator = self.bib_lineedit.validator()
         state, _, _ = validator.validate(bib, self.bib_lineedit.cursorPosition())
         if state != QValidator.Acceptable:
-            QMessageBox.warning(self, 'Error', 'Invalid bib %s.' % bib)
+            QMessageBox.warning(self, 'Error', 'Invalid bib number "%s".' % bib)
             return
 
         try:
