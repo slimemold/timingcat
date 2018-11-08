@@ -628,7 +628,7 @@ class SexyThymeMainWindow(QMainWindow):
             (racer_table_model.rowCount() != 0)):
             msg_box = QMessageBox()
             msg_box.setWindowTitle(APPLICATION_NAME)
-            msg_box.setText('Overwriting %s' %
+            msg_box.setText('Overwriting %s!' %
                             pretty_list([pluralize('field', field_table_model.rowCount()),
                                          pluralize('racer', racer_table_model.rowCount())]))
             msg_box.setInformativeText('Do you really want to overwrite ' +
@@ -679,6 +679,35 @@ class SexyThymeMainWindow(QMainWindow):
                 racer_table_model.add_racer(bib, first_name, last_name, field, category, team, age)
 
         self.centralWidget().modeldb.add_defaults()
+
+        # Open the racer and field windows so that the import actually looks like it did something.
+        self.centralWidget().button_row.racer_button.click()
+        self.centralWidget().button_row.field_button.click()
+
+        field_table_model = self.centralWidget().modeldb.field_table_model
+        racer_table_model = self.centralWidget().modeldb.racer_table_model
+
+        # Show import summary.
+        if ((field_table_model.rowCount() != 0) or
+            (racer_table_model.rowCount() != 0)):
+            message_text = (('Imported %s. ' %
+                             pretty_list([pluralize('field', field_table_model.rowCount()),
+                                          pluralize('racer', racer_table_model.rowCount())])) +
+                            'Would you like to open the Race Builder to assign start times?')
+
+            msg_box = QMessageBox()
+            msg_box.setWindowTitle(APPLICATION_NAME)
+            msg_box.setText('Import complete.')
+
+            msg_box.setInformativeText(message_text)
+            msg_box.addButton(QMessageBox.Ok)
+            msg_box.addButton('Later', QMessageBox.RejectRole)
+            msg_box.setDefaultButton(QMessageBox.Ok)
+            msg_box.setIcon(QMessageBox.Question)
+
+            if msg_box.exec() == QMessageBox.Ok:
+                self.config_builder()
+                self.centralWidget().builder.setCurrentIndex(1)
 
     def generate_reports(self):
         """Show the reports window."""
