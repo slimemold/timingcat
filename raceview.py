@@ -52,17 +52,18 @@ class JournalTableView(QTableView):
 
         self.modeldb = modeldb
 
-        self.setModel(self.modeldb.journal_table_model)
+        self.source_model = self.modeldb.journal_table_model
+        self.setModel(self.source_model)
 
         self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True)
-        self.sortByColumn(self.model().timestamp_column, Qt.DescendingOrder)
+        self.sortByColumn(self.source_model.timestamp_column, Qt.DescendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(self.model().id_column)
+        self.hideColumn(self.source_model.id_column)
 
         self.read_settings()
 
@@ -160,8 +161,11 @@ class FieldTableView(QTableView):
 
         self.modeldb = modeldb
 
-        self.setModel(self.modeldb.field_table_model)
-        self.setup_proxy_model()
+        """Use a proxy model so we can add some interesting columns."""
+        self.source_model = self.modeldb.field_table_model
+        self.proxy_model = FieldProxyModel()
+        self.proxy_model.setSourceModel(self.source_model)
+        self.setModel(self.proxy_model)
 
         self.setWindowTitle('Fields')
 
@@ -170,12 +174,12 @@ class FieldTableView(QTableView):
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(self.model().fieldIndex(FieldTableModel.NAME), Qt.AscendingOrder)
+        self.sortByColumn(self.source_model.name_column, Qt.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(self.model().fieldIndex(FieldTableModel.ID))
+        self.hideColumn(self.source_model.id_column)
 
         # For each field, we make a racer in field table view ahead of time.
         # Note that we call dataChanged here because the initial reading of
@@ -189,13 +193,6 @@ class FieldTableView(QTableView):
         self.doubleClicked.connect(self.handle_show_racer_in_field_table_view)
 
         self.read_settings()
-
-    def setup_proxy_model(self):
-        """Use a proxy model so we can add some interesting columns."""
-        proxy_model = FieldProxyModel()
-        proxy_model.setSourceModel(self.model())
-
-        self.setModel(proxy_model)
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
         """Handle key presses."""
@@ -286,7 +283,7 @@ class FieldTableView(QTableView):
             return
 
         if (top_left.isValid() and
-            (top_left.column() > field_table_model.fieldIndex(FieldTableModel.NAME))):
+            (top_left.column() > field_table_model.name_column)):
             return
 
         # Field table model changed. Go through the model to see if we need to
@@ -311,14 +308,12 @@ class FieldTableView(QTableView):
         On activation of a field row, we show its field-specific racer table view.
         """
         field_table_model = self.modeldb.field_table_model
-        field_name_column = field_table_model.fieldIndex(FieldTableModel.NAME)
-        field_subfields_column = field_table_model.fieldIndex(FieldTableModel.SUBFIELDS)
 
         # Don't allow using the first two columns to pop up the racer in field
         # table view, because it's likely the user just wants to edit the
         # field name.
-        if (model_index.column() == field_name_column or
-            model_index.column() == field_subfields_column):
+        if (model_index.column() == field_table_model.name_column or
+            model_index.column() == field_table_model.subfields_column):
             return
 
         field_id = field_table_model.record(model_index.row()).value(FieldTableModel.ID)
@@ -394,6 +389,14 @@ class FieldTableView(QTableView):
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
+class RacerProxyModel(SqlSortFilterProxyModel):
+    """Proxy model for the racer table model.
+
+    This is a chance for us to filter the data coming in and out of the database. One thing we will
+    be using this for is to filter racers based on field.
+    """
+    pass
+
 class RacerTableView(QTableView):
     """Table view for the racer table model."""
 
@@ -406,16 +409,13 @@ class RacerTableView(QTableView):
         self.modeldb = modeldb
         self.remote = None
 
+        """Use a proxy model so we can add some interesting columns."""
+        self.source_model = self.modeldb.racer_table_model
+        self.proxy_model = RacerProxyModel()
+        self.proxy_model.setSourceModel(self.source_model)
+        self.setModel(self.proxy_model)
+
         self.field_id = field_id
-        model = self.modeldb.racer_table_model
-
-        if self.field_id:
-            self.setModel(SqlSortFilterProxyModel())
-            self.model().setSourceModel(model)
-            self.model().setFilterKeyColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
-        else:
-            self.setModel(model)
-
         self.update_field_name()
 
         # Set up our view.
@@ -423,17 +423,18 @@ class RacerTableView(QTableView):
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(model.fieldIndex(RacerTableModel.BIB), Qt.AscendingOrder)
+        self.sortByColumn(self.source_model.bib_column, Qt.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(model.fieldIndex(RacerTableModel.ID))
+        self.hideColumn(self.source_model.id_column)
         if self.field_id:
-            self.hideColumn(model.fieldIndex(RacerTableModel.FIELD_ALIAS))
+            self.proxy_model.setFilterKeyColumn(self.source_model.field_column)
+            self.hideColumn(self.source_model.field_column)
         # Hide the status by default. Show it if we have a remote
         # set up for this race.
-        self.hideColumn(model.fieldIndex(RacerTableModel.STATUS))
+        self.hideColumn(self.source_model.status_column)
 
         self.read_settings()
 
@@ -508,9 +509,9 @@ class RacerTableView(QTableView):
         self.model().dataChanged.emit(QModelIndex(), QModelIndex(), [Qt.BackgroundRole])
 
         if self.remote:
-            self.showColumn(self.model().fieldIndex(RacerTableModel.STATUS))
+            self.showColumn(self.source_model.status_column)
         else:
-            self.hideColumn(self.model().fieldIndex(RacerTableModel.STATUS))
+            self.hideColumn(self.source_model.status_column)
 
     def read_settings(self):
         """Read settings."""
@@ -563,18 +564,19 @@ class ResultTableView(QTableView):
 
         self.modeldb = modeldb
 
-        self.setModel(self.modeldb.result_table_model)
+        self.source_model = self.modeldb.result_table_model
+        self.setModel(self.source_model)
 
         self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(False) # Don't allow sorting.
         self.setSelectionBehavior(QTableView.SelectRows)
-        self.sortByColumn(self.model().fieldIndex(ResultTableModel.FINISH), Qt.AscendingOrder)
+        self.sortByColumn(self.source_model.finish_column, Qt.AscendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(self.model().fieldIndex(ResultTableModel.ID))
+        self.hideColumn(self.source_model.id_column)
 
         self.setup_tooltip()
 
@@ -603,7 +605,7 @@ class ResultTableView(QTableView):
             if event.type() == QEvent.MouseMove:
                 index = self.indexAt(event.pos())
                 if index.isValid():
-                    result_scratchpad_column = self.model().fieldIndex(self.model().SCRATCHPAD)
+                    result_scratchpad_column = self.source_model.scratchpad_column
                     column = self.horizontalHeader().logicalIndex(result_scratchpad_column)
                     self.show_popup(index.siblingAtColumn(column))
                 else:
@@ -637,27 +639,27 @@ class ResultTableView(QTableView):
         If the scratch pad contents are not a proper bib number, then this won't work; display
         an appropriate message in the tool tip.
         """
-        result_scratchpad_column = self.model().fieldIndex(self.model().SCRATCHPAD)
+        result_scratchpad_column = self.source_model.scratchpad_column
         bib = index.siblingAtColumn(result_scratchpad_column).data(Qt.DisplayRole)
 
         if not bib.isdigit():
             text = 'Invalid bib number'
         else:
             racer_table_model = self.modeldb.racer_table_model
-            racer_bib_column = racer_table_model.fieldIndex(racer_table_model.BIB)
+            racer_bib_column = racer_table_model.bib_column
             racer_index_list = racer_table_model.match(racer_table_model.index(0, racer_bib_column),
                                                        Qt.DisplayRole, bib, 1, Qt.MatchExactly)
             if not racer_index_list:
                 text = 'Unknown bib number'
             else:
                 racer_index = racer_index_list[0]
-                racer_first_name_column = racer_table_model.fieldIndex(racer_table_model.FIRST_NAME)
+                racer_first_name_column = racer_table_model.first_name_column
                 racer_first_name_index = racer_index.siblingAtColumn(racer_first_name_column)
                 racer_first_name = racer_first_name_index.data(Qt.DisplayRole)
-                racer_last_name_column = racer_table_model.fieldIndex(racer_table_model.LAST_NAME)
+                racer_last_name_column = racer_table_model.last_name_column
                 racer_last_name_index = racer_index.siblingAtColumn(racer_last_name_column)
                 racer_last_name = racer_last_name_index.data(Qt.DisplayRole)
-                racer_team_column = racer_table_model.fieldIndex(racer_table_model.TEAM)
+                racer_team_column = racer_table_model.team_column
                 racer_team_index = racer_index.siblingAtColumn(racer_team_column)
                 racer_team = racer_team_index.data(Qt.DisplayRole)
 
