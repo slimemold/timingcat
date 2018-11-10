@@ -178,11 +178,16 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
 
         return source_selection
 
-    def columnCount(self, parent): #pylint: disable=invalid-name
+    def columnCount(self, parent=QModelIndex()): #pylint: disable=invalid-name
         """Reimplemented."""
         return super().columnCount(parent) + len(self.extra_headers)
 
-    def data(self, index, role):
+    def extraColumnCount(self, parent=QModelIndex()): #pylint: disable=invalid-name
+        """Just a count of the extra headers."""
+        del parent
+        return len(self.extra_headers)
+
+    def data(self, index, role=Qt.DisplayRole):
         """Reimplemented."""
         extra_col = self.extraColumnForProxyColumn(index.column())
         if extra_col >= 0 and self.extra_headers:
@@ -190,7 +195,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
 
         return self.sourceModel().data(self.mapToSource(index), role)
 
-    def setData(self, index, value, role): #pylint: disable=invalid-name
+    def setData(self, index, value, role=Qt.DisplayRole): #pylint: disable=invalid-name
         """Reimplemented."""
         extra_col = self.extraColumnForProxyColumn(index.column())
         if extra_col >= 0 and self.extra_headers:
@@ -213,7 +218,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
 
         return super().hasChildren(index)
 
-    def headerData(self, section, orientation, role): #pylint: disable=invalid-name
+    def headerData(self, section, orientation, role=Qt.DisplayRole): #pylint: disable=invalid-name
         """Reimplemented."""
         if orientation == Qt.Horizontal:
             extra_col = self.extraColumnForProxyColumn(section)
@@ -224,7 +229,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
 
         return super().headerData(section, orientation, role)
 
-    def index(self, row, column, parent):
+    def index(self, row, column, parent=QModelIndex()):
         """Reimplemented."""
         extra_col = self.extraColumnForProxyColumn(column)
         if extra_col >= 0:

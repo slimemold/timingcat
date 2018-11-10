@@ -282,7 +282,7 @@ class FieldTableView(QTableView):
         field_table_model = self.modeldb.field_table_model
 
         # When roles is empty, it means everything has changed
-        if roles and Qt.DisplayRole not in roles:
+        if roles and not Qt.DisplayRole in roles:
             return
 
         if (top_left.isValid() and
@@ -327,7 +327,7 @@ class FieldTableView(QTableView):
 
         self.clearSelection()
 
-    def update_non_model_columns(self, *args):
+    def update_non_model_columns(self, top_left, bottom_right, roles):
         """Handle racer table model change.
 
         On racer table model change, we tickle our dataChanged() slot to induce this table view
@@ -337,21 +337,31 @@ class FieldTableView(QTableView):
         Our non-model columns (provided by FieldProxyModel(ExtraColumnsProxyModel)) uses stuff from
         the racer table model to provide its contents. Therefore, when the racer model changes, we
         need to pretend our model changed.
-        """
-        # We don't care about the incoming top_left and bottom_right indexes.
-        del args
 
-        field_table_model = self.modeldb.field_table_model
+        Note that we only care if the role being changed is DisplayRole, and only if the column
+        changed is the finish time, or a racer was added/removed. In practice, we can just care
+        about the column.  If a racer was added or removed, the finish time column of that racer
+        will certainly be changed.
+        """
+        if roles and not Qt.DisplayRole in roles:
+            return
+
+        racer_table_model = self.modeldb.racer_table_model
+        if not racer_table_model.area_contains(top_left, bottom_right,
+                                               racer_table_model.finish_column):
+            return
+
+        field_proxy_model = self.model()
 
         row_start = 0
-        row_end = field_table_model.rowCount()
-        extra_column_start = field_table_model.columnCount()
-        extra_column_end = self.model().columnCount(QModelIndex()) - 1
+        row_end = field_proxy_model.rowCount() - 1
+        column_start = field_proxy_model.proxyColumnForExtraColumn(0)
+        extra_column_count = field_proxy_model.extraColumnCount()
+        column_end = field_proxy_model.proxyColumnForExtraColumn(extra_column_count - 1)
 
-        top_left = self.model().index(row_start, extra_column_start, QModelIndex())
-        bottom_right = self.model().index(row_end, extra_column_end, QModelIndex())
+        top_left = self.model().index(row_start, column_start, QModelIndex())
+        bottom_right = self.model().index(row_end, column_end, QModelIndex())
 
-        # TODO: Use extraColumnDataChanged for this.
         self.dataChanged(top_left, bottom_right, [Qt.DisplayRole])
 
     def read_settings(self):

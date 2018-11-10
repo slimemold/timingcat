@@ -205,6 +205,21 @@ class TableModel(QSqlRelationalTableModel):
 
         return flags
 
+    @staticmethod
+    def area_contains(top_left, bottom_right, column, row=None):
+        """Determine if the area contains the column (and optionally the row).
+
+        Does the area described by model indexes top_left and bottom_right contain the column
+        (and the row, if specified)?
+        """
+        if top_left.column() > column or bottom_right.column() < column:
+            return False
+
+        if row and (top_left.row() > row or bottom_right.row() < row):
+            return False
+
+        return True
+
 class JournalTableModel(TableModel):
     """Journal Table Model
 

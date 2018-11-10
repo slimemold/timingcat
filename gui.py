@@ -236,8 +236,7 @@ class MainCentralWidget(QWidget, CentralWidget):
                                                          .setChecked)
 
         # Signals/slots for field name change notification.
-        self.modeldb.field_table_model.dataChanged.connect(
-                                                       self.field_model_changed)
+        self.modeldb.field_table_model.dataChanged.connect(self.field_model_changed)
 
         # Signals/slots for result table.
         self.result_table_view.selectionModel().selectionChanged.connect(
@@ -288,17 +287,25 @@ class MainCentralWidget(QWidget, CentralWidget):
         """Return whether we have a race model."""
         return self.modeldb is not None
 
-    def field_model_changed(self, *args):
+    def field_model_changed(self, top_left, bottom_right, roles):
         """Handle field table model change.
 
         When someone changes a field name, we have to update the racer model to get the field name
         change. In addition, there is a combo box in the racer table view that is a view for a
         relation model inside the racer model. That combo box needs to update as well, to get the
         field name change.
-        """
-        del args
 
-        # TODO: We only care here if field name changes.
+        Note that we only care if the DisplayRole content changes, and also if the change is in
+        the field model's name column.
+        """
+        if roles and not Qt.DisplayRole in roles:
+            return
+
+        field_table_model = self.modeldb.field_table_model
+        if not field_table_model.area_contains(top_left, bottom_right,
+                                               field_table_model.name_column):
+            return
+
         racer_table_model = self.modeldb.racer_table_model
         field_relation_model = racer_table_model.relationModel(racer_table_model.field_column)
 
