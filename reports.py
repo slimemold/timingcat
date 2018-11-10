@@ -9,11 +9,10 @@ import re
 from PyQt5.QtCore import QSettings, QTime
 from PyQt5.QtGui import QTextDocument
 from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
-from PyQt5.QtSql import QSqlRelation, QSqlRelationalTableModel
 from PyQt5.QtWidgets import QComboBox, QDialog, QGroupBox, QPushButton, QRadioButton
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
 from common import VERSION
-from racemodel import DatabaseError, RaceTableModel, FieldTableModel, RacerTableModel
+from racemodel import DatabaseError, RaceTableModel, RacerTableModel
 
 __author__ = 'Andrew Chew'
 __copyright__ = '''
@@ -49,7 +48,7 @@ class ReportsWindow(QDialog):
         self.modeldb = modeldb
 
         field_table_model = self.modeldb.field_table_model
-        field_name_column = field_table_model.fieldIndex(self.modeldb.field_table_model.NAME)
+        field_name_column = field_table_model.name_column
 
         self.setWindowTitle('Generate Reports')
 
@@ -151,12 +150,7 @@ def generate_finish_report(modeldb, field_name):
             cat_list = re.split('[, ]+', subfield)
             subfield_list_by_cat.append(cat_list)
 
-    model = QSqlRelationalTableModel(db=modeldb.db)
-    model.setTable(RacerTableModel.TABLE)
-    model.setRelation(model.fieldIndex(RacerTableModel.FIELD),
-                      QSqlRelation(FieldTableModel.TABLE,
-                                   FieldTableModel.ID,
-                                   FieldTableModel.NAME))
+    model = RacerTableModel(modeldb)
     model.setFilter('%s = "%s"' % (RacerTableModel.FIELD_ALIAS, field_name))
     if not model.select():
         raise DatabaseError(model.lastError().text())
@@ -179,28 +173,21 @@ def generate_finish_report(modeldb, field_name):
                  '<td>Team</td> <td>Finish</td> <td>Age</td> </tr>')
         place = 1
         for row in range(model.rowCount()):
-            category = model.data(model.index(row, model.fieldIndex(RacerTableModel.CATEGORY)))
+            category = model.data(model.index(row, model.category_column))
             if not category or category == '':
                 category = '5'
 
             if cat_list and (category not in cat_list):
                 continue
 
-            racer_bib_column = model.fieldIndex(RacerTableModel.BIB)
-            racer_first_name_column = model.fieldIndex(RacerTableModel.FIRST_NAME)
-            racer_last_name_column = model.fieldIndex(RacerTableModel.LAST_NAME)
-            racer_team_column = model.fieldIndex(RacerTableModel.TEAM)
-            racer_start_column = model.fieldIndex(RacerTableModel.START)
-            racer_finish_column = model.fieldIndex(RacerTableModel.FINISH)
-
-            bib = model.data(model.index(row, racer_bib_column))
-            first_name = model.data(model.index(row, racer_first_name_column))
-            last_name = model.data(model.index(row, racer_last_name_column))
-            team = model.data(model.index(row, racer_team_column))
-            start = QTime.fromString(model.data(model.index(row, racer_start_column)))
-            finish = QTime.fromString(model.data(model.index(row, racer_finish_column)))
+            bib = model.index(row, model.bib_column).data()
+            first_name = model.index(row, model.first_name_column).data()
+            last_name = model.index(row, model.last_name_column).data()
+            team = model.index(row, model.team_column).data()
+            start = QTime.fromString(model.index(row, model.start_column).data())
+            finish = QTime.fromString(model.index(row, model.finish_column).data())
             delta = time_delta(finish, start)
-            age = model.data(model.index(row, model.fieldIndex(RacerTableModel.AGE)))
+            age = model.index(row, model.age_column).data()
 
             html += ('<tr><td>%s</td> ' % place +
                      '<td>%s</td> ' % bib +

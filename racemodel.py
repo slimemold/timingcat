@@ -106,11 +106,11 @@ class ModelDatabase(QObject):
 
         # Make sure we make the journal table first, so we can immediately
         # start to use it.
-        self.journal_table_model = JournalTableModel(self, new)
-        self.race_table_model = RaceTableModel(self, new)
-        self.field_table_model = FieldTableModel(self, new)
-        self.racer_table_model = RacerTableModel(self, new)
-        self.result_table_model = ResultTableModel(self, new)
+        self.journal_table_model = JournalTableModel(self)
+        self.race_table_model = RaceTableModel(self)
+        self.field_table_model = FieldTableModel(self)
+        self.racer_table_model = RacerTableModel(self)
+        self.result_table_model = ResultTableModel(self)
 
     def cleanup(self):
         """Close the database."""
@@ -163,7 +163,7 @@ class TableModel(QSqlRelationalTableModel):
         self.column_flags_to_add = {}
         self.column_flags_to_remove = {}
 
-    def create_table(self, new):
+    def create_table(self):
         """Create the database table."""
         raise NotImplementedError
 
@@ -223,27 +223,29 @@ class JournalTableModel(TableModel):
     TOPIC = 'topic'
     MESSAGE = 'message'
 
-    def __init__(self, modeldb, new):
+    def __init__(self, modeldb):
         """Initialize the ResultTableModel instance."""
         super().__init__(modeldb)
 
-        self.create_table(new)
+        self.create_table()
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
-        self.setHeaderData(self.fieldIndex(self.TIMESTAMP),
-                           Qt.Horizontal, 'Timestamp')
-        self.setHeaderData(self.fieldIndex(self.TOPIC),
-                           Qt.Horizontal, 'Topic')
-        self.setHeaderData(self.fieldIndex(self.MESSAGE),
-                           Qt.Horizontal, 'Message')
+
+        # We need the field index so often, just save them here since they never change.
+        self.id_column = self.fieldIndex(self.ID)
+        self.timestamp_column = self.fieldIndex(self.TIMESTAMP)
+        self.topic_column = self.fieldIndex(self.TOPIC)
+        self.message_column = self.fieldIndex(self.MESSAGE)
+
+        self.setHeaderData(self.timestamp_column, Qt.Horizontal, 'Timestamp')
+        self.setHeaderData(self.topic_column, Qt.Horizontal, 'Topic')
+        self.setHeaderData(self.message_column, Qt.Horizontal, 'Message')
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def create_table(self, new):
+    def create_table(self):
         """Create the database table."""
-        del new
-
         query = QSqlQuery(self.database())
 
         if not query.exec(
@@ -291,20 +293,26 @@ class RaceTableModel(TableModel):
     NOTES = 'notes'
     REMOTE_CLASS = 'remote_class'
 
-    def __init__(self, modeldb, new):
+    def __init__(self, modeldb):
         """Initialize the RaceTableModel instance."""
         super().__init__(modeldb)
 
-        self.create_table(new)
+        self.create_table()
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
+
+        # We need the field index so often, just save them here since they never change.
+        self.key_id = self.fieldIndex(self.ID)
+        self.key_column = self.fieldIndex(self.KEY)
+        self.value_column = self.fieldIndex(self.VALUE)
+
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
         self.remove_column_flags(0, Qt.ItemIsEditable | Qt.ItemIsSelectable)
 
-    def create_table(self, new):
+    def create_table(self):
         """Create the database table."""
         query = QSqlQuery(self.database())
 
@@ -330,7 +338,7 @@ class RaceTableModel(TableModel):
 
     def get_race_property(self, key):
         """Get the value of the race property corresponding to the "key"."""
-        index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
+        index_list = self.match(self.index(0, self.key_column),
                                 Qt.DisplayRole, key, 1, Qt.MatchExactly)
 
         if not index_list:
@@ -338,7 +346,7 @@ class RaceTableModel(TableModel):
 
         index = index_list[0]
 
-        return self.data(self.index(index.row(), self.fieldIndex(self.VALUE)))
+        return self.data(self.index(index.row(), self.value_column))
 
     def set_race_property(self, key, value):
         """Set/add a value corresponding to "key".
@@ -346,7 +354,7 @@ class RaceTableModel(TableModel):
         Set the row corresponding to the given "key" to "value". If this row doesn't exist, add a
         new row.
         """
-        index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
+        index_list = self.match(self.index(0, self.key_column),
                                 Qt.DisplayRole, key, 1, Qt.MatchExactly)
 
         if not index_list:
@@ -363,11 +371,11 @@ class RaceTableModel(TableModel):
             return
 
         index = index_list[0]
-        self.setData(index.siblingAtColumn(self.fieldIndex(self.VALUE)), value)
+        self.setData(index.siblingAtColumn(self.value_column), value)
 
     def delete_race_property(self, key):
         """Delete a key/value entry from the database."""
-        index_list = self.match(self.index(0, self.fieldIndex(self.KEY)),
+        index_list = self.match(self.index(0, self.key_column),
                                 Qt.DisplayRole, key, 1, Qt.MatchExactly)
 
         if not index_list:
@@ -389,19 +397,26 @@ class FieldTableModel(TableModel):
     NAME = 'name'
     SUBFIELDS = 'subfields'
 
-    def __init__(self, modeldb, new):
+    def __init__(self, modeldb):
         """Initialize the FieldTableModel instance."""
         super().__init__(modeldb)
 
-        self.create_table(new)
+        self.create_table()
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
-        self.setHeaderData(self.fieldIndex(self.NAME), Qt.Horizontal, 'Field')
+
+        # We need the field index so often, just save them here since they never change.
+        self.id_column = self.fieldIndex(self.ID)
+        self.name_column = self.fieldIndex(self.NAME)
+        self.subfields_column = self.fieldIndex(self.SUBFIELDS)
+
+        self.setHeaderData(self.name_column, Qt.Horizontal, 'Field')
+        self.setHeaderData(self.subfields_column, Qt.Horizontal, 'Subfields')
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def create_table(self, new):
+    def create_table(self):
         """Create the database table."""
         query = QSqlQuery(self.database())
 
@@ -421,7 +436,7 @@ class FieldTableModel(TableModel):
 
     def name_from_id(self, field_id):
         """Get field name, from field ID."""
-        index_list = self.match(self.index(0, self.fieldIndex(self.ID)),
+        index_list = self.match(self.index(0, self.id_column),
                                 Qt.DisplayRole, field_id, 1, Qt.MatchExactly)
 
         if not index_list:
@@ -429,11 +444,11 @@ class FieldTableModel(TableModel):
 
         index = index_list[0]
 
-        return self.data(self.index(index.row(), self.fieldIndex(self.NAME)))
+        return self.data(self.index(index.row(), self.name_column))
 
     def id_from_name(self, name):
         """Get field ID, from field name."""
-        index_list = self.match(self.index(0, self.fieldIndex(self.NAME)),
+        index_list = self.match(self.index(0, self.name_column),
                                 Qt.DisplayRole, name, 1, Qt.MatchExactly)
 
         if not index_list:
@@ -441,7 +456,7 @@ class FieldTableModel(TableModel):
 
         index = index_list[0]
 
-        return self.data(self.index(index.row(), self.fieldIndex(self.ID)))
+        return self.data(self.index(index.row(), self.id_column))
 
     def add_field(self, name, subfields=None):
         """Add a row to the database table."""
@@ -460,7 +475,7 @@ class FieldTableModel(TableModel):
 
     def delete_field(self, name):
         """Delete a row from the database table."""
-        index_list = self.match(self.index(0, self.fieldIndex(self.NAME)),
+        index_list = self.match(self.index(0, self.name_column),
                                 Qt.DisplayRole, name, 1, Qt.MatchExactly)
 
         if not index_list:
@@ -477,7 +492,7 @@ class FieldTableModel(TableModel):
         This subfield is used for generating reports for fields that race together but are picked
         separately.
         """
-        index_list = self.match(self.index(0, self.fieldIndex(self.NAME)),
+        index_list = self.match(self.index(0, self.name_column),
                                 Qt.DisplayRole, name, 1, Qt.MatchExactly)
 
         if not index_list:
@@ -485,7 +500,7 @@ class FieldTableModel(TableModel):
 
         index = index_list[0]
 
-        return self.data(self.index(index.row(), self.fieldIndex(self.SUBFIELDS)))
+        return self.data(self.index(index.row(), self.subfields_column))
 
     def data(self, index, role=Qt.DisplayRole):
         """Color-code the row according to whether no, some, or all racers have finished."""
@@ -525,40 +540,51 @@ class RacerTableModel(TableModel):
     FINISH = 'finish'
     STATUS = 'status'
 
-    def __init__(self, modeldb, new):
+    def __init__(self, modeldb):
         """Initialize the RacerTableModel instance."""
         super().__init__(modeldb)
 
         self.remote = None
 
-        self.create_table(new)
+        self.create_table()
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
-        self.setHeaderData(self.fieldIndex(self.BIB), Qt.Horizontal, 'Bib')
-        self.setHeaderData(self.fieldIndex(self.FIRST_NAME), Qt.Horizontal, 'First Name')
-        self.setHeaderData(self.fieldIndex(self.LAST_NAME), Qt.Horizontal, 'Last Name')
-        self.setHeaderData(self.fieldIndex(self.FIELD), Qt.Horizontal, 'Field')
-        self.setHeaderData(self.fieldIndex(self.CATEGORY), Qt.Horizontal, 'Cat')
-        self.setHeaderData(self.fieldIndex(self.TEAM), Qt.Horizontal, 'Team')
-        self.setHeaderData(self.fieldIndex(self.AGE), Qt.Horizontal, 'Age')
-        self.setHeaderData(self.fieldIndex(self.START), Qt.Horizontal, 'Start')
-        self.setHeaderData(self.fieldIndex(self.FINISH), Qt.Horizontal, 'Finish')
-        self.setHeaderData(self.fieldIndex(self.STATUS), Qt.Horizontal, 'Status')
+
+        # We need the field index so often, just save them here since they never change.
+        self.id_column = self.fieldIndex(self.ID)
+        self.bib_column = self.fieldIndex(self.BIB)
+        self.first_name_column = self.fieldIndex(self.FIRST_NAME)
+        self.last_name_column = self.fieldIndex(self.LAST_NAME)
+        self.field_column = self.fieldIndex(self.FIELD)
+        self.category_column = self.fieldIndex(self.CATEGORY)
+        self.team_column = self.fieldIndex(self.TEAM)
+        self.age_column = self.fieldIndex(self.AGE)
+        self.start_column = self.fieldIndex(self.START)
+        self.finish_column = self.fieldIndex(self.FINISH)
+        self.status_column = self.fieldIndex(self.STATUS)
+
+        self.setHeaderData(self.bib_column, Qt.Horizontal, 'Bib')
+        self.setHeaderData(self.first_name_column, Qt.Horizontal, 'First Name')
+        self.setHeaderData(self.last_name_column, Qt.Horizontal, 'Last Name')
+        self.setHeaderData(self.field_column, Qt.Horizontal, 'Field')
+        self.setHeaderData(self.category_column, Qt.Horizontal, 'Cat')
+        self.setHeaderData(self.team_column, Qt.Horizontal, 'Team')
+        self.setHeaderData(self.age_column, Qt.Horizontal, 'Age')
+        self.setHeaderData(self.start_column, Qt.Horizontal, 'Start')
+        self.setHeaderData(self.finish_column, Qt.Horizontal, 'Finish')
+        self.setHeaderData(self.status_column, Qt.Horizontal, 'Status')
 
         # After this relation is defined, the field name becomes
         # "field_name_2" (FIELD_ALIAS).
-        self.setRelation(self.fieldIndex(self.FIELD),
-            QSqlRelation(FieldTableModel.TABLE,
-                         FieldTableModel.ID,
-                         FieldTableModel.NAME))
+        self.setRelation(self.field_column, QSqlRelation(FieldTableModel.TABLE,
+                                                         FieldTableModel.ID,
+                                                         FieldTableModel.NAME))
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def create_table(self, new):
+    def create_table(self):
         """Create the database table."""
-        del new
-
         query = QSqlQuery(self.database())
 
         if not query.exec(
@@ -592,16 +618,16 @@ class RacerTableModel(TableModel):
         if not bib.isdigit():
             raise InputError('Racer bib "%s" is invalid.' % bib)
 
-        duplicate_racer_index = self.match(self.index(0, self.fieldIndex(self.BIB)),
-                                           Qt.DisplayRole, bib, 1, Qt.MatchExactly)
-        if duplicate_racer_index:
-            duplicate_racer_first_name = self.index(duplicate_racer_index[0].row(),
-                                                    self.fieldIndex(self.FIRST_NAME)).data()
-            duplicate_racer_last_name = self.index(duplicate_racer_index[0].row(),
-                                                   self.fieldIndex(self.LAST_NAME)).data()
-            duplicate_racer_name = ' '.join([duplicate_racer_first_name, duplicate_racer_last_name])
+        dup_racer_index = self.match(self.index(0, self.bib_column),
+                                     Qt.DisplayRole, bib, 1, Qt.MatchExactly)
+        if dup_racer_index:
+            dup_racer_first_name = dup_racer_index.siblingAtColumn(self.first_name_column).data()
+            dup_racer_last_name = dup_racer_index.siblingAtColumn(self.last_name_column).data()
+
+            dup_racer_name = ' '.join([dup_racer_first_name, dup_racer_last_name])
+
             raise InputError('Racer bib "%s" is already being used by %s.' %
-                             (bib, duplicate_racer_name))
+                             (bib, dup_racer_name))
 
         if first_name == '' and last_name == '':
             raise InputError('Racer first and last name is .')
@@ -628,9 +654,9 @@ class RacerTableModel(TableModel):
         # one, failing the transaction. This piece of code switches the
         # field back from the field_name_2 alias to the original field_id,
         # so that the ensuing SQL query can work.
-        sql_field = record.field(self.fieldIndex(self.FIELD_ALIAS))
+        sql_field = record.field(self.field_column)
         sql_field.setName(self.FIELD)
-        record.replace(self.fieldIndex(self.FIELD_ALIAS), sql_field)
+        record.replace(self.field_column, sql_field)
         record.setValue(self.FIELD, field_id)
 
         record.setValue(self.CATEGORY, category)
@@ -647,7 +673,7 @@ class RacerTableModel(TableModel):
 
     def delete_racer(self, bib):
         """Delete a row from the database table."""
-        index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
+        index_list = self.match(self.index(0, self.bib_column),
                                 Qt.DisplayRole, bib, 1, Qt.MatchExactly)
 
         if not index_list:
@@ -660,25 +686,25 @@ class RacerTableModel(TableModel):
 
     def set_racer_start(self, bib, start):
         """Set start time of the racer identified by "bib"."""
-        index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
+        index_list = self.match(self.index(0, self.bib_column),
                                 Qt.DisplayRole, bib, 1, Qt.MatchExactly)
 
         if not index_list:
             raise InputError('Failed to find racer with bib %s' % bib)
 
-        index = self.index(index_list[0].row(), self.fieldIndex(self.START))
+        index = index_list[0].siblingAtColumn(self.start_column)
         self.setData(index, start)
         self.dataChanged.emit(index, index)
 
     def set_racer_finish(self, bib, finish):
         """Set finish time of the racer identified by "bib"."""
-        index_list = self.match(self.index(0, self.fieldIndex(self.BIB)),
+        index_list = self.match(self.index(0, self.bib_column),
                                 Qt.DisplayRole, bib, 1, Qt.MatchExactly)
 
         if not index_list:
             raise InputError('Failed to find racer with bib %s' % bib)
 
-        index = self.index(index_list[0].row(), self.fieldIndex(self.FINISH))
+        index = index_list[0].siblingAtColumn(self.finish_column)
         self.setData(index, finish)
         self.dataChanged.emit(index, index)
 
@@ -708,11 +734,11 @@ class RacerTableModel(TableModel):
 
         for row in range(racer_table_model.rowCount()):
             if field_name:
-                field_index = self.index(row, self.fieldIndex(self.FIELD_ALIAS))
+                field_index = self.index(row, self.field_column)
                 if not field_name == self.data(field_index):
                     continue
 
-            start_index = self.index(row, self.fieldIndex(self.START))
+            start_index = self.index(row, self.start_column)
             if not dry_run:
                 self.setData(start_index, start)
             elif self.data(start_index):
@@ -734,7 +760,7 @@ class RacerTableModel(TableModel):
         count = 0
 
         for row in range(self.rowCount()):
-            index = self.index(row, self.fieldIndex(self.FIELD_ALIAS))
+            index = self.index(row, self.field_column)
 
             if self.data(index) == field_name:
                 count += 1
@@ -746,8 +772,8 @@ class RacerTableModel(TableModel):
         count = 0
 
         for row in range(self.rowCount()):
-            field_index = self.index(row, self.fieldIndex(self.FIELD_ALIAS))
-            finish_index = self.index(row, self.fieldIndex(self.FINISH))
+            field_index = self.index(row, self.field_column)
+            finish_index = self.index(row, self.finish_column)
 
             if self.data(field_index) == field_name and self.data(finish_index):
                 count += 1
@@ -774,14 +800,11 @@ class RacerTableModel(TableModel):
             finish = QTime.fromString(record.value(RacerTableModel.FINISH))
 
             # No start time. Paint the cell red.
-            if (index.column() == self.fieldIndex(RacerTableModel.START) and
-                not start.isValid()):
+            if (index.column() == self.start_column and not start.isValid()):
                 return QBrush(Qt.red)
 
             # Finish time is before the start time. Paint the cell red.
-            if (index.column() == self.fieldIndex(RacerTableModel.FINISH) and
-                finish.isValid() and
-                finish < start):
+            if (index.column() == self.finish_column and finish.isValid() and finish < start):
                 return QBrush(Qt.red)
 
             if finish.isValid():
@@ -809,25 +832,27 @@ class ResultTableModel(TableModel):
     SCRATCHPAD = 'scratchpad'
     FINISH = 'finish'
 
-    def __init__(self, modeldb, new):
+    def __init__(self, modeldb):
         """Initialize the ResultTableModel instance."""
         super().__init__(modeldb)
 
-        self.create_table(new)
+        self.create_table()
 
         self.setEditStrategy(QSqlTableModel.OnFieldChange)
         self.setTable(self.TABLE)
-        self.setHeaderData(self.fieldIndex(self.SCRATCHPAD),
-                           Qt.Horizontal, 'Bib')
-        self.setHeaderData(self.fieldIndex(self.FINISH),
-                           Qt.Horizontal, 'Finish')
+
+        # We need the field index so often, just save them here since they never change.
+        self.id_column = self.fieldIndex(self.ID)
+        self.scratchpad_column = self.fieldIndex(self.SCRATCHPAD)
+        self.finish_column = self.fieldIndex(self.FINISH)
+
+        self.setHeaderData(self.scratchpad_column, Qt.Horizontal, 'Bib')
+        self.setHeaderData(self.finish_column, Qt.Horizontal, 'Finish')
         if not self.select():
             raise DatabaseError(self.lastError().text())
 
-    def create_table(self, new):
+    def create_table(self):
         """Create the database table."""
-        del new
-
         query = QSqlQuery(self.database())
 
         if not query.exec(

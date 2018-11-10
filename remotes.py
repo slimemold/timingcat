@@ -217,7 +217,7 @@ class SimulatedRemote(Remote):
     def remote_update(self):
         """Iterate through all racers and push local updates to remote."""
         racer_table_model = self.modeldb.racer_table_model
-        racer_status_column = racer_table_model.fieldIndex(racer_table_model.STATUS)
+        racer_status_column = racer_table_model.status_column
 
         submit_list = []
 

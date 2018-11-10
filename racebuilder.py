@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import QButtonGroup, QGroupBox, QTabWidget
 from PyQt5.QtWidgets import QCompleter, QMessageBox, QPlainTextDocumentLayout
 from common import VERSION
 import defaults
-from racemodel import RaceTableModel, FieldTableModel, RacerTableModel, InputError
+from racemodel import RaceTableModel, InputError
 
 __author__ = 'Andrew Chew'
 __copyright__ = '''
@@ -55,10 +55,10 @@ class RacerSetup(QWidget):
         self.modeldb = modeldb
 
         racer_table_model = self.modeldb.racer_table_model
-        racer_team_column = racer_table_model.fieldIndex(RacerTableModel.TEAM)
+        racer_team_column = racer_table_model.team_column
 
         field_table_model = self.modeldb.field_table_model
-        field_name_column = field_table_model.fieldIndex(FieldTableModel.NAME)
+        field_name_column = field_table_model.name_column
 
         # Racer Information form.
         self.first_name_lineedit = QLineEdit()
@@ -165,7 +165,7 @@ class StartTimeSetup(QWidget):
         self.modeldb = modeldb
 
         field_table_model = self.modeldb.field_table_model
-        field_name_column = field_table_model.fieldIndex(self.modeldb.field_table_model.NAME)
+        field_name_column = field_table_model.name_column
 
         # Scope selection (whole race vs a field).
         self.field_selection_widget = QGroupBox('Set up start times for:')

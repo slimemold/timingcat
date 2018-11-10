@@ -18,7 +18,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 from preferences import PreferencesWindow
 from racebuilder import Builder
-from racemodel import DatabaseError, ModelDatabase, RaceTableModel, RacerTableModel
+from racemodel import DatabaseError, ModelDatabase, RaceTableModel
 from raceview import FieldTableView, JournalTableView, RacerTableView, ResultTableView
 import remotes
 from reports import ReportsWindow
@@ -300,8 +300,7 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # TODO: We only care here if field name changes.
         racer_table_model = self.modeldb.racer_table_model
-        field_relation_model = racer_table_model.relationModel(
-                                   racer_table_model.fieldIndex(RacerTableModel.FIELD_ALIAS))
+        field_relation_model = racer_table_model.relationModel(racer_table_model.field_column)
 
         if not racer_table_model.select():
             raise DatabaseError(racer_table_model.lastError().text())

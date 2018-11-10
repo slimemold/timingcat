@@ -14,8 +14,8 @@ from PyQt5.QtWidgets import QDialog, QLabel, QMessageBox, QTableView, QVBoxLayou
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 import defaults
 from proxymodels import SqlExtraColumnsProxyModel, SqlSortFilterProxyModel
-from racemodel import DatabaseError, InputError, FieldTableModel, Journal, JournalTableModel, \
-                      RacerTableModel, ResultTableModel
+from racemodel import DatabaseError, InputError, FieldTableModel, Journal, RacerTableModel, \
+                      ResultTableModel
 
 __author__ = 'Andrew Chew'
 __copyright__ = '''
@@ -57,12 +57,12 @@ class JournalTableView(QTableView):
         self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True)
-        self.sortByColumn(self.model().fieldIndex(JournalTableModel.TIMESTAMP), Qt.DescendingOrder)
+        self.sortByColumn(self.model().timestamp_column, Qt.DescendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(self.model().fieldIndex(JournalTableModel.ID))
+        self.hideColumn(self.model().id_column)
 
         self.read_settings()
 
@@ -635,9 +635,8 @@ class ResultTableView(QTableView):
         else:
             racer_table_model = self.modeldb.racer_table_model
             racer_bib_column = racer_table_model.fieldIndex(racer_table_model.BIB)
-            racer_match_start = racer_table_model.index(0, racer_bib_column)
-            racer_index_list = racer_table_model.match(racer_match_start, Qt.DisplayRole, bib, 1,
-                                                       Qt.MatchExactly)
+            racer_index_list = racer_table_model.match(racer_table_model.index(0, racer_bib_column),
+                                                       Qt.DisplayRole, bib, 1, Qt.MatchExactly)
             if not racer_index_list:
                 text = 'Unknown bib number'
             else:
