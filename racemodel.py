@@ -439,7 +439,7 @@ class FieldTableModel(TableModel):
             'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
             '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
              '"%s" TEXT UNIQUE NOT NULL,' % self.NAME +
-             '"%s" TEXT);' % self.SUBFIELDS):
+             '"%s" TEXT NOT NULL);' % self.SUBFIELDS):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
@@ -447,7 +447,7 @@ class FieldTableModel(TableModel):
     def add_defaults(self):
         """Add default table entries."""
         if self.rowCount() == 0:
-            self.add_field(defaults.FIELD_NAME)
+            self.add_field(defaults.FIELD_NAME, '')
 
     def name_from_id(self, field_id):
         """Get field name, from field ID."""
@@ -473,7 +473,7 @@ class FieldTableModel(TableModel):
 
         return self.data(self.index(index.row(), self.id_column))
 
-    def add_field(self, name, subfields=None):
+    def add_field(self, name, subfields):
         """Add a row to the database table."""
         if name == '':
             raise InputError('Field name "%s" is invalid' % name)
@@ -659,7 +659,7 @@ class RacerTableModel(TableModel):
 
         field_id = self.modeldb.field_table_model.id_from_name(field)
         if not field_id:
-            self.modeldb.field_table_model.add_field(field)
+            self.modeldb.field_table_model.add_field(field, "")
             field_id = self.modeldb.field_table_model.id_from_name(field)
 
         if field_id is None:
