@@ -8,7 +8,7 @@ central widget, status and menu bars, etc.
 
 import csv
 import os
-from PyQt5.QtCore import QItemSelection, QObject, QRegExp, QSettings, QTime, QTimer, Qt
+from PyQt5.QtCore import QDateTime, QItemSelection, QObject, QRegExp, QSettings, QTime, QTimer, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
 from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPushButton, \
                             QShortcut, QStatusBar, QWidget
@@ -341,8 +341,12 @@ class MainCentralWidget(QWidget, CentralWidget):
 
     def new_result(self):
         """Handle a new result being entered in the result scratch pad input box."""
-        self.modeldb.result_table_model.add_result(
-                               self.result_input.text(), QTime.currentTime())
+        race_table_model = self.modeldb.race_table_model
+
+        scratchpad = self.result_input.text()
+        msecs = race_table_model.get_reference_datetime().msecsTo(QDateTime.currentDateTime())
+        self.modeldb.result_table_model.add_result(scratchpad, msecs)
+
         self.result_table_view.scrollToBottom()
         self.result_input.clear()
         self.result_table_view.setFocusProxy(None)

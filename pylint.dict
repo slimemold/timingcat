@@ -2,9 +2,11 @@ app
 commonizes
 config
 csv
+datetime
 enum
 Faure
 linting
+msecs
 QDialog
 QSettings
 Qt's

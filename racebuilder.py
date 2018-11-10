@@ -6,11 +6,11 @@ This module implements Qt Widgets that have to do with setting up a race, or
 adding and configuring components of a race, such as racers and fields.
 """
 
-from PyQt5.QtCore import QDate, QModelIndex, QRegExp, QSettings, QTime, Qt
+from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QRegExp, QSettings, QTime, Qt
 from PyQt5.QtGui import QRegExpValidator, QTextDocument, QValidator
-from PyQt5.QtWidgets import QComboBox, QLabel, QLineEdit, QPlainTextEdit, \
-                            QPushButton, QRadioButton, QWidget
-from PyQt5.QtWidgets import QCalendarWidget, QDateEdit, QTimeEdit
+from PyQt5.QtWidgets import QComboBox, QLabel, QLineEdit, QPlainTextEdit, QPushButton, \
+                            QRadioButton, QWidget
+from PyQt5.QtWidgets import QCalendarWidget, QDateEdit, QDateTimeEdit
 from PyQt5.QtWidgets import QFormLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QButtonGroup, QGroupBox, QTabWidget
 from PyQt5.QtWidgets import QCompleter, QMessageBox, QPlainTextDocumentLayout
@@ -199,14 +199,14 @@ class StartTimeSetup(QWidget):
         self.start_time_button_group.addButton(self.start_time_now_radiobutton)
         self.start_time_specified_radiobutton = QRadioButton('At:')
         self.start_time_button_group.addButton(self.start_time_specified_radiobutton)
-        self.start_time_timeedit = QTimeEdit() # Time "now" set in showEvent()
-        self.start_time_timeedit.setDisplayFormat(defaults.TIME_FORMAT)
-        self.start_time_timeedit.setEnabled(False)
+        self.start_time_datetimeedit = QDateTimeEdit() # Time "now" set in showEvent()
+        self.start_time_datetimeedit.setDisplayFormat(defaults.DATETIME_FORMAT)
+        self.start_time_datetimeedit.setEnabled(False)
 
         self.start_time_widget.setLayout(QHBoxLayout())
         self.start_time_widget.layout().addWidget(self.start_time_now_radiobutton)
         self.start_time_widget.layout().addWidget(self.start_time_specified_radiobutton)
-        self.start_time_widget.layout().addWidget(self.start_time_timeedit)
+        self.start_time_widget.layout().addWidget(self.start_time_datetimeedit)
 
         # Start time interval.
         self.interval_widget = QGroupBox('Interval:')
@@ -244,12 +244,14 @@ class StartTimeSetup(QWidget):
         # Signals/slots plumbing.
         self.confirm_button.clicked.connect(self.handle_assign_start_times)
         self.selected_field_radiobutton.toggled.connect(self.selected_field_combobox.setEnabled)
-        self.start_time_specified_radiobutton.toggled.connect(self.start_time_timeedit.setEnabled)
+        self.start_time_specified_radiobutton.toggled.connect(self.start_time_datetimeedit
+                                                              .setEnabled)
         self.interval_start_time_radiobutton.toggled.connect(self.interval_lineedit_group
                                                              .setEnabled)
 
     def handle_assign_start_times(self):
         """Assign the start times, given the contents of the various input widgets."""
+        race_table_model = self.modeldb.race_table_model
         racer_table_model = self.modeldb.racer_table_model
 
         # Validate inputs.
@@ -260,10 +262,11 @@ class StartTimeSetup(QWidget):
         if self.selected_field_radiobutton.isChecked():
             field = self.selected_field_combobox.currentText()
 
+        reference_datetime = race_table_model.get_reference_datetime()
         if self.start_time_now_radiobutton.isChecked():
-            start_time = QTime.currentTime()
+            start_time = reference_datetime.msecsTo(QDateTime.currentDateTime())
         else:
-            start_time = self.start_time_timeedit.time()
+            start_time = reference_datetime.msecsTo(self.start_time_datetimeedit.dateTime())
 
         interval = 0
         if self.interval_start_time_radiobutton.isChecked():
@@ -287,7 +290,8 @@ class StartTimeSetup(QWidget):
         if field:
             success_message += ' to field "%s"' % field
 
-        success_message += ' for %s' % start_time.toString(defaults.TIME_FORMAT)
+        start_datetime = reference_datetime.addMSecs(start_time)
+        success_message += ' for %s' % start_datetime.toString(Qt.SystemLocaleLongDate)
         if interval:
             success_message += ' at %s secomd intervals' % interval
 
@@ -303,7 +307,7 @@ class StartTimeSetup(QWidget):
         """
         now = QTime.currentTime().addSecs(defaults.START_TIME_FROM_NOW_SECS)
         now.setHMS(now.hour(), now.minute() + 5 - now.minute()%5, 0, 0)
-        self.start_time_timeedit.setTime(now)
+        self.start_time_datetimeedit.setTime(now)
 
         super().showEvent(event)
 

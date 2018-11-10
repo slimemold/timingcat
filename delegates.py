@@ -107,6 +107,7 @@ class SqlRelationalDelegate(QSqlRelationalDelegate):
         else:
             str_val = sql_model.data(index)
 
+        combobox = None
         if isinstance(editor, QComboBox):
             combobox = editor
 

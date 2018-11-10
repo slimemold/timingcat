@@ -16,10 +16,10 @@ and they get to sibling tables via the ModelDatabase instance.
 """
 
 import os
-from PyQt5.QtCore import QDateTime, QModelIndex, QObject, QTime, Qt
+from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QObject, Qt
 from PyQt5.QtGui import QBrush
-from PyQt5.QtSql  import QSqlDatabase, QSqlQuery, QSqlRelation, \
-                         QSqlRelationalTableModel, QSqlTableModel
+from PyQt5.QtSql  import QSqlDatabase, QSqlQuery, QSqlRelation, QSqlRelationalTableModel, \
+                         QSqlTableModel
 from common import VERSION
 import defaults
 
@@ -46,6 +46,15 @@ __version__ = VERSION
 __maintainer__ = 'Andrew Chew'
 __email__ = 'andrew@5rcc.com'
 __status__ = 'Development'
+
+MSECS_UNINITIALIZED = -1
+MSECS_DNS = -2
+MSECS_DNF = -3
+MSECS_DNP = -4
+
+def is_valid_msecs(msecs):
+    """Returns whether msecs holds a valid (non-negative) elapsed time."""
+    return msecs >= 0
 
 class DatabaseError(Exception):
     """Database Error exception
@@ -306,6 +315,7 @@ class RaceTableModel(TableModel):
     NAME = 'name'
     DATE = 'date'
     NOTES = 'notes'
+    REFERENCE_DATETIME = 'reference_datetime'
     REMOTE_CLASS = 'remote_class'
 
     def __init__(self, modeldb):
@@ -400,6 +410,19 @@ class RaceTableModel(TableModel):
 
         if not self.removeRow(index.row()):
             raise DatabaseError(self.lastError().text())
+
+    def get_reference_datetime(self):
+        """Get reference datetime.
+
+        If there is no reference time, use midnight (time zero) of the current day. All
+        start/finish/whatever times will use QDateTime, but their values are actually all relative
+        to this reference datetime.
+        """
+        reference_datetime = self.get_race_property(self.REFERENCE_DATETIME)
+        if reference_datetime:
+            return reference_datetime
+
+        return QDateTime(QDate.currentDate())
 
 class FieldTableModel(TableModel):
     """Field Table Model
@@ -617,23 +640,23 @@ class RacerTableModel(TableModel):
              '"%s" TEXT NOT NULL, ' % self.CATEGORY +
              '"%s" TEXT NOT NULL, ' % self.TEAM +
              '"%s" INTEGER NOT NULL, ' % self.AGE +
-             '"%s" TIME, ' % self.START +
-             '"%s" TIME, ' % self.FINISH +
+             '"%s" INTEGER NOT NULL, ' % self.START +
+             '"%s" INTEGER NOT NULL, ' % self.FINISH +
              '"%s" TEXT NOT NULL);' % self.STATUS):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
 
     def add_racer(self, bib, first_name, last_name, field, category, team, age,
-                 start=QTime(), finish=QTime(), status='local'):
+                  start=MSECS_UNINITIALIZED, finish=MSECS_UNINITIALIZED, status='local'):
         """Add a row to the database table.
 
         Do some validation.
 
         Don't have to check for None, because that would fail the NOT NULL table constraint.
 
-        Also, default QTime constructor makes an invalid time that ends up being stored as NULL in
-        the table, which is what we want.
+        Also, default QDateTime constructor makes an invalid time that ends up being stored as NULL
+        in the table, which is what we want.
         """
         if not bib.isdigit():
             raise InputError('Racer bib "%s" is invalid.' % bib)
@@ -746,11 +769,11 @@ class RacerTableModel(TableModel):
         if field_name and not self.modeldb.field_table_model.id_from_name(field_name):
             raise InputError('Invalid field "%s"' % field_name)
 
-        if not isinstance(start, QTime):
-            raise InputError('Invalid start data type "%s"' % type(start))
+        if not isinstance(start, int):
+            raise InputError('Invalid start data type "%s".' % type(start))
 
-        if not start.isValid():
-            raise InputError('Invalid QTime start')
+        if not is_valid_msecs(start):
+            raise InputError('Start time is in the past: msecs from reference is "%s".' % start)
 
         racer_table_model = self.modeldb.racer_table_model
         starts_overwritten = 0
@@ -767,7 +790,7 @@ class RacerTableModel(TableModel):
             elif self.data(start_index):
                 starts_overwritten += 1
 
-            start = start.addSecs(interval)
+            start += interval * 1000 # Interval is in seconds.
 
         if not dry_run:
             self.dataChanged.emit(QModelIndex(), QModelIndex())
@@ -798,7 +821,8 @@ class RacerTableModel(TableModel):
             field_index = self.index(row, self.field_column)
             finish_index = self.index(row, self.finish_column)
 
-            if self.data(field_index) == field_name and self.data(finish_index):
+            if (self.data(field_index) == field_name and
+                self.data(finish_index) != MSECS_UNINITIALIZED):
                 count += 1
 
         return count
@@ -819,18 +843,18 @@ class RacerTableModel(TableModel):
         if role == Qt.BackgroundRole:
             record = self.record(index.row())
 
-            start = QTime.fromString(record.value(RacerTableModel.START))
-            finish = QTime.fromString(record.value(RacerTableModel.FINISH))
+            start = record.value(RacerTableModel.START)
+            finish = record.value(RacerTableModel.FINISH)
 
             # No start time. Paint the cell red.
-            if (index.column() == self.start_column and not start.isValid()):
+            if (index.column() == self.start_column and start == MSECS_UNINITIALIZED):
                 return QBrush(Qt.red)
 
             # Finish time is before the start time. Paint the cell red.
-            if (index.column() == self.finish_column and finish.isValid() and finish < start):
+            if (index.column() == self.finish_column and is_valid_msecs(finish) and finish < start):
                 return QBrush(Qt.red)
 
-            if finish.isValid():
+            if finish != MSECS_UNINITIALIZED:
                 if self.remote:
                     if record.value(RacerTableModel.STATUS) == 'local':
                         return QBrush(Qt.yellow)
@@ -882,7 +906,7 @@ class ResultTableModel(TableModel):
             'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
             '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
              '"%s" TEXT NOT NULL, ' % self.SCRATCHPAD +
-             '"%s" TIME NOT NULL);' % self.FINISH):
+             '"%s" INT NOT NULL);' % self.FINISH):
             raise DatabaseError(query.lastError().text())
 
         query.finish()

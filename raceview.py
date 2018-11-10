@@ -8,12 +8,13 @@ and the models.
 """
 
 import os
-from PyQt5.QtCore import QEvent, QItemSelection, QModelIndex, QRegExp, QSettings, Qt, pyqtSignal
+from PyQt5.QtCore import QEvent, QItemSelection, QModelIndex, QRegExp, QSettings, \
+                         QSortFilterProxyModel, Qt, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QLabel, QMessageBox, QTableView, QVBoxLayout
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 import defaults
 from delegates import SqlRelationalDelegate
-from proxymodels import SqlExtraColumnsProxyModel, SqlSortFilterProxyModel
+from proxymodels import ExtraColumnsProxyModel, MSecsColumnsProxyModel
 from racemodel import DatabaseError, InputError, FieldTableModel, Journal, ResultTableModel
 
 __author__ = 'Andrew Chew'
@@ -104,7 +105,7 @@ class JournalTableView(QTableView):
 
 # Add a "Finished" column for total racers that have a finish time, and a
 # "Total" column to show total racers in that field.
-class FieldProxyModel(SqlExtraColumnsProxyModel):
+class FieldProxyModel(ExtraColumnsProxyModel):
     """Proxy model for the field table model.
 
     This proxy model adds extra columns to the field table. Extra columns include number of racers
@@ -115,9 +116,9 @@ class FieldProxyModel(SqlExtraColumnsProxyModel):
     TOTAL_SECTION = 1
     STATUS_SECTION = 2
 
-    def __init__(self):
+    def __init__(self, parent=None):
         """Initialize the FieldProxyModel instance."""
-        super().__init__()
+        super().__init__(parent=parent)
 
         self.appendColumn('Finished')
         self.appendColumn('Total')
@@ -161,7 +162,7 @@ class FieldTableView(QTableView):
 
         """Use a proxy model so we can add some interesting columns."""
         self.source_model = self.modeldb.field_table_model
-        self.proxy_model = FieldProxyModel()
+        self.proxy_model = FieldProxyModel(parent=parent)
         self.proxy_model.setSourceModel(self.source_model)
         self.setModel(self.proxy_model)
 
@@ -386,14 +387,6 @@ class FieldTableView(QTableView):
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
-class RacerProxyModel(SqlSortFilterProxyModel):
-    """Proxy model for the racer table model.
-
-    This is a chance for us to filter the data coming in and out of the database. One thing we will
-    be using this for is to filter racers based on field.
-    """
-    pass
-
 class RacerTableView(QTableView):
     """Table view for the racer table model."""
 
@@ -408,9 +401,13 @@ class RacerTableView(QTableView):
 
         """Use a proxy model so we can add some interesting columns."""
         self.source_model = self.modeldb.racer_table_model
-        self.proxy_model = RacerProxyModel()
-        self.proxy_model.setSourceModel(self.source_model)
-        self.setModel(self.proxy_model)
+        self.proxy_model_msecs = MSecsColumnsProxyModel(self.modeldb, parent=parent)
+        self.proxy_model_msecs.setMSecsColumns([self.source_model.start_column,
+                                                self.source_model.finish_column])
+        self.proxy_model_msecs.setSourceModel(self.source_model)
+        self.proxy_model_filter = QSortFilterProxyModel(parent=parent)
+        self.proxy_model_filter.setSourceModel(self.proxy_model_msecs)
+        self.setModel(self.proxy_model_filter)
 
         self.field_id = field_id
         self.update_field_name()
@@ -427,7 +424,7 @@ class RacerTableView(QTableView):
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.source_model.id_column)
         if self.field_id:
-            self.proxy_model.setFilterKeyColumn(self.source_model.field_column)
+            self.proxy_model_filter.setFilterKeyColumn(self.source_model.field_column)
             self.hideColumn(self.source_model.field_column)
         # Hide the status by default. Show it if we have a remote
         # set up for this race.
@@ -495,7 +492,7 @@ class RacerTableView(QTableView):
         if self.field_id:
             field_name = self.modeldb.field_table_model.name_from_id(self.field_id)
             self.setWindowTitle('Racers (%s)' % field_name)
-            self.model().setFilterRegExp(QRegExp(field_name, Qt.CaseSensitive, QRegExp.FixedString))
+            self.proxy_model_filter.setFilterRegExp(QRegExp(field_name, Qt.CaseSensitive, QRegExp.FixedString))
         else:
             self.setWindowTitle('Racers')
 
@@ -562,7 +559,10 @@ class ResultTableView(QTableView):
         self.modeldb = modeldb
 
         self.source_model = self.modeldb.result_table_model
-        self.setModel(self.source_model)
+        self.proxy_model = MSecsColumnsProxyModel(self.modeldb, parent=parent)
+        self.proxy_model.setMSecsColumns([self.source_model.finish_column])
+        self.proxy_model.setSourceModel(self.source_model)
+        self.setModel(self.proxy_model)
 
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(False) # Don't allow sorting.
@@ -674,7 +674,6 @@ class ResultTableView(QTableView):
 
         On delete key press, delete the selection.
         """
-        model = self.selectionModel().model()
         item_selection = self.selectionModel().selection()
         selection_list = self.selectionModel().selectedRows()
 
@@ -683,16 +682,16 @@ class ResultTableView(QTableView):
         # any row number that's higher than the currently removed one.
         selection_list.sort(key=lambda selection: selection.row(), reverse=True)
         for selection in selection_list:
-            record = model.record(selection.row())
+            record = self.source_model.record(selection.row())
             self.journal.log('Result with bib "%s" and time "%s" deleted.' %
                              (record.value(ResultTableModel.SCRATCHPAD),
                               record.value(ResultTableModel.FINISH)))
 
-            model.removeRow(selection.row())
+            self.source_model.removeRow(selection.row())
 
         # Model retains blank rows until we select() again.
         if not self.modeldb.result_table_model.select():
-            raise DatabaseError(model.lastError().text())
+            raise DatabaseError(self.source_model.lastError().text())
 
         # Selection changed because of this deletion, but for some reason,
         # this widget class doesn't emit the selectionChanged signal in this
@@ -714,7 +713,6 @@ class ResultTableView(QTableView):
         On submit button click, we try to push the finish times for the selected rows to the
         corresponding racer. For each selection that succeeds, we remove that row from this table.
         """
-        model = self.selectionModel().model()
         selection_list = self.selectionModel().selectedRows()
 
         # Remove rows from large to small, because the rows are removed
@@ -727,10 +725,10 @@ class ResultTableView(QTableView):
                 # Only try to submit it if it's a non-negative integer.
                 # Else, it is obviously a work in progress, so don't even
                 # bother.
-                record = model.record(selection.row())
+                record = self.source_model.record(selection.row())
                 scratchpad = record.value(ResultTableModel.SCRATCHPAD)
                 if scratchpad.isdigit():
-                    model.submit_result(selection.row())
+                    self.source_model.submit_result(selection.row())
                     deleted_selection.select(selection, selection)
                     self.journal.log('Result with bib "%s" and time "%s" submitted.' %
                                      (record.value(ResultTableModel.SCRATCHPAD),
@@ -740,8 +738,8 @@ class ResultTableView(QTableView):
                 QMessageBox.warning(self, 'Error', str(e))
 
         # Model retains blank rows until we select() again.
-        if not model.select():
-            raise DatabaseError(model.lastError().text())
+        if not self.source_model.select():
+            raise DatabaseError(self.source_model.lastError().text())
 
         # Surprisingly, when the model changes such that our selection changes
         # (for example, when the selected result gets submitted to the racer

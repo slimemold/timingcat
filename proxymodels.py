@@ -11,10 +11,12 @@ The ExtraColumnsProxyModel and RearrangeColumnsProxyModel are sloppily ported fr
 gotten from https://github.com/KDE/kitemmodels.
 """
 
-from PyQt5.QtCore import QModelIndex, Qt
+from PyQt5.QtCore import QDate, QTime, QDateTime, QModelIndex, Qt
 from PyQt5.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
-from PyQt5.QtCore import QIdentityProxyModel, QSortFilterProxyModel
+from PyQt5.QtCore import QIdentityProxyModel
 from common import VERSION
+import defaults
+from racemodel import MSECS_UNINITIALIZED, MSECS_DNS, MSECS_DNF, MSECS_DNP
 
 __author__ = 'Andrew Chew'
 __copyright__ = '''
@@ -390,55 +392,64 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
         """Return source column, given proxy column."""
         return self.source_columns[proxy_column]
 
-class SqlExtraColumnsProxyModel(ExtraColumnsProxyModel):
-    """SqlExtraColumnsProxyModel
+class MSecsColumnsProxyModel(QIdentityProxyModel):
+    """Proxy model for the racer table model.
 
-    This is just ExtraColumnsProxyModel, but with fieldIndex(), so that it looks like a
-    QSqlTableModel.
+    This is a chance for us to filter the data coming in and out of the database. One thing we will
+    be using this for is to filter racers based on field.
     """
+    def __init__(self, modeldb, parent=None):
+        super().__init__(parent=parent)
 
-    def fieldIndex(self, field_name): #pylint: disable=invalid-name
-        """Call sourceModel().fieldIndex()
+        self.modeldb = modeldb
+        self.msecs_columns = []
 
-        We assume that the source model is a QSqlTableModel (which is the whole point of this
-        class).
-        """
-        try:
-            extra_col = self.extra_headers.index(field_name)
-        except ValueError:
-            return self.sourceModel().fieldIndex(field_name)
+    def setMSecsColumns(self, msecs_columns):
+        self.msecs_columns = msecs_columns
 
-        return self.proxyColumnForExtraColumn(extra_col)
+    def data(self, index, role=Qt.DisplayRole):
+        if role == Qt.DisplayRole or role == Qt.EditRole:
+            if index.column() in self.msecs_columns:
+                race_table_model = self.modeldb.race_table_model
+                reference_datetime = race_table_model.get_reference_datetime()
+                msecs = self.sourceModel().data(index, role)
 
-class SqlRearrangeColumnsProxyModel(RearrangeColumnsProxyModel):
-    """SqlRearrangeColumnsProxyModel
+                if msecs == MSECS_UNINITIALIZED:
+                    return ''
+                elif msecs == MSECS_DNS:
+                    return 'DNS'
+                elif msecs == MSECS_DNF:
+                    return 'DNF'
+                elif msecs == MSECS_DNP:
+                    return 'DNP'
 
-    This is just RearrangeColumnsProxyModel, but with fieldIndex(), so that it looks like a
-    QSqlTableModel.
-    """
+                return reference_datetime.addMSecs(self.sourceModel().data(self.mapToSource(index), role)).toString(defaults.DATETIME_FORMAT)
 
-    def fieldIndex(self, field_name): #pylint: disable=invalid-name
-        """Call sourceModel().fieldIndex()
+        return super().data(index, role)
 
-        We assume that the source model is a QSqlTableModel (which is the whole point of this
-        class).
-        """
-        try:
-            return self.proxyColumnForSourceColumn(self.sourceModel().fieldIndex(field_name))
-        except ValueError:
-            return -1
+    def setData(self, index, value, role=Qt.EditRole): #pylint: disable=invalid-name
+        if role == Qt.DisplayRole or role == Qt.EditRole:
+            if index.column() in self.msecs_columns:
+                if not value:
+                    msecs = MSECS_UNINITIALIZED
+                elif value.upper() == 'DNS':
+                    msecs = MSECS_DNS
+                elif value.upper() == 'DNF':
+                    msecs = MSECS_DNF
+                elif value.upper() == 'DNP':
+                    msecs = MSECS_DNP
+                else:
+                    race_table_model = self.modeldb.race_table_model
+                    reference_datetime = race_table_model.get_reference_datetime()
+                    date = reference_datetime.date()
+                    time = QTime.fromString(value, defaults.DATETIME_FORMAT)
+                    if time.isValid():
+                        print('valid')
+                        datetime = QDateTime(date, time)
+                        msecs = reference_datetime.msecsTo(datetime)
+                    else:
+                        msecs = MSECS_UNINITIALIZED
 
-class SqlSortFilterProxyModel(QSortFilterProxyModel):
-    """SqlSortFilterProxyModel
+                return self.sourceModel().setData(self.mapToSource(index), msecs, role)
 
-    This is just QSortFilterProxyModel, but with fieldIndex(), so that it looks like a
-    QSqlTableModel.
-    """
-
-    def fieldIndex(self, field_name): #pylint: disable=invalid-name
-        """Call sourceModel().fieldIndex()
-
-        We assume that the source model is a QSqlTableModel (which is the whole point of this
-        class).
-        """
-        return self.sourceModel().fieldIndex(field_name)
+        return super().setData(index, value, role)
