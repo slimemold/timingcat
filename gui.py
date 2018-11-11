@@ -250,19 +250,19 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.submit_button.clicked.connect(self.handle_result_submit)
 
         # Signals/slots for keyboard shortcuts.
-        self.shortcut = QShortcut(QKeySequence('CTRL+S'), self)
-        self.shortcut.activated.connect(self.handle_submit_shortcut)
+        shortcut = QShortcut(QKeySequence('CTRL+S'), self)
+        shortcut.activated.connect(self.handle_submit_shortcut)
 
-        self.shortcut = QShortcut(QKeySequence('CTRL+R'), self)
-        self.shortcut.activated.connect(self.handle_racer_shortcut)
+        shortcut = QShortcut(QKeySequence('CTRL+R'), self)
+        shortcut.activated.connect(self.handle_racer_shortcut)
 
-        self.shortcut = QShortcut(QKeySequence('CTRL+F'), self)
-        self.shortcut.activated.connect(self.handle_field_shortcut)
+        shortcut = QShortcut(QKeySequence('CTRL+F'), self)
+        shortcut.activated.connect(self.handle_field_shortcut)
 
-        self.shortcut = QShortcut(QKeySequence('CTRL+J'), self)
-        self.shortcut.activated.connect(self.handle_journal_shortcut)
-        self.shortcut = QShortcut(QKeySequence('CTRL+L'), self)
-        self.shortcut.activated.connect(self.handle_journal_shortcut)
+        shortcut = QShortcut(QKeySequence('CTRL+J'), self)
+        shortcut.activated.connect(self.handle_journal_shortcut)
+        shortcut = QShortcut(QKeySequence('CTRL+L'), self)
+        shortcut.activated.connect(self.handle_journal_shortcut)
 
     def closeEvent(self, event): #pylint: disable=invalid-name
         """Clean up the MainCentralWidget instance.
@@ -495,7 +495,7 @@ class SexyThymeMainWindow(QMainWindow):
         # Config menu.
         config_menu = self.menuBar().addMenu('&Config')
         config_menu.addAction('Preferences', self.config_preferences, QKeySequence.Preferences)
-        config_menu.addAction('Race Builder', self.config_builder)
+        config_menu.addAction('Race &Builder', self.config_builder, QKeySequence('CTRL+B'))
         config_menu.addAction('Import Bikereg csv...', self.import_bikereg_file)
 
         config_menu.addSeparator()
