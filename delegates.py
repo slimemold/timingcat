@@ -50,32 +50,21 @@ class SqlRelationalDelegate(QSqlRelationalDelegate):
 
         The returned combo box instance should point to the proper relation model column.
         """
-        sql_model = None
-        if isinstance(index.model(), QSqlRelationalTableModel):
-            sql_model = index.model()
+        if not index.isValid():
+            return
 
-        if sql_model:
-            child_model = sql_model.relationModel(index.column())
-        else:
-            child_model = None
+        if not isinstance(index.model(), QSqlRelationalTableModel):
+            # If not a QSqlRelationalTableModel, must be a proxy model.
+            proxy_model = index.model()
+            source_model = proxy_model.sourceModel()
+            return self.createEditor(parent, option, proxy_model.mapToSource(index))
 
-        if not child_model:
-            proxy_model = None
-            if isinstance(index.model(), QAbstractProxyModel):
-                proxy_model = index.model()
-
-            if proxy_model:
-                sql_model = None
-                if isinstance(proxy_model.sourceModel(), QSqlRelationalTableModel):
-                    sql_model = proxy_model.sourceModel()
-
-                if sql_model:
-                    child_model = sql_model.relationModel(index.column())
-                else:
-                    child_model = None
+        sql_model = index.model()
+        child_model = sql_model.relationModel(index.column())
 
         if not child_model:
-            return QItemDelegate.createEditor(self, parent, option, index)
+            QItemDelegate.createEditor(self, parent, option, index)
+            return
 
         column = child_model.fieldIndex(sql_model.relation(index.column()).displayColumn())
 
@@ -91,21 +80,18 @@ class SqlRelationalDelegate(QSqlRelationalDelegate):
 
         Set the current index of the combo box to be the current value in the model.
         """
-        str_val = ''
+        if not index.isValid():
+            return
 
-        sql_model = None
-        if isinstance(index.model(), QSqlRelationalTableModel):
-            sql_model = index.model()
+        if not isinstance(index.model(), QSqlRelationalTableModel):
+            # If not a QSqlRelationalTableModel, must be a proxy model.
+            proxy_model = index.model()
+            source_model = proxy_model.sourceModel()
+            self.setEditorData(editor, proxy_model.mapToSource(index))
+            return
 
-        if not sql_model:
-            proxy_model = None
-            if isinstance(index.model(), QAbstractProxyModel):
-                proxy_model = index.model()
-
-            if proxy_model:
-                str_val = proxy_model.data(index)
-        else:
-            str_val = sql_model.data(index)
+        sql_model = index.model()
+        str_val = sql_model.data(index)
 
         combobox = None
         if isinstance(editor, QComboBox):
@@ -122,23 +108,14 @@ class SqlRelationalDelegate(QSqlRelationalDelegate):
         if not index.isValid():
             return
 
-        sql_model = None
-        if isinstance(model, QSqlRelationalTableModel):
-            sql_model = model
+        if not isinstance(model, QSqlRelationalTableModel):
+            proxy_model = model
+            source_model = proxy_model.sourceModel()
+            self.setModelData(editor, source_model, proxy_model.mapToSource(index))
+            return
 
-        proxy_model = None
-        if not sql_model:
-            proxy_model = None
-            if isinstance(model, QAbstractProxyModel):
-                proxy_model = model
-
-            if proxy_model:
-                sql_model = proxy_model.sourceModel()
-
-        if sql_model:
-            child_model = sql_model.relationModel(index.column())
-        else:
-            child_model = None
+        sql_model = model
+        child_model = sql_model.relationModel(index.column())
 
         combobox = editor
 
@@ -156,9 +133,5 @@ class SqlRelationalDelegate(QSqlRelationalDelegate):
         child_edit_data = child_model.data(child_model.index(current_item, child_edit_index),
                                            Qt.EditRole)
 
-        if proxy_model:
-            proxy_model.setData(index, child_col_data, Qt.DisplayRole)
-            proxy_model.setData(index, child_edit_data, Qt.EditRole)
-        else:
-            sql_model.setData(index, child_col_data, Qt.DisplayRole)
-            sql_model.setData(index, child_edit_data, Qt.EditRole)
+        sql_model.setData(index, child_col_data, Qt.DisplayRole)
+        sql_model.setData(index, child_edit_data, Qt.EditRole)
