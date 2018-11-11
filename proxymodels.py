@@ -9,9 +9,12 @@ it is talking to a QSqlTableModel when it's really talking to one of our proxy m
 
 The ExtraColumnsProxyModel and RearrangeColumnsProxyModel are sloppily ported from C++ versions
 gotten from https://github.com/KDE/kitemmodels.
+
+The proxy model classes here are made to be as Qt-like as possible. Therefore, we violate our
+naming convention by using camelCase for method names.
 """
 
-from PyQt5.QtCore import QDate, QTime, QDateTime, QModelIndex, Qt
+from PyQt5.QtCore import QDateTime, QModelIndex, Qt, QTime
 from PyQt5.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
 from PyQt5.QtCore import QIdentityProxyModel
 from common import VERSION
@@ -66,7 +69,7 @@ class ExtraColumnsProxyModel(QIdentityProxyModel):
     """
 
     def __init__(self, parent=None):
-        """Base class constructor
+        """Create an ExtraColumnsProxyModel proxy model.
 
         Remember to call setSourceModel afterwards, and appendColumn.
         """
@@ -283,7 +286,7 @@ class RearrangeColumnsProxyModel(QIdentityProxyModel):
     """
 
     def __init__(self, parent=None):
-        """Create a KRearrangeColumnsProxyModel proxy.
+        """Create a RearrangeColumnsProxyModel proxy model.
 
         Remember to call setSourceModel afterwards.
         """
@@ -398,21 +401,28 @@ class MSecsColumnsProxyModel(QIdentityProxyModel):
     This is a chance for us to filter the data coming in and out of the database. One thing we will
     be using this for is to filter racers based on field.
     """
+
     def __init__(self, modeldb, parent=None):
+        """Create an MSecsColumnsProxyModel proxy model.
+
+        User should call setMSecsColumns() afterwards, to specify which columns contain msecs.
+        """
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
         self.msecs_columns = []
 
-    def setMSecsColumns(self, msecs_columns):
+    def setMSecsColumns(self, msecs_columns): #pylint: disable=invalid-name
+        """Specify the columns that contain msecs from reference datetime."""
         self.msecs_columns = msecs_columns
 
     def data(self, index, role=Qt.DisplayRole):
-        if role == Qt.DisplayRole or role == Qt.EditRole:
+        """Convert msecs to something that looks like a time."""
+        if role in (Qt.DisplayRole, Qt.EditRole):
             if index.column() in self.msecs_columns:
                 race_table_model = self.modeldb.race_table_model
                 reference_datetime = race_table_model.get_reference_datetime()
-                msecs = self.sourceModel().data(index, role)
+                msecs = self.sourceModel().data(self.mapToSource(index), role)
 
                 if msecs == MSECS_UNINITIALIZED:
                     return ''
@@ -423,12 +433,14 @@ class MSecsColumnsProxyModel(QIdentityProxyModel):
                 elif msecs == MSECS_DNP:
                     return 'DNP'
 
-                return reference_datetime.addMSecs(self.sourceModel().data(self.mapToSource(index), role)).toString(defaults.DATETIME_FORMAT)
+                return reference_datetime.addMSecs(msecs).toString(defaults.DATETIME_FORMAT)
 
         return super().data(index, role)
 
     def setData(self, index, value, role=Qt.EditRole): #pylint: disable=invalid-name
-        if role == Qt.DisplayRole or role == Qt.EditRole:
+        """Convert the friendly representation back to msecs."""
+
+        if role in (Qt.DisplayRole, Qt.EditRole):
             if index.column() in self.msecs_columns:
                 if not value:
                     msecs = MSECS_UNINITIALIZED
