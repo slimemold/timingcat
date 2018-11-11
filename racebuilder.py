@@ -132,6 +132,9 @@ class RacerSetup(QWidget):
         age = self.age_lineedit.text()
 
         field = self.field_combobox.currentText()
+        if not field:
+            QMessageBox.warning(self, 'Error', 'Missing field.')
+            return
         if not field_table_model.id_from_name(field):
             QMessageBox.warning(self, 'Error', 'Invalid field %s.' % field)
             return

@@ -478,6 +478,11 @@ class FieldTableModel(TableModel):
         if name == '':
             raise InputError('Field name "%s" is invalid' % name)
 
+        dup_field_index = self.match(self.index(0, self.name_column),
+                                     Qt.DisplayRole, name, 1, Qt.MatchExactly)
+        if dup_field_index:
+            raise InputError('Field name "%s" is already being used.' % name)
+
         record = self.record()
         record.setGenerated(self.ID, False)
         record.setValue(FieldTableModel.NAME, name)
@@ -636,8 +641,8 @@ class RacerTableModel(TableModel):
         dup_racer_index = self.match(self.index(0, self.bib_column),
                                      Qt.DisplayRole, bib, 1, Qt.MatchExactly)
         if dup_racer_index:
-            dup_racer_first_name = dup_racer_index.siblingAtColumn(self.first_name_column).data()
-            dup_racer_last_name = dup_racer_index.siblingAtColumn(self.last_name_column).data()
+            dup_racer_first_name = dup_racer_index[0].siblingAtColumn(self.first_name_column).data()
+            dup_racer_last_name = dup_racer_index[0].siblingAtColumn(self.last_name_column).data()
 
             dup_racer_name = ' '.join([dup_racer_first_name, dup_racer_last_name])
 
@@ -649,6 +654,10 @@ class RacerTableModel(TableModel):
 
         # See if the field exists in our Field table.  If not, we add a new
         # field.
+        print(field)
+        if not field:
+            raise InputError('Racer field is missing.' % field)
+
         field_id = self.modeldb.field_table_model.id_from_name(field)
         if not field_id:
             self.modeldb.field_table_model.add_field(field)
