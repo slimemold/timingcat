@@ -432,9 +432,13 @@ class SexyThymeMainWindow(QMainWindow):
         self.connect_preferences(self.preferences_window)
 
         if filename:
-            self.switch_to_main(filename)
-        else:
-            self.switch_to_start()
+            try:
+                self.switch_to_main(filename)
+                return
+            except DatabaseError as e:
+                QMessageBox.warning(self, 'Error', str(e))
+
+        self.switch_to_start()
 
     def switch_to_start(self):
         """Switch to the StartCentralWidget as our central widget."""
@@ -444,6 +448,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.setCentralWidget(StartCentralWidget())
 
+        self.close_file_menu_action.setEnabled(False)
         self.generate_reports_menu_action.setEnabled(False)
         self.journal_action.setEnabled(False)
         self.connect_remote_menu.setEnabled(False)
@@ -457,8 +462,10 @@ class SexyThymeMainWindow(QMainWindow):
 
         # Make a new model, and give it to a new central widget.
         model = ModelDatabase(filename, new)
+
         self.setCentralWidget(MainCentralWidget(model))
 
+        self.close_file_menu_action.setEnabled(True)
         self.generate_reports_menu_action.setEnabled(True)
         self.journal_action.setEnabled(True)
 
@@ -481,7 +488,8 @@ class SexyThymeMainWindow(QMainWindow):
         file_menu = self.menuBar().addMenu('&File')
         file_menu.addAction('New...', self.new_file, QKeySequence.New)
         file_menu.addAction('Open...', self.open_file, QKeySequence.Open)
-        file_menu.addAction('Close', self.close_file, QKeySequence.Close)
+        self.close_file_menu_action = file_menu.addAction('Close', self.close_file,
+                                                          QKeySequence.Close)
 
         file_menu.addSeparator()
 
@@ -559,7 +567,13 @@ class SexyThymeMainWindow(QMainWindow):
             return None
 
         filename = dialog.selectedFiles()[0]
-        self.switch_to_main(filename, True)
+        try:
+            self.switch_to_main(filename, True)
+        except DatabaseError as e:
+            QMessageBox.warning(self, 'Error', str(e))
+            self.switch_to_start()
+            return None
+
         self.centralWidget().modeldb.add_defaults()
 
         return filename
@@ -580,7 +594,13 @@ class SexyThymeMainWindow(QMainWindow):
             return None
 
         filename = dialog.selectedFiles()[0]
-        self.switch_to_main(filename, False)
+        try:
+            self.switch_to_main(filename, False)
+        except DatabaseError as e:
+            QMessageBox.warning(self, 'Error', str(e))
+            self.switch_to_start()
+            return None
+
         self.centralWidget().modeldb.add_defaults()
 
         return filename
@@ -624,12 +644,15 @@ class SexyThymeMainWindow(QMainWindow):
             dialog.setOptions(QFileDialog.DontUseNativeDialog)
             dialog.setViewMode(QFileDialog.List)
 
-            if dialog.exec():
-                filename = dialog.selectedFiles()[0]
-                self.switch_to_main(filename, True)
-                return import_filename
-            else:
-                return None
+            try:
+                if dialog.exec():
+                    filename = dialog.selectedFiles()[0]
+                    self.switch_to_main(filename, True)
+                    return import_filename
+            except DatabaseError as e:
+                QMessageBox.warning(self, 'Error', str(e))
+                self.switch_to_start()
+            return None
 
         # Otherwise, if our current race has stuff in it, confirm to overwrite
         # before clearing it.
@@ -658,7 +681,12 @@ class SexyThymeMainWindow(QMainWindow):
 
         # Reuse old filename.
         filename = self.centralWidget().modeldb.filename
-        self.switch_to_main(filename, True)
+        try:
+            self.switch_to_main(filename, True)
+        except DatabaseError as e:
+            QMessageBox.warning(self, 'Error', str(e))
+            self.switch_to_start()
+            return None
 
         return import_filename
 
