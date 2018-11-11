@@ -9,13 +9,12 @@ and the models.
 
 import os
 from PyQt5.QtCore import QEvent, QItemSelection, QModelIndex, QRegExp, QSettings, Qt, pyqtSignal
-from PyQt5.QtSql import QSqlRelationalDelegate
 from PyQt5.QtWidgets import QDialog, QLabel, QMessageBox, QTableView, QVBoxLayout
 from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
 import defaults
+from delegates import SqlRelationalDelegate
 from proxymodels import SqlExtraColumnsProxyModel, SqlSortFilterProxyModel
-from racemodel import DatabaseError, InputError, FieldTableModel, Journal, RacerTableModel, \
-                      ResultTableModel
+from racemodel import DatabaseError, InputError, FieldTableModel, Journal, ResultTableModel
 
 __author__ = 'Andrew Chew'
 __copyright__ = '''
@@ -55,7 +54,6 @@ class JournalTableView(QTableView):
         self.source_model = self.modeldb.journal_table_model
         self.setModel(self.source_model)
 
-        self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True)
         self.sortByColumn(self.source_model.timestamp_column, Qt.DescendingOrder)
@@ -170,7 +168,6 @@ class FieldTableView(QTableView):
         self.setWindowTitle('Fields')
 
         # Set up our view.
-        self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QTableView.SelectRows)
@@ -419,7 +416,7 @@ class RacerTableView(QTableView):
         self.update_field_name()
 
         # Set up our view.
-        self.setItemDelegate(QSqlRelationalDelegate())
+        self.setItemDelegateForColumn(self.source_model.field_column, SqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True) # Allow sorting by column
         self.setSelectionBehavior(QTableView.SelectRows)
@@ -567,7 +564,6 @@ class ResultTableView(QTableView):
         self.source_model = self.modeldb.result_table_model
         self.setModel(self.source_model)
 
-        self.setItemDelegate(QSqlRelationalDelegate())
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(False) # Don't allow sorting.
         self.setSelectionBehavior(QTableView.SelectRows)
