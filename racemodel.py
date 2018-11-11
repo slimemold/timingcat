@@ -654,7 +654,6 @@ class RacerTableModel(TableModel):
 
         # See if the field exists in our Field table.  If not, we add a new
         # field.
-        print(field)
         if not field:
             raise InputError('Racer field is missing.' % field)
 
