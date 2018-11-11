@@ -55,6 +55,8 @@ class JournalTableView(QTableView):
         self.source_model = self.modeldb.journal_table_model
         self.setModel(self.source_model)
 
+        self.setWindowTitle('Journal')
+
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True)
         self.sortByColumn(self.source_model.timestamp_column, Qt.DescendingOrder)
