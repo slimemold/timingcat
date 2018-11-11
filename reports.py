@@ -156,7 +156,7 @@ def generate_finish_report(modeldb, field_name):
         raise DatabaseError(model.lastError().text())
 
     html = '<h1>%s</h1>' % modeldb.race_table_model.get_race_property(RaceTableModel.NAME)
-    html += '%s' % modeldb.race_table_model.get_race_property(RaceTableModel.DATE)
+    html += '%s' % modeldb.race_table_model.get_date().toString()
     html += '<h2>Results: %s</h2>' % field_name
 
     for cat_list in subfield_list_by_cat:

@@ -17,9 +17,10 @@ and they get to sibling tables via the ModelDatabase instance.
 
 import os
 from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QObject, Qt
-from PyQt5.QtGui import QBrush
+from PyQt5.QtGui import QBrush, QTextDocument
 from PyQt5.QtSql  import QSqlDatabase, QSqlQuery, QSqlRelation, QSqlRelationalTableModel, \
                          QSqlTableModel
+from PyQt5.QtWidgets import QPlainTextDocumentLayout
 from common import VERSION
 import defaults
 
@@ -315,7 +316,8 @@ class RaceTableModel(TableModel):
     NAME = 'name'
     DATE = 'date'
     NOTES = 'notes'
-    REFERENCE_DATETIME = 'reference_datetime'
+    REFERENCE_CLOCK_ENABLED = 'reference_clock_enabled'
+    REFERENCE_CLOCK_DATETIME = 'reference_clock_datetime'
     REMOTE_CLASS = 'remote_class'
 
     def __init__(self, modeldb):
@@ -356,10 +358,12 @@ class RaceTableModel(TableModel):
             self.set_race_property(self.NAME, defaults.RACE_NAME)
 
         if not self.get_race_property(self.DATE):
-            self.set_race_property(self.DATE, QDateTime.currentDateTime().date().toString())
+            self.set_date(QDateTime.currentDateTime().date())
 
         if not self.get_race_property(self.NOTES):
-            self.set_race_property(self.NOTES, '')
+            document = QTextDocument()
+            document.setDocumentLayout(QPlainTextDocumentLayout(document))
+            self.set_notes(document)
 
     def get_race_property(self, key):
         """Get the value of the race property corresponding to the "key"."""
@@ -373,7 +377,7 @@ class RaceTableModel(TableModel):
 
         return self.data(self.index(index.row(), self.value_column))
 
-    def set_race_property(self, key, value):
+    def set_race_property(self, key, value=''):
         """Set/add a value corresponding to "key".
 
         Set the row corresponding to the given "key" to "value". If this row doesn't exist, add a
@@ -411,18 +415,79 @@ class RaceTableModel(TableModel):
         if not self.removeRow(index.row()):
             raise DatabaseError(self.lastError().text())
 
-    def get_reference_datetime(self):
+    def get_date(self):
+        """Get the date, as a QDate."""
+        return QDate.fromString(self.get_race_property(self.DATE), Qt.ISODate)
+
+    def set_date(self, date):
+        """Set the date, as a QDate."""
+        self.set_race_property(self.DATE, date.toString(Qt.ISODate))
+
+    def get_notes(self):
+        """Get the notes, as a QTextDocument."""
+        document = QTextDocument(self.get_race_property(self.NOTES))
+        document.setDocumentLayout(QPlainTextDocumentLayout(document))
+        return document
+
+    def set_notes(self, notes):
+        """Set the notes, as a QTextDocument."""
+        self.set_race_property(self.NOTES, notes.toPlainText())
+
+    def enable_reference_clock(self):
+        """Enable reference clock."""
+        self.set_race_property(self.REFERENCE_CLOCK_ENABLED)
+
+    def disable_reference_clock(self):
+        """Disable reference clock.
+
+        Note that we only disable the previously set-up reference datetime (by deleting the
+        "enabled" property), but we keep the actual reference datetime around in case we want to
+        come back to it.
+        """
+        self.delete_race_property(self.REFERENCE_CLOCK_ENABLED)
+
+    def reference_clock_is_enabled(self):
+        """Return whether the reference clock is enabled."""
+        return not self.get_race_property(self.REFERENCE_CLOCK_ENABLED) is None
+
+    def get_reference_clock_datetime(self):
         """Get reference datetime.
 
-        If there is no reference time, use midnight (time zero) of the current day. All
-        start/finish/whatever times will use QDateTime, but their values are actually all relative
-        to this reference datetime.
+        If there is no reference time, use midnight (time zero) of the current day.
         """
-        reference_datetime = self.get_race_property(self.REFERENCE_DATETIME)
-        if reference_datetime:
-            return reference_datetime
+        wall_clock_datetime = QDateTime(QDate.currentDate())
 
-        return QDateTime(QDate.currentDate())
+        if not self.reference_clock_is_enabled():
+            return wall_clock_datetime
+
+        datetime_string = self.get_race_property(self.REFERENCE_CLOCK_DATETIME)
+        if not datetime_string:
+            return wall_clock_datetime
+
+        reference_datetime = QDateTime.fromString(datetime_string, Qt.ISODateWithMs)
+        if not reference_datetime.isValid():
+            return wall_clock_datetime
+
+        return reference_datetime
+
+    def set_reference_clock_datetime(self, reference_datetime):
+        """Set reference datetime.
+
+        reference_datetime should be a QDateTime instance.
+        """
+        datetime_string = reference_datetime.toString(Qt.ISODateWithMs)
+        self.set_race_property(self.REFERENCE_CLOCK_DATETIME, datetime_string)
+
+    def reference_clock_has_datetime(self):
+        """Return whether there is a reference datetime set up."""
+        return not self.get_race_property(self.REFERENCE_CLOCK_DATETIME) is None
+
+    def get_reference_msecs(self):
+        """Get number of milliseconds elapsed since reference time zero."""
+        reference_datetime = self.get_reference_clock_datetime()
+        current_datetime = QDateTime.currentDateTime()
+
+        return reference_datetime.msecsTo(current_datetime)
 
 class FieldTableModel(TableModel):
     """Field Table Model

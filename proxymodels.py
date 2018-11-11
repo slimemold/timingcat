@@ -421,7 +421,7 @@ class MSecsColumnsProxyModel(QIdentityProxyModel):
         if role in (Qt.DisplayRole, Qt.EditRole):
             if index.column() in self.msecs_columns:
                 race_table_model = self.modeldb.race_table_model
-                reference_datetime = race_table_model.get_reference_datetime()
+                reference_datetime = race_table_model.get_reference_clock_datetime()
                 msecs = self.sourceModel().data(self.mapToSource(index), role)
 
                 if msecs == MSECS_UNINITIALIZED:
@@ -452,7 +452,7 @@ class MSecsColumnsProxyModel(QIdentityProxyModel):
                     msecs = MSECS_DNP
                 else:
                     race_table_model = self.modeldb.race_table_model
-                    reference_datetime = race_table_model.get_reference_datetime()
+                    reference_datetime = race_table_model.get_reference_clock_datetime()
                     date = reference_datetime.date()
                     time = QTime.fromString(value, defaults.DATETIME_FORMAT)
                     if time.isValid():

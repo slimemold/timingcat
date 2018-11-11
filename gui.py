@@ -8,7 +8,8 @@ central widget, status and menu bars, etc.
 
 import csv
 import os
-from PyQt5.QtCore import QDateTime, QItemSelection, QObject, QRegExp, QSettings, QTime, QTimer, Qt
+from PyQt5.QtCore import QDate, QDateTime, QItemSelection, QObject, QRegExp, QSettings, QTime, \
+                         QTimer, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
 from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPushButton, \
                             QShortcut, QStatusBar, QWidget
@@ -95,9 +96,11 @@ class AboutDialog(QDialog):
 
 class DigitalClock(QLCDNumber):
     """Old-fashioned 7-segment display digital clock showing current time."""
-    def __init__(self, parent=None):
+    def __init__(self, modeldb, parent=None):
         """Initialize the DigitalClock instance."""
         super().__init__(8, parent=parent)
+
+        self.modeldb = modeldb
 
         self.setFrameShape(QFrame.NoFrame)
         self.setSegmentStyle(QLCDNumber.Filled)
@@ -111,12 +114,14 @@ class DigitalClock(QLCDNumber):
 
     def update(self):
         """Update text on the LCD display."""
-        time = QTime.currentTime()
+        race_table_model = self.modeldb.race_table_model
+        msecs = race_table_model.get_reference_msecs()
+        datetime = QDateTime(QDate(1, 1, 1), QTime(0, 0)).addMSecs(msecs)
 
-        if time.second() % 2:
-            text = time.toString('hh:mm ss')
+        if datetime.time().second() % 2:
+            text = datetime.toString('hh:mm ss')
         else:
-            text = time.toString('hh:mm:ss')
+            text = datetime.toString('hh:mm:ss')
 
         self.display(text)
 
@@ -190,7 +195,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.button_row.layout().addWidget(self.button_row.field_button)
 
         # Digital clock.
-        self.digital_clock = DigitalClock()
+        self.digital_clock = DigitalClock(self.modeldb)
 
         # Result table.
         self.result_table_view = ResultTableView(self.modeldb)
@@ -344,7 +349,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         race_table_model = self.modeldb.race_table_model
 
         scratchpad = self.result_input.text()
-        msecs = race_table_model.get_reference_datetime().msecsTo(QDateTime.currentDateTime())
+        msecs = race_table_model.get_reference_clock_datetime().msecsTo(QDateTime.currentDateTime())
         self.modeldb.result_table_model.add_result(scratchpad, msecs)
 
         self.result_table_view.scrollToBottom()

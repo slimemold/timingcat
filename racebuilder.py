@@ -6,14 +6,14 @@ This module implements Qt Widgets that have to do with setting up a race, or
 adding and configuring components of a race, such as racers and fields.
 """
 
-from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QRegExp, QSettings, QTime, Qt
-from PyQt5.QtGui import QRegExpValidator, QTextDocument, QValidator
-from PyQt5.QtWidgets import QComboBox, QLabel, QLineEdit, QPlainTextEdit, QPushButton, \
+from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QRegExp, QSettings, QTime, Qt, pyqtSignal
+from PyQt5.QtGui import QRegExpValidator, QValidator
+from PyQt5.QtWidgets import QComboBox, QDialog, QLabel, QLineEdit, QPlainTextEdit, QPushButton, \
                             QRadioButton, QWidget
-from PyQt5.QtWidgets import QCalendarWidget, QDateEdit, QDateTimeEdit
+from PyQt5.QtWidgets import QCalendarWidget, QDateEdit, QDateTimeEdit, QTimeEdit
 from PyQt5.QtWidgets import QFormLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QButtonGroup, QGroupBox, QTabWidget
-from PyQt5.QtWidgets import QCompleter, QMessageBox, QPlainTextDocumentLayout
+from PyQt5.QtWidgets import QCompleter, QMessageBox
 from common import VERSION
 import defaults
 from racemodel import RaceTableModel, InputError
@@ -262,7 +262,7 @@ class StartTimeSetup(QWidget):
         if self.selected_field_radiobutton.isChecked():
             field = self.selected_field_combobox.currentText()
 
-        reference_datetime = race_table_model.get_reference_datetime()
+        reference_datetime = race_table_model.get_reference_clock_datetime()
         if self.start_time_now_radiobutton.isChecked():
             start_time = reference_datetime.msecsTo(QDateTime.currentDateTime())
         else:
@@ -367,13 +367,14 @@ class RaceInfo(QWidget):
 
         self.modeldb = modeldb
 
-        race_table_model = self.modeldb.race_table_model
+        # Cache this. We use it so often.
+        self.race_table_model = self.modeldb.race_table_model
 
         self.name_lineedit = QLineEdit()
         self.date_dateedit = QDateEdit()
         self.notes_plaintextedit = QPlainTextEdit()
         self.notes_plaintextedit.setPlaceholderText(defaults.RACE_NOTES_PLACEHOLDER_TEXT)
-        self.dataChanged(QModelIndex(), QModelIndex(), [])
+        self.dataChanged(QModelIndex(), QModelIndex(), [Qt.DisplayRole])
 
         self.date_selection_widget = QWidget()
         self.date_selection_widget.setLayout(QHBoxLayout())
@@ -394,7 +395,7 @@ class RaceInfo(QWidget):
         self.layout().addRow('Notes', self.notes_plaintextedit)
 
         # Signals/slots plumbing.
-        race_table_model.dataChanged.connect(self.dataChanged)
+        self.race_table_model.dataChanged.connect(self.dataChanged)
         self.name_lineedit.editingFinished.connect(self.name_editing_finished)
         self.date_dateedit.editingFinished.connect(self.date_editing_finished)
         self.date_selection_button.clicked.connect(self.date_selection_start)
@@ -404,30 +405,23 @@ class RaceInfo(QWidget):
         """Respond to a RaceTableModel data change by updating input widgets with current values."""
         del top_left, bottom_right, roles
 
-        race_table_model = self.modeldb.race_table_model
-
-        self.name_lineedit.setText(race_table_model.get_race_property(RaceTableModel.NAME))
-        date_string = race_table_model.get_race_property(RaceTableModel.DATE)
-        self.date_dateedit.setDate(QDate.fromString(date_string))
+        self.name_lineedit.setText(self.race_table_model.get_race_property(RaceTableModel.NAME))
+        self.date_dateedit.setDate(self.race_table_model.get_date())
 
         # The QPlainTextEdit really wants a QPlainTextDocumentLayout as its
         # document layout. If we don't set this up, by default the document
         # has a QAbstractTextDocumentLayout, which seems to work, but makes
         # QPlainTextEdit emit a warning. How a supposed abstract class actually
         # got instantiated is a mystery to me.
-        document = QTextDocument(race_table_model.get_race_property(RaceTableModel.NOTES))
-        document.setDocumentLayout(QPlainTextDocumentLayout(document))
-        self.notes_plaintextedit.setDocument(document)
+        self.notes_plaintextedit.setDocument(self.race_table_model.get_notes())
 
     def name_editing_finished(self):
         """Commit race name edit to the model."""
-        race_table_model = self.modeldb.race_table_model
-        race_table_model.set_race_property(RaceTableModel.NAME, self.name_lineedit.text())
+        self.race_table_model.set_race_property(RaceTableModel.NAME, self.name_lineedit.text())
 
     def date_editing_finished(self):
         """Commit race date edit to the model."""
-        race_table_model = self.modeldb.race_table_model
-        race_table_model.set_race_property(RaceTableModel.DATE, self.date_dateedit.text())
+        self.race_table_model.set_date(self.date_dateedit.date())
 
     def date_selection_start(self):
         """Show the calendar date selection widget."""
@@ -448,11 +442,285 @@ class RaceInfo(QWidget):
         change to the model causes the model to emit dataChanged, which causes
         us to update, which results in firing off another textChanged...
         """
-        race_table_model = self.modeldb.race_table_model
-        race_table_model.set_race_property(RaceTableModel.NOTES,
-                                         self.notes_plaintextedit.document().toPlainText())
+        self.race_table_model.set_notes(self.notes_plaintextedit.document())
 
         super().hideEvent(event)
+
+class TimeSynchronizer(QDialog):
+    """Time synchronization widget.
+
+    Make this widget look all big and important, but really, it's just an indirect way of getting
+    a reference clock time (the more straightforward way being to just enter one in the text input).
+
+    However, this widget comes in most useful when synchronizing the reference clock with race
+    officials. When they press start, we press start/hit enter on this widget. We then use that
+    moment in time as our reference clock time.
+    """
+
+    TIME_POINT_SIZE = 24
+    BUTTON_POINT_SIZE = 54
+
+    def __init__(self, parent=None):
+        """Initialize the TimeSynchronizer instance."""
+        super().__init__(parent=parent)
+
+        self.instruction_label = QLabel('Adjust desired synchronization time and press '
+                                        '"Sync" button to set reference clock time.')
+        self.instruction_label.setWordWrap(True)
+
+        self.time_timeedit = QTimeEdit()
+        self.time_timeedit.setDisplayFormat(defaults.DATETIME_FORMAT)
+        font = self.time_timeedit.font()
+        font.setPointSize(self.TIME_POINT_SIZE)
+        self.time_timeedit.setFont(font)
+
+        self.sync_button = QPushButton('Sync')
+        font = self.sync_button.font()
+        font.setPointSize(self.BUTTON_POINT_SIZE)
+        self.sync_button.setFont(font)
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(self.instruction_label)
+        self.layout().addWidget(self.time_timeedit)
+        self.layout().addWidget(self.sync_button)
+
+        self.sync_button.clicked.connect(self.handle_clicked)
+
+    def show(self):
+        """Show the TimeSynchronizer.
+
+        Initialize the time to zero.
+        """
+        self.time_timeedit.setTime(QTime(0, 0))
+        super().show()
+
+    def handle_clicked(self):
+        """Handler for sync button click."""
+        reference_time = self.time_timeedit.time()
+        current_time = QTime.currentTime()
+        reference_clock_time = current_time.addMSecs(-reference_time.msecsSinceStartOfDay())
+
+        self.clicked.emit(reference_clock_time)
+
+    clicked = pyqtSignal(QTime)
+
+class ReferenceClock(QWidget):
+    """Race Info Setup
+
+    This widget allows the user to name the race, and jot down various notes about the race.
+    """
+
+    REFERENCE_CLOCK_POINT_SIZE = 24
+
+    def __init__(self, modeldb, parent=None):
+        """Initialize the ReferenceClock instance."""
+        super().__init__(parent=parent)
+
+        self.modeldb = modeldb
+
+        # Cache this. We use it so often.
+        self.race_table_model = self.modeldb.race_table_model
+
+        # Calendar modal window, shown when date_selection_button is clicked.
+        self.calendar = QCalendarWidget()
+        self.calendar.setWindowModality(Qt.ApplicationModal)
+
+        # Time selection/synchronization modal window, shown when synchronize_button is clicked.
+        self.time_synchronizer = TimeSynchronizer()
+        self.time_synchronizer.setWindowModality(Qt.ApplicationModal)
+
+        # There are some widgets we want to access outside of initialization, so we save them off
+        # into "self". However, pylint is getting confused and thinks some of them are possibly
+        # never initialized. Therefore, initialize every widget that we want to save to "None" here.
+        # (Initialization will take care of giving them proper values after this.)
+        self.reference_clock_radiobutton = None
+        self.reference_datetime_label = None
+        self.datetime_datetimeedit = None
+
+        # Initialize our whole hierarchical mess of widgets.
+        self.init_clock_selection_widget()
+
+        # Force update widget contents.
+        self.dataChanged(QModelIndex(), QModelIndex(), [Qt.DisplayRole])
+
+        # Signals/slots plumbing.
+        self.race_table_model.dataChanged.connect(self.dataChanged)
+
+    def init_clock_selection_widget(self):
+        """Initialize the clock selection stuff.
+
+        This method initializes the clock selection radio buttons, and triggers the initialization
+        of the reference clock selection stage.
+
+        There are two choices at this level: wall clock and reference clocks.
+        """
+        # Clock selection (wall clock vs reference clock).
+        clock_selection_widget = QGroupBox('Use clock:')
+
+        # Chooser radio buttons and the button group.
+        wall_clock_radiobutton = QRadioButton('Wall clock')
+        self.reference_clock_radiobutton = QRadioButton('Reference clock')
+        clock_source_button_group = QButtonGroup()
+        clock_source_button_group.addButton(wall_clock_radiobutton)
+        clock_source_button_group.addButton(self.reference_clock_radiobutton)
+        clock_selection_widget.setLayout(QHBoxLayout())
+        clock_selection_widget.layout().addWidget(wall_clock_radiobutton)
+        clock_selection_widget.layout().addWidget(self.reference_clock_radiobutton)
+
+        # The latter choice, that expands to more choices.
+        reference_clock_setup_widget = self.init_reference_clock_setup_widget()
+
+        # Top-level widgets.
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(clock_selection_widget)
+        self.layout().addWidget(reference_clock_setup_widget)
+
+        # Signals/slots plumbing.
+        self.reference_clock_radiobutton.toggled.connect(reference_clock_setup_widget.setEnabled)
+        self.reference_clock_radiobutton.toggled.connect(self.toggle_reference_clock_setup)
+
+        # Set default state.
+        wall_clock_radiobutton.click()
+        reference_clock_setup_widget.setEnabled(False)
+
+    def init_reference_clock_setup_widget(self):
+        """Initialize the reference clock selection stuff.
+
+        This method initializes the reference clock selection radio buttons, and triggers the
+        initialization of the manual reference clock setup stage.
+
+        There are two choices at this level: synchronize and manual setup.
+        """
+        # Reference clock selection (synchronize vs manual setup).
+        reference_clock_selection_widget = QGroupBox('Reference clock setup:')
+
+        # Big text label showing the currently set up reference clock.
+        self.reference_datetime_label = QLabel('PLACEHOLDER')
+        self.reference_datetime_label.setAlignment(Qt.AlignCenter)
+        font = self.reference_datetime_label.font()
+        font.setPointSize(self.REFERENCE_CLOCK_POINT_SIZE)
+        self.reference_datetime_label.setFont(font)
+
+        # Chooser radio buttons and the button group.
+        synchronize_radiobutton = QRadioButton('Synchronize')
+        synchronize_radiobutton.setChecked(True)
+        synchronize_button = QPushButton('Synchronize')
+        manual_setup_radiobutton = QRadioButton('Manual setup')
+        reference_clock_setup_button_group = QButtonGroup()
+        reference_clock_setup_button_group.addButton(synchronize_radiobutton)
+        reference_clock_setup_button_group.addButton(manual_setup_radiobutton)
+        reference_clock_selection_row_widget = QWidget()
+        reference_clock_selection_row_widget.setLayout(QHBoxLayout())
+        reference_clock_selection_row_widget.layout().addWidget(synchronize_radiobutton)
+        reference_clock_selection_row_widget.layout().addWidget(synchronize_button)
+        reference_clock_selection_row_widget.layout().addWidget(manual_setup_radiobutton)
+
+        reference_clock_selection_widget.setLayout(QVBoxLayout())
+        reference_clock_selection_widget.layout().addWidget(self.reference_datetime_label)
+        reference_clock_selection_widget.layout().addWidget(reference_clock_selection_row_widget)
+
+        # The latter choice, that expands to more choices.
+        reference_clock_manual_setup_widget = self.init_reference_clock_manual_setup_widget()
+
+        # Top-level widgets.
+        reference_clock_setup_widget = QWidget()
+        reference_clock_setup_widget.setLayout(QVBoxLayout())
+        reference_clock_setup_widget.layout().addWidget(reference_clock_selection_widget)
+        reference_clock_setup_widget.layout().addWidget(reference_clock_manual_setup_widget)
+
+        # Signals/slots plumbing.
+        synchronize_radiobutton.toggled.connect(synchronize_button.setEnabled)
+        manual_setup_radiobutton.toggled.connect(reference_clock_manual_setup_widget.setEnabled)
+        synchronize_button.clicked.connect(self.time_synchronizer.show)
+        self.time_synchronizer.clicked.connect(self.time_selection_finished)
+
+        # Set default state.
+        synchronize_radiobutton.click()
+        reference_clock_manual_setup_widget.setEnabled(False)
+
+        return reference_clock_setup_widget
+
+    def init_reference_clock_manual_setup_widget(self):
+        """Initialize the manual reference clock setup stuff.
+
+        This method initializes the manual reference clock setup stuff.
+        """
+        # Reference clock manual setup widget.
+        reference_clock_maual_selection_widget = QGroupBox('Reference clock manual setup:')
+
+        self.datetime_datetimeedit = QDateTimeEdit()
+        self.datetime_datetimeedit.setDisplayFormat('M/d/yyyy h:mm:ss.zzz')
+        date_today_button = QPushButton('Today')
+        date_selection_button = QPushButton('Select date')
+
+        date_selection_widget = QWidget()
+        date_selection_widget.setLayout(QHBoxLayout())
+        date_selection_widget.layout().addWidget(self.datetime_datetimeedit)
+        date_selection_widget.layout().addWidget(date_today_button)
+        date_selection_widget.layout().addWidget(date_selection_button)
+
+        set_reference_clock_button = QPushButton('Set Reference Clock')
+
+        # Top-level widgets.
+        reference_clock_maual_selection_widget.setLayout(QVBoxLayout())
+        reference_clock_maual_selection_widget.layout().addWidget(date_selection_widget)
+        reference_clock_maual_selection_widget.layout().addWidget(set_reference_clock_button)
+
+        # Signals/slots plumbing.
+        date_today_button.clicked.connect(
+            lambda: self.datetime_datetimeedit.setDate(QDate.currentDate()))
+        date_selection_button.clicked.connect(self.calendar.show)
+        self.calendar.clicked.connect(self.date_selection_finished)
+        set_reference_clock_button.clicked.connect(self.set_reference_clock)
+
+        return reference_clock_maual_selection_widget
+
+    def dataChanged(self, top_left, bottom_right, roles): #pylint: disable=invalid-name
+        """Respond to a RaceTableModel data change by updating input widgets with current values."""
+        del top_left, bottom_right, roles
+
+        if self.race_table_model.reference_clock_is_enabled():
+            self.reference_clock_radiobutton.click()
+
+        # If there's a reference datetime set up, populate the controls with it.
+        if self.race_table_model.reference_clock_has_datetime():
+            reference_datetime = self.race_table_model.get_reference_clock_datetime()
+            self.reference_datetime_label.setText(reference_datetime.toString())
+            self.datetime_datetimeedit.setDateTime(reference_datetime)
+        else: # Otherwise, just use the race day's date, time zero.
+            self.reference_datetime_label.setText('Reference clock not set up')
+            self.datetime_datetimeedit.setDate(self.race_table_model.get_date())
+
+    def date_selection_finished(self, date):
+        """Commit the calendar date selection to the model."""
+        self.calendar.hide()
+        self.datetime_datetimeedit.setDate(date)
+
+    def time_selection_finished(self, time):
+        """Commit the time selection to the model."""
+        self.time_synchronizer.hide()
+
+        # When synchronizing, use the current date as the date.
+        date = QDate.currentDate()
+
+        self.race_table_model.set_reference_clock_datetime(QDateTime(date, time))
+        self.race_table_model.enable_reference_clock()
+
+    def toggle_reference_clock_setup(self, enable):
+        """Toggle reference clock setup.
+
+        Enable the setup. If there is already a reference datetime, then enable it.
+        """
+        if enable:
+            if self.race_table_model.reference_clock_has_datetime():
+                self.race_table_model.enable_reference_clock()
+        else:
+            self.race_table_model.disable_reference_clock()
+
+    def set_reference_clock(self):
+        """Commit the reference datetime in the database."""
+        self.race_table_model.set_reference_clock_datetime(self.datetime_datetimeedit.dateTime())
+        self.race_table_model.enable_reference_clock()
 
 class Builder(QTabWidget):
     """Top-level Builder widget
@@ -472,11 +740,13 @@ class Builder(QTabWidget):
         start_time_setup = StartTimeSetup(self.modeldb)
         field_setup = FieldSetup(self.modeldb)
         race_info = RaceInfo(self.modeldb)
+        reference_clock = ReferenceClock(self.modeldb)
 
-        self.addTab(racer_setup, 'Racer Setup')
-        self.addTab(start_time_setup, 'Start Time Setup')
-        self.addTab(field_setup, 'Field Setup')
+        self.addTab(racer_setup, 'Racer')
+        self.addTab(start_time_setup, 'Start Time')
+        self.addTab(field_setup, 'Field')
         self.addTab(race_info, 'Race Info')
+        self.addTab(reference_clock, 'Clock')
 
         self.read_settings()
 
