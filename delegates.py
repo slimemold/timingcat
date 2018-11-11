@@ -6,7 +6,7 @@ These are Qt delegate classes, for presenting/editing model items (for when a st
 class just doesn't cut the mustard).
 """
 
-from PyQt5.QtCore import QAbstractProxyModel, Qt
+from PyQt5.QtCore import Qt
 from PyQt5.QtSql import QSqlRelationalDelegate, QSqlRelationalTableModel
 from PyQt5.QtWidgets import QComboBox, QItemDelegate
 from common import VERSION
@@ -51,20 +51,18 @@ class SqlRelationalDelegate(QSqlRelationalDelegate):
         The returned combo box instance should point to the proper relation model column.
         """
         if not index.isValid():
-            return
+            return QItemDelegate.createEditor(self, parent, option, index)
 
         if not isinstance(index.model(), QSqlRelationalTableModel):
             # If not a QSqlRelationalTableModel, must be a proxy model.
             proxy_model = index.model()
-            source_model = proxy_model.sourceModel()
             return self.createEditor(parent, option, proxy_model.mapToSource(index))
 
         sql_model = index.model()
         child_model = sql_model.relationModel(index.column())
 
         if not child_model:
-            QItemDelegate.createEditor(self, parent, option, index)
-            return
+            return QItemDelegate.createEditor(self, parent, option, index)
 
         column = child_model.fieldIndex(sql_model.relation(index.column()).displayColumn())
 
@@ -86,7 +84,6 @@ class SqlRelationalDelegate(QSqlRelationalDelegate):
         if not isinstance(index.model(), QSqlRelationalTableModel):
             # If not a QSqlRelationalTableModel, must be a proxy model.
             proxy_model = index.model()
-            source_model = proxy_model.sourceModel()
             self.setEditorData(editor, proxy_model.mapToSource(index))
             return
 
