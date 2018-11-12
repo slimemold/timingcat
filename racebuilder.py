@@ -685,7 +685,14 @@ class ReferenceClock(QWidget):
         # If there's a reference datetime set up, populate the controls with it.
         if self.race_table_model.reference_clock_has_datetime():
             reference_datetime = self.race_table_model.get_reference_clock_datetime()
-            self.reference_datetime_label.setText(reference_datetime.toString())
+
+            # Make our own combined string, because I haven't found a QDateTime format that I like.
+            # Guess I'll keep looking...this looks really hokey.
+            date_string = reference_datetime.date().toString(Qt.SystemLocaleLongDate)
+            time_string = reference_datetime.time().toString(defaults.DATETIME_FORMAT)
+            datetime_string = ' @ '.join([date_string, time_string])
+
+            self.reference_datetime_label.setText(datetime_string)
             self.datetime_datetimeedit.setDateTime(reference_datetime)
         else: # Otherwise, just use the race day's date, time zero.
             self.reference_datetime_label.setText('Reference clock not set up')
