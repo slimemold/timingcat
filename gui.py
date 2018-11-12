@@ -16,7 +16,7 @@ from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPu
 from PyQt5.QtWidgets import QLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
+import common
 from preferences import PreferencesWindow
 from racebuilder import Builder
 from racemodel import DatabaseError, ModelDatabase, RaceTableModel
@@ -24,7 +24,6 @@ from raceview import FieldTableView, JournalTableView, RacerTableView, ResultTab
 import remotes
 from reports import ReportsWindow
 
-__author__ = 'Andrew Chew'
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
 
@@ -41,12 +40,13 @@ __copyright__ = '''
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-__credits__ = ['Andrew Chew', 'Colleen Chew']
-__license__ = 'GPLv3'
-__version__ = VERSION
-__maintainer__ = 'Andrew Chew'
-__email__ = 'andrew@5rcc.com'
-__status__ = 'Development'
+__author__ = common.AUTHOR
+__credits__ = common.CREDITS
+__license__ = common.LICENSE
+__version__ = common.VERSION
+__maintainer__ = common.MAINTAINER
+__email__ = common.EMAIL
+__status__ = common.STATUS
 
 INPUT_TEXT_POINT_SIZE = 32
 
@@ -79,7 +79,7 @@ class AboutDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        application_label = QLabel('<h1>' + APPLICATION_NAME + '</h1>')
+        application_label = QLabel('<h1>' + common.APPLICATION_NAME + '</h1>')
         application_label.setAlignment(Qt.AlignCenter)
 
         copyright_label = QLabel(__copyright__)
@@ -427,7 +427,7 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.read_settings()
 
-        self.setWindowTitle(APPLICATION_NAME)
+        self.setWindowTitle(common.APPLICATION_NAME)
 
         self.setup_menubar()
 
@@ -670,10 +670,12 @@ class SexyThymeMainWindow(QMainWindow):
         if ((field_table_model.rowCount() != 0) or
             (racer_table_model.rowCount() != 0)):
             msg_box = QMessageBox()
-            msg_box.setWindowTitle(APPLICATION_NAME)
+            msg_box.setWindowTitle(common.APPLICATION_NAME)
             msg_box.setText('Overwriting %s!' %
-                            pretty_list([pluralize('field', field_table_model.rowCount()),
-                                         pluralize('racer', racer_table_model.rowCount())]))
+                            common.pretty_list([common.pluralize('field',
+                                                                 field_table_model.rowCount()),
+                                                common.pluralize('racer',
+                                                                 racer_table_model.rowCount())]))
             msg_box.setInformativeText('Do you really want to overwrite ' +
                                        'this data?')
             msg_box.setStandardButtons(QMessageBox.Ok |
@@ -739,12 +741,14 @@ class SexyThymeMainWindow(QMainWindow):
         if ((field_table_model.rowCount() != 0) or
             (racer_table_model.rowCount() != 0)):
             message_text = (('Imported %s. ' %
-                             pretty_list([pluralize('field', field_table_model.rowCount()),
-                                          pluralize('racer', racer_table_model.rowCount())])) +
+                             common.pretty_list([common.pluralize('field',
+                                                                  field_table_model.rowCount()),
+                                          common.pluralize('racer',
+                                                           racer_table_model.rowCount())])) +
                             'Would you like to open the Race Builder to assign start times?')
 
             msg_box = QMessageBox()
-            msg_box.setWindowTitle(APPLICATION_NAME)
+            msg_box.setWindowTitle(common.APPLICATION_NAME)
             msg_box.setText('Import complete.')
 
             msg_box.setInformativeText(message_text)
@@ -840,7 +844,7 @@ class SexyThymeMainWindow(QMainWindow):
         if (self.centralWidget().has_model() and
             (self.centralWidget().result_table_view.model().rowCount() != 0)):
             msg_box = QMessageBox()
-            msg_box.setWindowTitle(APPLICATION_NAME)
+            msg_box.setWindowTitle(common.APPLICATION_NAME)
             msg_box.setText('You have unsubmitted results.')
             msg_box.setInformativeText('Do you really want to quit?')
             msg_box.setStandardButtons(QMessageBox.Ok |

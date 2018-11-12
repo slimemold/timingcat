@@ -9,9 +9,15 @@ the package.
 ORGANIZATION_NAME = '5rcc'
 ORGANIZATION_DOMAIN = '5rcc.com'
 APPLICATION_NAME = 'SexyThyme'
+AUTHOR = 'Andrew Chew'
+CREDITS = ['Andrew Chew', 'Colleen Chew']
+LICENSE = 'GPLv3'
 VERSION = '1.0.0'
+MAINTAINER = 'Andrew Chew'
+EMAIL = 'andrew@5rcc.com'
+STATUS = 'Development'
 
-__author__ = 'Andrew Chew'
+__author__ = AUTHOR
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
 
@@ -28,12 +34,12 @@ __copyright__ = '''
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-__credits__ = ['Andrew Chew', 'Colleen Chew']
-__license__ = 'GPLv3'
+__credits__ = CREDITS
+__license__ = LICENSE
 __version__ = VERSION
-__maintainer__ = 'Andrew Chew'
-__email__ = 'andrew@5rcc.com'
-__status__ = 'Development'
+__maintainer__ = MAINTAINER
+__email__ = EMAIL
+__status__ = STATUS
 
 def pretty_list(lst, op='and'):
     """Takes a list of words and returns a comma-separated conjunction (with oxford comma)."""

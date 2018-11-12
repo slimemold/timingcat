@@ -21,10 +21,9 @@ from PyQt5.QtGui import QBrush, QTextDocument
 from PyQt5.QtSql  import QSqlDatabase, QSqlQuery, QSqlRelation, QSqlRelationalTableModel, \
                          QSqlTableModel
 from PyQt5.QtWidgets import QPlainTextDocumentLayout
-from common import VERSION
+import common
 import defaults
 
-__author__ = 'Andrew Chew'
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
 
@@ -41,12 +40,13 @@ __copyright__ = '''
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-__credits__ = ['Andrew Chew', 'Colleen Chew']
-__license__ = 'GPLv3'
-__version__ = VERSION
-__maintainer__ = 'Andrew Chew'
-__email__ = 'andrew@5rcc.com'
-__status__ = 'Development'
+__author__ = common.AUTHOR
+__credits__ = common.CREDITS
+__license__ = common.LICENSE
+__version__ = common.VERSION
+__maintainer__ = common.MAINTAINER
+__email__ = common.EMAIL
+__status__ = common.STATUS
 
 MSECS_UNINITIALIZED = -1
 MSECS_DNS = -2

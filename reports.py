@@ -11,10 +11,9 @@ from PyQt5.QtGui import QTextDocument
 from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt5.QtWidgets import QComboBox, QDialog, QGroupBox, QPushButton, QRadioButton
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
-from common import VERSION
+import common
 from racemodel import DatabaseError, RaceTableModel, RacerTableModel
 
-__author__ = 'Andrew Chew'
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
 
@@ -31,12 +30,13 @@ __copyright__ = '''
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-__credits__ = ['Andrew Chew', 'Colleen Chew']
-__license__ = 'GPLv3'
-__version__ = VERSION
-__maintainer__ = 'Andrew Chew'
-__email__ = 'andrew@5rcc.com'
-__status__ = 'Development'
+__author__ = common.AUTHOR
+__credits__ = common.CREDITS
+__license__ = common.LICENSE
+__version__ = common.VERSION
+__maintainer__ = common.MAINTAINER
+__email__ = common.EMAIL
+__status__ = common.STATUS
 
 class ReportsWindow(QDialog):
     """This dialog allows the user to generate finish reports."""

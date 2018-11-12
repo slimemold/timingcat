@@ -8,10 +8,9 @@ This is the execution entry point for the app.
 import argparse
 import sys
 from PyQt5.QtWidgets import QApplication
-from common import APPLICATION_NAME, ORGANIZATION_DOMAIN, ORGANIZATION_NAME, VERSION
+import common
 from gui import SexyThymeMainWindow
 
-__author__ = 'Andrew Chew'
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
 
@@ -28,26 +27,27 @@ __copyright__ = '''
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-__credits__ = ['Andrew Chew', 'Colleen Chew']
-__license__ = 'GPLv3'
-__version__ = VERSION
-__maintainer__ = 'Andrew Chew'
-__email__ = 'andrew@5rcc.com'
-__status__ = 'Development'
+__author__ = common.AUTHOR
+__credits__ = common.CREDITS
+__license__ = common.LICENSE
+__version__ = common.VERSION
+__maintainer__ = common.MAINTAINER
+__email__ = common.EMAIL
+__status__ = common.STATUS
 
 def main():
     """The main() function creates the main window and starts the event loop."""
-    parser = argparse.ArgumentParser(description=APPLICATION_NAME)
+    parser = argparse.ArgumentParser(description=common.APPLICATION_NAME)
     parser.add_argument('--version', action='version',
-                        version=APPLICATION_NAME + ' v' + VERSION)
+                        version=common.APPLICATION_NAME + ' v' + common.VERSION)
     parser.add_argument('racefile', nargs='?',
                         help='Optional racefile to load')
     args = parser.parse_args()
 
-    QApplication.setOrganizationName(ORGANIZATION_NAME)
-    QApplication.setOrganizationDomain(ORGANIZATION_DOMAIN)
-    QApplication.setApplicationName(APPLICATION_NAME)
-    QApplication.setApplicationVersion(VERSION)
+    QApplication.setOrganizationName(common.ORGANIZATION_NAME)
+    QApplication.setOrganizationDomain(common.ORGANIZATION_DOMAIN)
+    QApplication.setApplicationName(common.APPLICATION_NAME)
+    QApplication.setApplicationVersion(common.VERSION)
 
     app = QApplication(sys.argv)
 

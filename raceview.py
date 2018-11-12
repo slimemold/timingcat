@@ -11,13 +11,12 @@ import os
 from PyQt5.QtCore import QEvent, QItemSelection, QModelIndex, QRegExp, QSettings, \
                          QSortFilterProxyModel, Qt, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QLabel, QMessageBox, QTableView, QVBoxLayout
-from common import APPLICATION_NAME, VERSION, pluralize, pretty_list
+import common
 import defaults
 from delegates import SqlRelationalDelegate
 from proxymodels import ExtraColumnsProxyModel, MSecsColumnsProxyModel
 from racemodel import DatabaseError, InputError, FieldTableModel, Journal, ResultTableModel
 
-__author__ = 'Andrew Chew'
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
 
@@ -34,12 +33,13 @@ __copyright__ = '''
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 '''
-__credits__ = ['Andrew Chew', 'Colleen Chew']
-__license__ = 'GPLv3'
-__version__ = VERSION
-__maintainer__ = 'Andrew Chew'
-__email__ = 'andrew@5rcc.com'
-__status__ = 'Development'
+__author__ = common.AUTHOR
+__credits__ = common.CREDITS
+__license__ = common.LICENSE
+__version__ = common.VERSION
+__maintainer__ = common.MAINTAINER
+__email__ = common.EMAIL
+__status__ = common.STATUS
 
 class JournalTableView(QTableView):
     """Table view for the journal table model."""
@@ -230,10 +230,10 @@ class FieldTableView(QTableView):
 
         # Confirm deletion.
         msg_box = QMessageBox()
-        msg_box.setWindowTitle(APPLICATION_NAME)
+        msg_box.setWindowTitle(common.APPLICATION_NAME)
         msg_box.setText('Deleting %s' %
-                        pretty_list([pluralize('field', field_count),
-                                     pluralize('racer', racer_count)]))
+                        common.pretty_list([common.pluralize('field', field_count),
+                                            common.pluralize('racer', racer_count)]))
         msg_box.setInformativeText('Do you really want to delete?')
         msg_box.setStandardButtons(QMessageBox.Ok |
                                    QMessageBox.Cancel)
@@ -461,8 +461,8 @@ class RacerTableView(QTableView):
 
         # Confirm deletion.
         msg_box = QMessageBox()
-        msg_box.setWindowTitle(APPLICATION_NAME)
-        msg_box.setText('Deleting %s' % pluralize('racer', racer_count))
+        msg_box.setWindowTitle(common.APPLICATION_NAME)
+        msg_box.setText('Deleting %s' % common.pluralize('racer', racer_count))
         msg_box.setInformativeText('Do you really want to delete?')
         msg_box.setStandardButtons(QMessageBox.Ok |
                                    QMessageBox.Cancel)
