@@ -10,7 +10,7 @@ from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QRegExp, QSettings, QTim
 from PyQt5.QtGui import QRegExpValidator, QValidator
 from PyQt5.QtWidgets import QComboBox, QDialog, QLabel, QLineEdit, QPlainTextEdit, QPushButton, \
                             QRadioButton, QWidget
-from PyQt5.QtWidgets import QCalendarWidget, QDateEdit, QDateTimeEdit, QTimeEdit
+from PyQt5.QtWidgets import QDateEdit, QDateTimeEdit, QTimeEdit
 from PyQt5.QtWidgets import QFormLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QButtonGroup, QGroupBox, QTabWidget
 from PyQt5.QtWidgets import QCompleter, QMessageBox
@@ -77,25 +77,25 @@ class RacerSetup(QWidget):
         self.bib_lineedit = QLineEdit()
         self.bib_lineedit.setValidator(QRegExpValidator(QRegExp('[1-9][0-9]*')))
 
-        self.racer_information_form_widget = QWidget()
-        self.racer_information_form_widget.setLayout(QFormLayout())
-        self.racer_information_form_widget.layout().addRow('First name', self.first_name_lineedit)
-        self.racer_information_form_widget.layout().addRow('Last name', self.last_name_lineedit)
-        self.racer_information_form_widget.layout().addRow('Team', self.team_lineedit)
-        self.racer_information_form_widget.layout().addRow('Category', self.category_lineedit)
-        self.racer_information_form_widget.layout().addRow('Age', self.age_lineedit)
-        self.racer_information_form_widget.layout().addRow('Field', self.field_combobox)
-        self.racer_information_form_widget.layout().addRow('Bib', self.bib_lineedit)
+        racer_information_form_widget = QWidget()
+        racer_information_form_widget.setLayout(QFormLayout())
+        racer_information_form_widget.layout().addRow('First name', self.first_name_lineedit)
+        racer_information_form_widget.layout().addRow('Last name', self.last_name_lineedit)
+        racer_information_form_widget.layout().addRow('Team', self.team_lineedit)
+        racer_information_form_widget.layout().addRow('Category', self.category_lineedit)
+        racer_information_form_widget.layout().addRow('Age', self.age_lineedit)
+        racer_information_form_widget.layout().addRow('Field', self.field_combobox)
+        racer_information_form_widget.layout().addRow('Bib', self.bib_lineedit)
 
-        self.confirm_button = QPushButton('Add Racer')
+        confirm_button = QPushButton('Add Racer')
 
         # Top-level widgets.
         self.setLayout(QVBoxLayout())
-        self.layout().addWidget(self.racer_information_form_widget)
-        self.layout().addWidget(self.confirm_button)
+        self.layout().addWidget(racer_information_form_widget)
+        self.layout().addWidget(confirm_button)
 
         # Signals/slots plumbing.
-        self.confirm_button.clicked.connect(self.handle_add_racer)
+        confirm_button.clicked.connect(self.handle_add_racer)
 
     def reset(self):
         """Clear the input widgets."""
@@ -171,82 +171,82 @@ class StartTimeSetup(QWidget):
         field_name_column = field_table_model.name_column
 
         # Scope selection (whole race vs a field).
-        self.field_selection_widget = QGroupBox('Set up start times for:')
+        field_selection_widget = QGroupBox('Set up start times for:')
 
-        self.scope_button_group = QButtonGroup()
+        scope_button_group = QButtonGroup()
         self.all_fields_radiobutton = QRadioButton('Entire race')
         self.all_fields_radiobutton.setChecked(True)
-        self.scope_button_group.addButton(self.all_fields_radiobutton)
+        scope_button_group.addButton(self.all_fields_radiobutton)
         self.selected_field_radiobutton = QRadioButton('A single field:')
-        self.scope_button_group.addButton(self.selected_field_radiobutton)
+        scope_button_group.addButton(self.selected_field_radiobutton)
 
         self.selected_field_combobox = QComboBox()
         self.selected_field_combobox.setModel(field_table_model)
         self.selected_field_combobox.setModelColumn(field_name_column)
         self.selected_field_combobox.setEnabled(False)
 
-        self.field_selection_widget.setLayout(QHBoxLayout())
-        self.field_selection_widget.layout().addWidget(self.all_fields_radiobutton)
-        self.field_selection_widget.layout().addWidget(self.selected_field_radiobutton)
-        self.field_selection_widget.layout().addWidget(self.selected_field_combobox)
+        field_selection_widget.setLayout(QHBoxLayout())
+        field_selection_widget.layout().addWidget(self.all_fields_radiobutton)
+        field_selection_widget.layout().addWidget(self.selected_field_radiobutton)
+        field_selection_widget.layout().addWidget(self.selected_field_combobox)
 
         # Start time.
-        self.start_time_widget = QGroupBox('Start time:')
+        start_time_widget = QGroupBox('Start time:')
 
-        self.start_time_button_group = QButtonGroup()
+        start_time_button_group = QButtonGroup()
         self.start_time_now_radiobutton = QRadioButton('Now')
         self.start_time_now_radiobutton.setChecked(True)
-        self.start_time_button_group.addButton(self.start_time_now_radiobutton)
+        start_time_button_group.addButton(self.start_time_now_radiobutton)
         self.start_time_specified_radiobutton = QRadioButton('At:')
-        self.start_time_button_group.addButton(self.start_time_specified_radiobutton)
+        start_time_button_group.addButton(self.start_time_specified_radiobutton)
         self.start_time_datetimeedit = QDateTimeEdit() # Time "now" set in showEvent()
         self.start_time_datetimeedit.setDisplayFormat(defaults.DATETIME_FORMAT)
         self.start_time_datetimeedit.setEnabled(False)
 
-        self.start_time_widget.setLayout(QHBoxLayout())
-        self.start_time_widget.layout().addWidget(self.start_time_now_radiobutton)
-        self.start_time_widget.layout().addWidget(self.start_time_specified_radiobutton)
-        self.start_time_widget.layout().addWidget(self.start_time_datetimeedit)
+        start_time_widget.setLayout(QHBoxLayout())
+        start_time_widget.layout().addWidget(self.start_time_now_radiobutton)
+        start_time_widget.layout().addWidget(self.start_time_specified_radiobutton)
+        start_time_widget.layout().addWidget(self.start_time_datetimeedit)
 
         # Start time interval.
-        self.interval_widget = QGroupBox('Interval:')
+        interval_widget = QGroupBox('Interval:')
 
-        self.interval_button_group = QButtonGroup()
+        interval_button_group = QButtonGroup()
         self.same_start_time_radiobutton = QRadioButton('Same for all')
         self.same_start_time_radiobutton.setChecked(True)
-        self.interval_button_group.addButton(self.same_start_time_radiobutton)
+        interval_button_group.addButton(self.same_start_time_radiobutton)
         self.interval_start_time_radiobutton = QRadioButton('Use interval:')
-        self.interval_button_group.addButton(self.interval_start_time_radiobutton)
+        interval_button_group.addButton(self.interval_start_time_radiobutton)
 
         self.interval_lineedit = QLineEdit()
         self.interval_lineedit.setText(str(defaults.START_TIME_INTERVAL_SECS))
         self.interval_lineedit.setValidator(QRegExpValidator(QRegExp('[1-9][0-9]*')))
-        self.interval_lineedit_group = QWidget()
-        self.interval_lineedit_group.setLayout(QHBoxLayout())
-        self.interval_lineedit_group.layout().addWidget(self.interval_lineedit)
-        self.interval_lineedit_group.layout().addWidget(QLabel('secs'))
-        self.interval_lineedit_group.setEnabled(False)
+        interval_lineedit_group = QWidget()
+        interval_lineedit_group.setLayout(QHBoxLayout())
+        interval_lineedit_group.layout().addWidget(self.interval_lineedit)
+        interval_lineedit_group.layout().addWidget(QLabel('secs'))
+        interval_lineedit_group.setEnabled(False)
 
-        self.interval_widget.setLayout(QHBoxLayout())
-        self.interval_widget.layout().addWidget(self.same_start_time_radiobutton)
-        self.interval_widget.layout().addWidget(self.interval_start_time_radiobutton)
-        self.interval_widget.layout().addWidget(self.interval_lineedit_group)
+        interval_widget.setLayout(QHBoxLayout())
+        interval_widget.layout().addWidget(self.same_start_time_radiobutton)
+        interval_widget.layout().addWidget(self.interval_start_time_radiobutton)
+        interval_widget.layout().addWidget(interval_lineedit_group)
 
-        self.confirm_button = QPushButton('Assign Start Times')
+        confirm_button = QPushButton('Assign Start Times')
 
         # Top-level widgets.
         self.setLayout(QVBoxLayout())
-        self.layout().addWidget(self.field_selection_widget)
-        self.layout().addWidget(self.start_time_widget)
-        self.layout().addWidget(self.interval_widget)
-        self.layout().addWidget(self.confirm_button)
+        self.layout().addWidget(field_selection_widget)
+        self.layout().addWidget(start_time_widget)
+        self.layout().addWidget(interval_widget)
+        self.layout().addWidget(confirm_button)
 
         # Signals/slots plumbing.
-        self.confirm_button.clicked.connect(self.handle_assign_start_times)
+        confirm_button.clicked.connect(self.handle_assign_start_times)
         self.selected_field_radiobutton.toggled.connect(self.selected_field_combobox.setEnabled)
         self.start_time_specified_radiobutton.toggled.connect(self.start_time_datetimeedit
                                                               .setEnabled)
-        self.interval_start_time_radiobutton.toggled.connect(self.interval_lineedit_group
+        self.interval_start_time_radiobutton.toggled.connect(interval_lineedit_group
                                                              .setEnabled)
 
     def handle_assign_start_times(self):
@@ -326,19 +326,19 @@ class FieldSetup(QWidget):
         # Racer Information form.
         self.name_lineedit = QLineEdit()
 
-        self.field_information_form_widget = QWidget()
-        self.field_information_form_widget.setLayout(QFormLayout())
-        self.field_information_form_widget.layout().addRow('Name', self.name_lineedit)
+        field_information_form_widget = QWidget()
+        field_information_form_widget.setLayout(QFormLayout())
+        field_information_form_widget.layout().addRow('Name', self.name_lineedit)
 
-        self.confirm_button = QPushButton('Add Field')
+        confirm_button = QPushButton('Add Field')
 
         # Top-level widgets.
         self.setLayout(QVBoxLayout())
-        self.layout().addWidget(self.field_information_form_widget)
-        self.layout().addWidget(self.confirm_button)
+        self.layout().addWidget(field_information_form_widget)
+        self.layout().addWidget(confirm_button)
 
         # Signals/slots plumbing.
-        self.confirm_button.clicked.connect(self.handle_add_field)
+        confirm_button.clicked.connect(self.handle_add_field)
 
     def reset(self):
         """Clear the input widgets."""
@@ -372,24 +372,15 @@ class RaceInfo(QWidget):
 
         self.name_lineedit = QLineEdit()
         self.date_dateedit = QDateEdit()
+        self.date_dateedit.setCalendarPopup(True)
         self.notes_plaintextedit = QPlainTextEdit()
         self.notes_plaintextedit.setPlaceholderText(defaults.RACE_NOTES_PLACEHOLDER_TEXT)
         self.dataChanged(QModelIndex(), QModelIndex(), [Qt.DisplayRole])
 
-        self.date_selection_widget = QWidget()
-        self.date_selection_widget.setLayout(QHBoxLayout())
-        self.date_selection_widget.layout().addWidget(self.date_dateedit)
-        self.date_selection_button = QPushButton('Select date')
-        self.date_selection_widget.layout().addWidget(self.date_selection_button)
-
-        # Calendar modal window, shown when date_selection_button is clicked.
-        self.calendar = QCalendarWidget()
-        self.calendar.setWindowModality(Qt.ApplicationModal)
-
         # Top-level widgets.
         self.setLayout(QFormLayout())
         self.layout().addRow('Race Name', self.name_lineedit)
-        self.layout().addRow('Race Date', self.date_selection_widget)
+        self.layout().addRow('Race Date', self.date_dateedit)
         self.layout().itemAt(self.layout().rowCount() - 1,
                              QFormLayout.LabelRole).setAlignment(Qt.AlignCenter)
         self.layout().addRow('Notes', self.notes_plaintextedit)
@@ -398,8 +389,6 @@ class RaceInfo(QWidget):
         self.race_table_model.dataChanged.connect(self.dataChanged)
         self.name_lineedit.editingFinished.connect(self.name_editing_finished)
         self.date_dateedit.editingFinished.connect(self.date_editing_finished)
-        self.date_selection_button.clicked.connect(self.date_selection_start)
-        self.calendar.clicked.connect(self.date_selection_finished)
 
     def dataChanged(self, top_left, bottom_right, roles): #pylint: disable=invalid-name
         """Respond to a RaceTableModel data change by updating input widgets with current values."""
@@ -422,16 +411,6 @@ class RaceInfo(QWidget):
     def date_editing_finished(self):
         """Commit race date edit to the model."""
         self.race_table_model.set_date(self.date_dateedit.date())
-
-    def date_selection_start(self):
-        """Show the calendar date selection widget."""
-        self.calendar.show()
-
-    def date_selection_finished(self, date):
-        """Commit the calendar date selection to the model."""
-        self.calendar.hide()
-        self.date_dateedit.setDate(date)
-        self.date_editing_finished()
 
     def hideEvent(self, event): #pylint: disable=invalid-name
         """Commit the race notes to the model.
@@ -520,10 +499,6 @@ class ReferenceClock(QWidget):
 
         # Cache this. We use it so often.
         self.race_table_model = self.modeldb.race_table_model
-
-        # Calendar modal window, shown when date_selection_button is clicked.
-        self.calendar = QCalendarWidget()
-        self.calendar.setWindowModality(Qt.ApplicationModal)
 
         # Time selection/synchronization modal window, shown when synchronize_button is clicked.
         self.time_synchronizer = TimeSynchronizer()
@@ -649,15 +624,14 @@ class ReferenceClock(QWidget):
         reference_clock_maual_selection_widget = QGroupBox('Reference clock manual setup:')
 
         self.datetime_datetimeedit = QDateTimeEdit()
-        self.datetime_datetimeedit.setDisplayFormat('M/d/yyyy h:mm:ss.zzz')
+        self.datetime_datetimeedit.setDisplayFormat('M/d/yyyy @ h:mm:ss.zzz')
+        self.datetime_datetimeedit.setCalendarPopup(True)
         date_today_button = QPushButton('Today')
-        date_selection_button = QPushButton('Select date')
 
         date_selection_widget = QWidget()
         date_selection_widget.setLayout(QHBoxLayout())
         date_selection_widget.layout().addWidget(self.datetime_datetimeedit)
         date_selection_widget.layout().addWidget(date_today_button)
-        date_selection_widget.layout().addWidget(date_selection_button)
 
         set_reference_clock_button = QPushButton('Set Reference Clock')
 
@@ -669,8 +643,6 @@ class ReferenceClock(QWidget):
         # Signals/slots plumbing.
         date_today_button.clicked.connect(
             lambda: self.datetime_datetimeedit.setDate(QDate.currentDate()))
-        date_selection_button.clicked.connect(self.calendar.show)
-        self.calendar.clicked.connect(self.date_selection_finished)
         set_reference_clock_button.clicked.connect(self.set_reference_clock)
 
         return reference_clock_maual_selection_widget
@@ -697,11 +669,6 @@ class ReferenceClock(QWidget):
         else: # Otherwise, just use the race day's date, time zero.
             self.reference_datetime_label.setText('Reference clock not set up')
             self.datetime_datetimeedit.setDate(self.race_table_model.get_date())
-
-    def date_selection_finished(self, date):
-        """Commit the calendar date selection to the model."""
-        self.calendar.hide()
-        self.datetime_datetimeedit.setDate(date)
 
     def time_selection_finished(self, time):
         """Commit the time selection to the model."""
