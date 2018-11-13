@@ -879,7 +879,7 @@ class RacerTableModel(TableModel):
             start_index = self.index(row, self.start_column)
             if not dry_run:
                 self.setData(start_index, start)
-            elif self.data(start_index):
+            elif self.data(start_index) != MSECS_UNINITIALIZED:
                 starts_overwritten += 1
 
             start += interval * 1000 # Interval is in seconds.
