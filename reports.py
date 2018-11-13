@@ -152,8 +152,7 @@ def generate_finish_report(modeldb, field_name):
 
     model = RacerTableModel(modeldb)
     model.setFilter('%s = "%s"' % (RacerTableModel.FIELD_ALIAS, field_name))
-    if not model.select():
-        raise DatabaseError(model.lastError().text())
+    model.select()
 
     html = '<h1>%s</h1>' % modeldb.race_table_model.get_race_property(RaceTableModel.NAME)
     html += '%s' % modeldb.race_table_model.get_date().toString()

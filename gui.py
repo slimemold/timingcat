@@ -314,11 +314,8 @@ class MainCentralWidget(QWidget, CentralWidget):
         racer_table_model = self.modeldb.racer_table_model
         field_relation_model = racer_table_model.relationModel(racer_table_model.field_column)
 
-        if not racer_table_model.select():
-            raise DatabaseError(racer_table_model.lastError().text())
-
-        if not field_relation_model.select():
-            raise DatabaseError(racer_table_model.lastError().text())
+        racer_table_model.select()
+        field_relation_model.select()
 
     def result_selection_changed(self, selected, deselected):
         """Handle result selection change.

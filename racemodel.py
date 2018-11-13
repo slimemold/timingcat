@@ -215,6 +215,50 @@ class TableModel(QSqlRelationalTableModel):
 
         return flags
 
+    def insertRecord(self, row, record):
+        """Redefine this so we can raise an exception.
+
+        The parent's version of this method returns True on success, False on error. Re-implement
+        this to raise a DatabaseError.
+        """
+        if not super().insertRecord(row, record):
+            raise DatabaseError(self.lastError().text())
+
+        return True
+
+    def removeRow(self, row):
+        """Redefine this so we can raise an exception.
+
+        The parent's version of this method returns True on success, False on error. Re-implement
+        this to raise a DatabaseError.
+        """
+        if not super().removeRow(row):
+            raise DatabaseError(self.lastError().text())
+
+        return True
+
+    def select(self):
+        """Redefine this so we can raise an exception.
+
+        The parent's version of this method returns True on success, False on error. Re-implement
+        this to raise a DatabaseError.
+        """
+        if not super().select():
+            raise DatabaseError(self.lastError().text())
+
+        return True
+
+    def submitAll(self):
+        """Redefine this so we can raise an exception.
+
+        The parent's version of this method returns True on success, False on error. Re-implement
+        this to raise a DatabaseError.
+        """
+        if not super().submitAll():
+            raise DatabaseError(self.lastError().text())
+
+        return True
+
     @staticmethod
     def area_contains(top_left, bottom_right, column, row=None):
         """Determine if the area contains the column (and optionally the row).
@@ -266,8 +310,8 @@ class JournalTableModel(TableModel):
         self.setHeaderData(self.timestamp_column, Qt.Horizontal, 'Timestamp')
         self.setHeaderData(self.topic_column, Qt.Horizontal, 'Topic')
         self.setHeaderData(self.message_column, Qt.Horizontal, 'Message')
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
+
+        self.select()
 
     def create_table(self):
         """Create the database table."""
@@ -294,10 +338,7 @@ class JournalTableModel(TableModel):
         record.setValue(self.TOPIC, topic)
         record.setValue(self.MESSAGE, message)
 
-        if not self.insertRecord(-1, record):
-            raise DatabaseError(self.lastError().text())
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
+        self.insertRecord(-1, record)
 
 class RaceTableModel(TableModel):
     """Race Table Model
@@ -334,8 +375,7 @@ class RaceTableModel(TableModel):
         self.key_column = self.fieldIndex(self.KEY)
         self.value_column = self.fieldIndex(self.VALUE)
 
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
+        self.select()
 
         self.remove_column_flags(0, Qt.ItemIsEditable | Qt.ItemIsSelectable)
 
@@ -392,11 +432,7 @@ class RaceTableModel(TableModel):
             record.setValue(self.KEY, key)
             record.setValue(self.VALUE, value)
 
-            if not self.insertRecord(-1, record):
-                raise DatabaseError(self.lastError().text())
-            if not self.select():
-                raise DatabaseError(self.lastError().text())
-
+            self.insertRecord(-1, record)
             return
 
         index = index_list[0]
@@ -412,8 +448,7 @@ class RaceTableModel(TableModel):
 
         index = index_list[0]
 
-        if not self.removeRow(index.row()):
-            raise DatabaseError(self.lastError().text())
+        self.removeRow(index.row())
 
     def get_date(self):
         """Get the date, as a QDate."""
@@ -516,8 +551,8 @@ class FieldTableModel(TableModel):
 
         self.setHeaderData(self.name_column, Qt.Horizontal, 'Field')
         self.setHeaderData(self.subfields_column, Qt.Horizontal, 'Subfields')
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
+
+        self.select()
 
     def create_table(self):
         """Create the database table."""
@@ -576,10 +611,7 @@ class FieldTableModel(TableModel):
         record.setValue(FieldTableModel.NAME, name)
         record.setValue(FieldTableModel.SUBFIELDS, subfields)
 
-        if not self.insertRecord(-1, record):
-            raise DatabaseError(self.lastError().text())
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
+        self.insertRecord(-1, record)
 
     def delete_field(self, name):
         """Delete a row from the database table."""
@@ -591,8 +623,7 @@ class FieldTableModel(TableModel):
 
         index = index_list[0]
 
-        if not self.removeRow(index.row()):
-            raise DatabaseError(self.lastError().text())
+        self.removeRow(index.row())
 
     def get_subfields(self, name):
         """Get the value of the subfields column of the row specified by the field name.
@@ -688,8 +719,8 @@ class RacerTableModel(TableModel):
         self.setRelation(self.field_column, QSqlRelation(FieldTableModel.TABLE,
                                                          FieldTableModel.ID,
                                                          FieldTableModel.NAME))
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
+
+        self.select()
 
     def create_table(self):
         """Create the database table."""
@@ -777,10 +808,7 @@ class RacerTableModel(TableModel):
         record.setValue(self.FINISH, finish)
         record.setValue(self.STATUS, status)
 
-        if not self.insertRecord(-1, record):
-            raise DatabaseError(self.lastError().text())
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
+        self.insertRecord(-1, record)
 
     def delete_racer(self, bib):
         """Delete a row from the database table."""
@@ -792,8 +820,7 @@ class RacerTableModel(TableModel):
 
         index = index_list[0]
 
-        if not self.removeRow(index.row()):
-            raise DatabaseError(self.lastError().text())
+        self.removeRow(index.row())
 
     def set_racer_start(self, bib, start):
         """Set start time of the racer identified by "bib"."""
@@ -960,8 +987,8 @@ class ResultTableModel(TableModel):
 
         self.setHeaderData(self.scratchpad_column, Qt.Horizontal, 'Bib')
         self.setHeaderData(self.finish_column, Qt.Horizontal, 'Finish')
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
+
+        self.select()
 
     def create_table(self):
         """Create the database table."""
@@ -983,10 +1010,7 @@ class ResultTableModel(TableModel):
         record.setValue(self.SCRATCHPAD, scratchpad)
         record.setValue(self.FINISH, finish)
 
-        if not self.insertRecord(-1, record):
-            raise DatabaseError(self.lastError().text())
-        if not self.select():
-            raise DatabaseError(self.lastError().text())
+        self.insertRecord(-1, record)
 
     def submit_result(self, row):
         """Submit a result to the racer table model, and remove from results table model."""

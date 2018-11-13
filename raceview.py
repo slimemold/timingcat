@@ -263,8 +263,7 @@ class FieldTableView(QTableView):
             model.removeRow(selection.row())
 
         # Model retains blank rows until we select() again.
-        if not self.modeldb.field_table_model.select():
-            raise DatabaseError(model.lastError().text())
+        self.modeldb.field_table_model.select()
 
     def dataChanged(self, top_left, bottom_right, roles): #pylint: disable=invalid-name
         """Handle model data changed.
@@ -480,8 +479,7 @@ class RacerTableView(QTableView):
             model.removeRow(selection.row())
 
         # Model retains blank rows until we select() again.
-        if not self.modeldb.racer_table_model.select():
-            raise DatabaseError(model.lastError().text())
+        self.modeldb.racer_table_model.select()
 
     def update_field_name(self):
         """Update the window title.
@@ -693,8 +691,7 @@ class ResultTableView(QTableView):
             self.source_model.removeRow(selection.row())
 
         # Model retains blank rows until we select() again.
-        if not self.modeldb.result_table_model.select():
-            raise DatabaseError(self.source_model.lastError().text())
+        self.modeldb.result_table_model.select()
 
         # Selection changed because of this deletion, but for some reason,
         # this widget class doesn't emit the selectionChanged signal in this
@@ -741,8 +738,7 @@ class ResultTableView(QTableView):
                 QMessageBox.warning(self, 'Error', str(e))
 
         # Model retains blank rows until we select() again.
-        if not self.source_model.select():
-            raise DatabaseError(self.source_model.lastError().text())
+        self.source_model.select()
 
         # Surprisingly, when the model changes such that our selection changes
         # (for example, when the selected result gets submitted to the racer
