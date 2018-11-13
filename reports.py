@@ -12,7 +12,7 @@ from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt5.QtWidgets import QComboBox, QDialog, QGroupBox, QPushButton, QRadioButton
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
 import common
-from racemodel import DatabaseError, RaceTableModel, RacerTableModel
+from racemodel import RaceTableModel, RacerTableModel
 
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew

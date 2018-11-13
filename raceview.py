@@ -15,7 +15,7 @@ import common
 import defaults
 from delegates import SqlRelationalDelegate
 from proxymodels import ExtraColumnsProxyModel, MSecsColumnsProxyModel
-from racemodel import DatabaseError, InputError, FieldTableModel, Journal, ResultTableModel
+from racemodel import InputError, FieldTableModel, Journal, ResultTableModel
 
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew

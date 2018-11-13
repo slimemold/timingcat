@@ -215,7 +215,7 @@ class TableModel(QSqlRelationalTableModel):
 
         return flags
 
-    def insertRecord(self, row, record):
+    def insertRecord(self, row, record): #pylint: disable=invalid-name
         """Redefine this so we can raise an exception.
 
         The parent's version of this method returns True on success, False on error. Re-implement
@@ -226,7 +226,7 @@ class TableModel(QSqlRelationalTableModel):
 
         return True
 
-    def removeRow(self, row):
+    def removeRow(self, row): #pylint: disable=invalid-name
         """Redefine this so we can raise an exception.
 
         The parent's version of this method returns True on success, False on error. Re-implement
@@ -248,7 +248,7 @@ class TableModel(QSqlRelationalTableModel):
 
         return True
 
-    def submitAll(self):
+    def submitAll(self): #pylint: disable=invalid-name
         """Redefine this so we can raise an exception.
 
         The parent's version of this method returns True on success, False on error. Re-implement
