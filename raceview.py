@@ -501,8 +501,6 @@ class RacerTableView(QTableView):
         """Do everything needed for a remote that has just been connected."""
         self.remote = remote
 
-        self.model().dataChanged.emit(QModelIndex(), QModelIndex(), [Qt.BackgroundRole])
-
         if self.remote:
             self.showColumn(self.source_model.status_column)
         else:

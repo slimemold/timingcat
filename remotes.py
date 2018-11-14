@@ -13,6 +13,7 @@ from PyQt5.QtCore import QObject, QTimer, Qt, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QWidget
 from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
 import common
+from racemodel import msecs_is_valid
 
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
@@ -230,7 +231,7 @@ class SimulatedRemote(Remote):
             finish = record.value(racer_table_model.FINISH)
             status = record.value(racer_table_model.STATUS)
 
-            if start and finish and (status != 'remote'):
+            if msecs_is_valid(start) and msecs_is_valid(finish) and (status != 'remote'):
                 racer_update = {'bib': bib,
                                 'start': start,
                                 'finish': finish,
