@@ -673,6 +673,8 @@ class ResultTableView(QTableView):
 
         On delete key press, delete the selection.
         """
+        race_table_model = self.modeldb.race_table_model
+
         item_selection = self.selectionModel().selection()
         selection_list = self.selectionModel().selectedRows()
 
@@ -682,9 +684,13 @@ class ResultTableView(QTableView):
         selection_list.sort(key=lambda selection: selection.row(), reverse=True)
         for selection in selection_list:
             record = self.source_model.record(selection.row())
-            self.journal.log('Result with bib "%s" and time "%s" deleted.' %
-                             (record.value(ResultTableModel.SCRATCHPAD),
-                              record.value(ResultTableModel.FINISH)))
+
+            reference_datetime = race_table_model.get_reference_clock_datetime()
+            bib = record.value(ResultTableModel.SCRATCHPAD)
+            msecs = record.value(ResultTableModel.FINISH)
+            finish = reference_datetime.addMSecs(msecs).toString(defaults.DATETIME_FORMAT)
+
+            self.journal.log('Result with bib "%s" and time "%s" deleted.' % (bib, finish))
 
             self.source_model.removeRow(selection.row())
 
@@ -711,6 +717,8 @@ class ResultTableView(QTableView):
         On submit button click, we try to push the finish times for the selected rows to the
         corresponding racer. For each selection that succeeds, we remove that row from this table.
         """
+        race_table_model = self.modeldb.race_table_model
+
         selection_list = self.selectionModel().selectedRows()
 
         # Remove rows from large to small, because the rows are removed
@@ -728,9 +736,13 @@ class ResultTableView(QTableView):
                 if scratchpad.isdigit():
                     self.source_model.submit_result(selection.row())
                     deleted_selection.select(selection, selection)
-                    self.journal.log('Result with bib "%s" and time "%s" submitted.' %
-                                     (record.value(ResultTableModel.SCRATCHPAD),
-                                      record.value(ResultTableModel.FINISH)))
+
+                    reference_datetime = race_table_model.get_reference_clock_datetime()
+                    bib = record.value(ResultTableModel.SCRATCHPAD)
+                    msecs = record.value(ResultTableModel.FINISH)
+                    finish = reference_datetime.addMSecs(msecs).toString(defaults.DATETIME_FORMAT)
+
+                    self.journal.log('Result with bib "%s" and time "%s" submitted.' % (bib, finish))
 
             except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))
