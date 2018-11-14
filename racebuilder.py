@@ -470,8 +470,14 @@ class TimeSynchronizer(QDialog):
 
         Initialize the time to zero.
         """
+        self.read_settings()
         self.time_timeedit.setTime(QTime(0, 0))
         super().show()
+
+    def hide(self):
+        """Save geometry settings."""
+        super().hide()
+        self.write_settings()
 
     def handle_clicked(self):
         """Handler for sync button click."""
@@ -480,6 +486,27 @@ class TimeSynchronizer(QDialog):
         reference_clock_time = current_time.addMSecs(-reference_time.msecsSinceStartOfDay())
 
         self.clicked.emit(reference_clock_time)
+
+    def read_settings(self):
+        """Read settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        if settings.contains('pos'):
+            self.move(settings.value('pos'))
+
+        settings.endGroup()
+
+    def write_settings(self):
+        """Write settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        settings.setValue('pos', self.pos())
+
+        settings.endGroup()
 
     clicked = pyqtSignal(QTime)
 
