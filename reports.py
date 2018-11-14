@@ -144,8 +144,33 @@ def generate_finish_report(modeldb, field_name):
 
         html += ('<tr><td>Place</td> <td>#</td> <td>First</td> <td>Last</td> <td>Cat</td> ' +
                  '<td>Team</td> <td>Finish</td> <td>Age</td> </tr>')
-        place = 1
+
+        # Build (result, row) list and sort by result.
+        result_list = []
         for row in range(model.rowCount()):
+            category = model.data(model.index(row, model.category_column))
+            if not category or category == '':
+                category = '5'
+
+            if cat_list and (category not in cat_list):
+                continue
+
+            start = model.index(row, model.start_column).data()
+            finish = model.index(row, model.finish_column).data()
+
+            if not msecs_is_valid(start):
+                result = 'DNS'
+            elif not msecs_is_valid(finish):
+                result = msecs_to_string(finish)
+            else:
+                elapsed = finish - start
+                result = msecs_to_string(elapsed)
+
+            result_list.append((result, row))
+        result_list.sort(key=lambda record: record[0])
+
+        place = 1
+        for result, row in result_list:
             category = model.data(model.index(row, model.category_column))
             if not category or category == '':
                 category = '5'
@@ -157,17 +182,7 @@ def generate_finish_report(modeldb, field_name):
             first_name = model.index(row, model.first_name_column).data()
             last_name = model.index(row, model.last_name_column).data()
             team = model.index(row, model.team_column).data()
-            start = model.index(row, model.start_column).data()
-            finish = model.index(row, model.finish_column).data()
             age = model.index(row, model.age_column).data()
-
-            if not msecs_is_valid(start):
-                result = 'DNS'
-            elif not msecs_is_valid(finish):
-                result = msecs_to_string(finish)
-            else:
-                elapsed = finish - start
-                result = msecs_to_string(elapsed)
 
             html += ('<tr><td>%s</td> ' % place +
                      '<td>%s</td> ' % bib +
