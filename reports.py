@@ -6,13 +6,13 @@ This module contains the dialog that can be used to generate race reports.
 """
 
 import re
-from PyQt5.QtCore import QSettings, QTime
+from PyQt5.QtCore import QSettings
 from PyQt5.QtGui import QTextDocument
 from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt5.QtWidgets import QComboBox, QDialog, QGroupBox, QPushButton, QRadioButton
 from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
 import common
-from racemodel import RaceTableModel, RacerTableModel
+from racemodel import msecs_is_valid, msecs_to_string, RaceTableModel, RacerTableModel
 
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
@@ -111,32 +111,6 @@ class ReportsWindow(QDialog):
 
         settings.endGroup()
 
-def time_delta(finish, start):
-    """Return a string representing the time difference between the start and the finish."""
-    if not start:
-        return 'DNS'
-
-    if not finish:
-        return 'DNF'
-
-    msecs = start.msecsTo(finish)
-
-    hours = msecs // 3600000
-    msecs = msecs % 3600000
-
-    minutes = msecs // 60000
-    msecs = msecs % 60000
-
-    secs = msecs // 1000
-    msecs = msecs % 1000
-
-    if hours > 0:
-        time = QTime(hours, minutes, secs, msecs).toString('h:mm:ss.zzz')
-    else:
-        time = QTime(hours, minutes, secs, msecs).toString('m:ss.zzz')
-
-    return time
-
 def generate_finish_report(modeldb, field_name):
     """ Generate finish report for a particular field."""
     subfields = modeldb.field_table_model.get_subfields(field_name)
@@ -183,10 +157,17 @@ def generate_finish_report(modeldb, field_name):
             first_name = model.index(row, model.first_name_column).data()
             last_name = model.index(row, model.last_name_column).data()
             team = model.index(row, model.team_column).data()
-            start = QTime.fromString(model.index(row, model.start_column).data())
-            finish = QTime.fromString(model.index(row, model.finish_column).data())
-            delta = time_delta(finish, start)
+            start = model.index(row, model.start_column).data()
+            finish = model.index(row, model.finish_column).data()
             age = model.index(row, model.age_column).data()
+
+            if not msecs_is_valid(start):
+                result = 'DNS'
+            elif not msecs_is_valid(finish):
+                result = msecs_to_string(finish)
+            else:
+                elapsed = finish - start
+                result = msecs_to_string(elapsed)
 
             html += ('<tr><td>%s</td> ' % place +
                      '<td>%s</td> ' % bib +
@@ -194,7 +175,7 @@ def generate_finish_report(modeldb, field_name):
                      '<td>%s</td> ' % last_name +
                      '<td>%s</td> ' % category +
                      '<td>%s</td> ' % team +
-                     '<td>%s</td> ' % delta +
+                     '<td>%s</td> ' % result +
                      '<td>%s</td> ' % age +
                      '</tr>')
 

@@ -17,7 +17,7 @@ and they get to sibling tables via the ModelDatabase instance.
 
 import os
 import sys
-from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QObject, Qt
+from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QObject, Qt, QTime
 from PyQt5.QtGui import QBrush, QTextDocument
 from PyQt5.QtSql  import QSqlDatabase, QSqlQuery, QSqlRelation, QSqlRelationalTableModel, \
                          QSqlTableModel
@@ -64,6 +64,31 @@ MSECS_SMALLEST_VALID = -sys.maxsize + 100
 def msecs_is_valid(msecs):
     """Returns whether msecs holds a valid (non-negative) elapsed time."""
     return msecs > MSECS_SMALLEST_VALID
+
+def msecs_to_string(msecs):
+    """Return a string representation of time delta expressed as msecs."""
+    if msecs_is_valid(msecs):
+        days = msecs // (24 * 60 * 60 * 1000)
+        hours = (msecs - days) // (60 * 60 * 1000)
+
+        if days and hours:
+            string = QTime(0, 0).addMSecs(msecs).toString('%s days, h:mm:ss.zzz' % days)
+        elif days:
+            string = QTime(0, 0).addMSecs(msecs).toString('%s days, m:ss.zzz' % days)
+        elif hours:
+            string = QTime(0, 0).addMSecs(msecs).toString('h:mm:ss.zzz')
+        else:
+            string = QTime(0, 0).addMSecs(msecs).toString('m:ss.zzz')
+    elif msecs in (MSECS_DNF, MSECS_UNINITIALIZED):
+        string = 'DNF'
+    elif msecs == MSECS_DNP:
+        string = 'DNP'
+    elif msecs == MSECS_DNS:
+        string = 'DNS'
+    else:
+        string = 'unknown'
+
+    return string
 
 class DatabaseError(Exception):
     """Database Error exception
