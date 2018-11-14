@@ -607,7 +607,7 @@ class ReferenceClock(QWidget):
         synchronize_radiobutton.toggled.connect(synchronize_button.setEnabled)
         manual_setup_radiobutton.toggled.connect(reference_clock_manual_setup_widget.setEnabled)
         synchronize_button.clicked.connect(self.time_synchronizer.show)
-        self.time_synchronizer.clicked.connect(self.time_selection_finished)
+        self.time_synchronizer.clicked.connect(self.handle_time_synchronizer_done)
 
         # Set default state.
         synchronize_radiobutton.click()
@@ -643,7 +643,7 @@ class ReferenceClock(QWidget):
         # Signals/slots plumbing.
         date_today_button.clicked.connect(
             lambda: self.datetime_datetimeedit.setDate(QDate.currentDate()))
-        set_reference_clock_button.clicked.connect(self.set_reference_clock)
+        set_reference_clock_button.clicked.connect(self.handle_manual_reference_clock_setup_done)
 
         return reference_clock_maual_selection_widget
 
@@ -665,36 +665,64 @@ class ReferenceClock(QWidget):
             datetime_string = ' @ '.join([date_string, time_string])
 
             self.reference_datetime_label.setText(datetime_string)
-            self.datetime_datetimeedit.setDateTime(reference_datetime)
         else: # Otherwise, just use the race day's date, time zero.
             self.reference_datetime_label.setText('Reference clock not set up')
-            self.datetime_datetimeedit.setDate(self.race_table_model.get_date())
 
-    def time_selection_finished(self, time):
+        self.datetime_datetimeedit.setDate(self.race_table_model.get_date())
+
+    def toggle_reference_clock_setup(self, enable):
+        """Toggle reference clock enable/disable.
+
+        Not relevant if there is no reference clock datetime set up.
+        """
+        if not self.race_table_model.reference_clock_has_datetime():
+            return
+
+        old_reference_datetime = self.race_table_model.get_reference_clock_datetime()
+
+        if enable:
+            self.race_table_model.enable_reference_clock()
+        else:
+            self.race_table_model.disable_reference_clock()
+
+        new_reference_datetime = self.race_table_model.get_reference_clock_datetime()
+        self.change_reference_datetime(old_reference_datetime, new_reference_datetime)
+
+    def handle_time_synchronizer_done(self, time):
         """Commit the time selection to the model."""
         self.time_synchronizer.hide()
 
         # When synchronizing, use the current date as the date.
         date = QDate.currentDate()
 
+        old_reference_datetime = self.race_table_model.get_reference_clock_datetime()
+
         self.race_table_model.set_reference_clock_datetime(QDateTime(date, time))
         self.race_table_model.enable_reference_clock()
 
-    def toggle_reference_clock_setup(self, enable):
-        """Toggle reference clock setup.
+        new_reference_datetime = self.race_table_model.get_reference_clock_datetime()
+        self.change_reference_datetime(old_reference_datetime, new_reference_datetime)
 
-        Enable the setup. If there is already a reference datetime, then enable it.
-        """
-        if enable:
-            if self.race_table_model.reference_clock_has_datetime():
-                self.race_table_model.enable_reference_clock()
-        else:
-            self.race_table_model.disable_reference_clock()
-
-    def set_reference_clock(self):
+    def handle_manual_reference_clock_setup_done(self):
         """Commit the reference datetime in the database."""
+        old_reference_datetime = self.race_table_model.get_reference_clock_datetime()
+
         self.race_table_model.set_reference_clock_datetime(self.datetime_datetimeedit.dateTime())
         self.race_table_model.enable_reference_clock()
+
+        new_reference_datetime = self.race_table_model.get_reference_clock_datetime()
+        self.change_reference_datetime(old_reference_datetime, new_reference_datetime)
+
+    def change_reference_datetime(self, old_datetime, new_datetime):
+        """Applies the new datetime as the reference datetime.
+
+        Note that we also need the old datetime in order to adjust all existing time deltas to
+        the new datetime.
+        """
+        if old_datetime == new_datetime:
+            return
+
+        self.race_table_model.change_reference_clock_datetime(old_datetime, new_datetime)
 
 class Builder(QTabWidget):
     """Top-level Builder widget

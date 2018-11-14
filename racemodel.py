@@ -16,6 +16,7 @@ and they get to sibling tables via the ModelDatabase instance.
 """
 
 import os
+import sys
 from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QObject, Qt
 from PyQt5.QtGui import QBrush, QTextDocument
 from PyQt5.QtSql  import QSqlDatabase, QSqlQuery, QSqlRelation, QSqlRelationalTableModel, \
@@ -48,14 +49,21 @@ __maintainer__ = common.MAINTAINER
 __email__ = common.EMAIL
 __status__ = common.STATUS
 
-MSECS_UNINITIALIZED = -1
-MSECS_DNS = -2
-MSECS_DNF = -3
-MSECS_DNP = -4
+# I know there's no max int value in python3, but since we're storing msecs time deltas as INT types
+# in the database, the database is probably using 64-bit signed integers. We need a few values with
+# special meanings, so use a few super-negative numbers for this purpose since it is unlikely that
+# these will end up being legitimate msecs time delta values.
+#
+# Also, reserve a whole bunch just in case we need more.
+MSECS_UNINITIALIZED = -sys.maxsize
+MSECS_DNS = -sys.maxsize + 1
+MSECS_DNF = -sys.maxsize + 2
+MSECS_DNP = -sys.maxsize + 3
+MSECS_SMALLEST_VALID = -sys.maxsize + 100
 
-def is_valid_msecs(msecs):
+def msecs_is_valid(msecs):
     """Returns whether msecs holds a valid (non-negative) elapsed time."""
-    return msecs >= 0
+    return msecs > MSECS_SMALLEST_VALID
 
 class DatabaseError(Exception):
     """Database Error exception
@@ -524,6 +532,14 @@ class RaceTableModel(TableModel):
 
         return reference_datetime.msecsTo(current_datetime)
 
+    def change_reference_clock_datetime(self, old_datetime, new_datetime):
+        """Undo old reference clock datetime, and apply new reference clock datetime."""
+        # Nothing to do.
+        if old_datetime == new_datetime:
+            return
+
+        self.modeldb.racer_table_model.change_reference_clock_datetime(old_datetime, new_datetime)
+
 class FieldTableModel(TableModel):
     """Field Table Model
 
@@ -864,13 +880,12 @@ class RacerTableModel(TableModel):
         if not isinstance(start, int):
             raise InputError('Invalid start data type "%s".' % type(start))
 
-        if not is_valid_msecs(start):
+        if not msecs_is_valid(start):
             raise InputError('Start time is in the past: msecs from reference is "%s".' % start)
 
-        racer_table_model = self.modeldb.racer_table_model
         starts_overwritten = 0
 
-        for row in range(racer_table_model.rowCount()):
+        for row in range(self.rowCount()):
             if field_name:
                 field_index = self.index(row, self.field_column)
                 if not field_name == self.data(field_index):
@@ -888,6 +903,29 @@ class RacerTableModel(TableModel):
             self.dataChanged.emit(QModelIndex(), QModelIndex())
 
         return starts_overwritten
+
+    def change_reference_clock_datetime(self, old_datetime, new_datetime):
+        """Undo old reference clock datetime, and apply new reference clock datetime."""
+        # Nothing to do.
+        if old_datetime == new_datetime:
+            return
+
+        # Accumulate all of the changes and fire them off in one shot.
+        self.setEditStrategy(QSqlTableModel.OnManualSubmit)
+
+        delta_msecs = old_datetime.msecsTo(new_datetime)
+
+        for row in range(self.rowCount()):
+            index = self.index(row, self.start_column)
+            if msecs_is_valid(self.data(index)):
+                self.setData(index, self.data(index) - delta_msecs)
+
+            index = self.index(row, self.finish_column)
+            if msecs_is_valid(self.data(index)):
+                self.setData(index, self.data(index) - delta_msecs)
+
+        self.submitAll()
+        self.setEditStrategy(QSqlTableModel.OnFieldChange)
 
     def racer_count(self):
         """Return total racers in the table."""
@@ -943,7 +981,7 @@ class RacerTableModel(TableModel):
                 return QBrush(Qt.red)
 
             # Finish time is before the start time. Paint the cell red.
-            if (index.column() == self.finish_column and is_valid_msecs(finish) and finish < start):
+            if (index.column() == self.finish_column and msecs_is_valid(finish) and finish < start):
                 return QBrush(Qt.red)
 
             if finish != MSECS_UNINITIALIZED:
