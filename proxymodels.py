@@ -456,7 +456,6 @@ class MSecsColumnsProxyModel(QIdentityProxyModel):
                     date = reference_datetime.date()
                     time = QTime.fromString(value, defaults.DATETIME_FORMAT)
                     if time.isValid():
-                        print('valid')
                         datetime = QDateTime(date, time)
                         msecs = reference_datetime.msecsTo(datetime)
                     else:
