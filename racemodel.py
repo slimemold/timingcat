@@ -410,8 +410,6 @@ class RaceTableModel(TableModel):
 
         self.select()
 
-        self.remove_column_flags(0, Qt.ItemIsEditable | Qt.ItemIsSelectable)
-
     def create_table(self):
         """Create the database table."""
         query = QSqlQuery(self.database())
@@ -1019,6 +1017,15 @@ class RacerTableModel(TableModel):
                     return QBrush(Qt.green)
 
         return super().data(index, role)
+
+    def setData(self, index, value, role=Qt.EditRole): #pylint: disable=invalid-name
+        """If start or finish time is set, and remote is set up, set status to local."""
+        if index.column() == self.start_column or index.column() == self.finish_column:
+            old_value = self.data(index, Qt.DisplayRole)
+            if old_value != value:
+                super().setData(index.siblingAtColumn(self.status_column), 'local', role)
+
+        return super().setData(index, value, role)
 
 class ResultTableModel(TableModel):
     """Result Table Model
