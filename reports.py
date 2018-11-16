@@ -111,6 +111,35 @@ class ReportsWindow(QDialog):
 
         settings.endGroup()
 
+def get_result_row_list(model, cat_list):
+    """Get a list of (result, row) tuples, including only cats in cat_list, sorted by result."""
+    result_list = []
+
+    for row in range(model.rowCount()):
+        category = model.data(model.index(row, model.category_column))
+        if not category or category == '':
+            category = '5'
+
+        if cat_list and (category not in cat_list):
+            continue
+
+        start = model.index(row, model.start_column).data()
+        finish = model.index(row, model.finish_column).data()
+
+        if not msecs_is_valid(start):
+            result = 'DNS'
+        elif not msecs_is_valid(finish):
+            result = msecs_to_string(finish)
+        else:
+            elapsed = finish - start
+            result = msecs_to_string(elapsed)
+
+        result_list.append((result, row))
+
+    result_list.sort(key=lambda record: record[0])
+
+    return result_list
+
 def generate_finish_report(modeldb, field_name):
     """ Generate finish report for a particular field."""
     subfields = modeldb.field_table_model.get_subfields(field_name)
@@ -146,28 +175,7 @@ def generate_finish_report(modeldb, field_name):
                  '<td>Team</td> <td>Finish</td> <td>Age</td> </tr>')
 
         # Build (result, row) list and sort by result.
-        result_list = []
-        for row in range(model.rowCount()):
-            category = model.data(model.index(row, model.category_column))
-            if not category or category == '':
-                category = '5'
-
-            if cat_list and (category not in cat_list):
-                continue
-
-            start = model.index(row, model.start_column).data()
-            finish = model.index(row, model.finish_column).data()
-
-            if not msecs_is_valid(start):
-                result = 'DNS'
-            elif not msecs_is_valid(finish):
-                result = msecs_to_string(finish)
-            else:
-                elapsed = finish - start
-                result = msecs_to_string(elapsed)
-
-            result_list.append((result, row))
-        result_list.sort(key=lambda record: record[0])
+        result_list = get_result_row_list(model, cat_list)
 
         place = 1
         for result, row in result_list:

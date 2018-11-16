@@ -742,7 +742,8 @@ class ResultTableView(QTableView):
                     msecs = record.value(ResultTableModel.FINISH)
                     finish = reference_datetime.addMSecs(msecs).toString(defaults.DATETIME_FORMAT)
 
-                    self.journal.log('Result with bib "%s" and time "%s" submitted.' % (bib, finish))
+                    self.journal.log('Result with bib "%s" and time "%s" submitted.' %
+                                     (bib, finish))
 
             except InputError as e:
                 QMessageBox.warning(self, 'Error', str(e))
