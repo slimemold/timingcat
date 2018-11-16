@@ -161,6 +161,7 @@ class FieldTableView(QTableView):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
 
         self.modeldb = modeldb
+        self.remote = None
 
         """Use a proxy model so we can add some interesting columns."""
         self.source_model = self.modeldb.field_table_model
@@ -298,6 +299,7 @@ class FieldTableView(QTableView):
                 new_racer_table_view_dict[field_id].update_field_name()
             else:
                 new_racer_table_view_dict[field_id] = RacerTableView(self.modeldb, field_id)
+                new_racer_table_view_dict[field_id].set_remote(self.remote)
 
         self.racer_in_field_table_view_dict = new_racer_table_view_dict
 
@@ -357,6 +359,13 @@ class FieldTableView(QTableView):
         bottom_right = self.model().index(row_end, column_end, QModelIndex())
 
         self.dataChanged(top_left, bottom_right, [Qt.DisplayRole])
+
+    def set_remote(self, remote):
+        """Call set_remote() for each of our racer-in-field table views."""
+        self.remote = remote
+
+        for _, racer_in_field_table_view in self.racer_in_field_table_view_dict.items():
+            racer_in_field_table_view.set_remote(remote)
 
     def read_settings(self):
         """Read settings."""

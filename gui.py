@@ -402,6 +402,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         """Do everything needed for a remote that has just been connected."""
         self.remote = remote
         self.modeldb.racer_table_model.set_remote(remote)
+        self.field_table_view.set_remote(remote)
         self.racer_table_view.set_remote(remote)
 
     def connect_preferences(self, preferences):
