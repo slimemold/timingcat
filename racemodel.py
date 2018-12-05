@@ -404,7 +404,7 @@ class RaceTableModel(TableModel):
         self.setTable(self.TABLE)
 
         # We need the field index so often, just save them here since they never change.
-        self.key_id = self.fieldIndex(self.ID)
+        self.id_column = self.fieldIndex(self.ID)
         self.key_column = self.fieldIndex(self.KEY)
         self.value_column = self.fieldIndex(self.VALUE)
 

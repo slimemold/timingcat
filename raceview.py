@@ -16,6 +16,7 @@ import defaults
 from delegates import SqlRelationalDelegate
 from proxymodels import ExtraColumnsProxyModel, MSecsColumnsProxyModel
 from racemodel import InputError, FieldTableModel, Journal, ResultTableModel
+from racemodel import msecs_is_valid, MSECS_UNINITIALIZED
 
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
@@ -397,6 +398,40 @@ class FieldTableView(QTableView):
     # Signals.
     visibleChanged = pyqtSignal(bool)
 
+class RacerTableExtraColumnsProxyModel(ExtraColumnsProxyModel):
+    """Proxy model for adding columns to the racer table model.
+
+    This proxy model adds extra columns to the racer table. Extra columns include time delta
+    (between finish and start)...and that's all for now.
+    """
+
+    DELTA_SECTION = 0
+
+    def __init__(self, parent=None):
+        """Initialize the RacerTableExtraColumnsProxyModel instance."""
+        super().__init__(parent=parent)
+
+        self.appendColumn('Delta')
+
+    def extraColumnData(self, parent, row, extra_column, role=Qt.DisplayRole):
+        """Provide extra columns for delta."""
+        if role == Qt.DisplayRole:
+            if extra_column == self.DELTA_SECTION:
+                model = self.sourceModel()
+
+                start = model.data(model.index(row, model.start_column))
+                if not msecs_is_valid(start):
+                    return MSECS_UNINITIALIZED
+
+                finish = model.data(model.index(row, model.finish_column))
+                if not msecs_is_valid(finish):
+                    return MSECS_UNINITIALIZED
+
+                return finish - start
+
+        return None
+
+
 class RacerTableView(QTableView):
     """Table view for the racer table model."""
 
@@ -409,12 +444,22 @@ class RacerTableView(QTableView):
         self.modeldb = modeldb
         self.remote = None
 
-        """Use a proxy model so we can add some interesting columns."""
         self.source_model = self.modeldb.racer_table_model
+
+        # Proxy model to add some columns.
+        self.proxy_model_extra_columns = RacerTableExtraColumnsProxyModel(parent=parent)
+        self.proxy_model_extra_columns.setSourceModel(self.source_model)
+
+        # Proxy model to present the time fields in our preferred format.
         self.proxy_model_msecs = MSecsColumnsProxyModel(self.modeldb, parent=parent)
+        delta_column = (self.source_model.columnCount() +
+                        RacerTableExtraColumnsProxyModel.DELTA_SECTION)
         self.proxy_model_msecs.setMSecsColumns([self.source_model.start_column,
-                                                self.source_model.finish_column])
-        self.proxy_model_msecs.setSourceModel(self.source_model)
+                                                self.source_model.finish_column,
+                                                delta_column])
+        self.proxy_model_msecs.setSourceModel(self.proxy_model_extra_columns)
+
+        # Proxy model to potentially filter by field.
         self.proxy_model_filter = QSortFilterProxyModel(parent=parent)
         self.proxy_model_filter.setSourceModel(self.proxy_model_msecs)
         self.setModel(self.proxy_model_filter)
