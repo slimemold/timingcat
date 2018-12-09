@@ -407,17 +407,22 @@ class RacerTableExtraColumnsProxyModel(ExtraColumnsProxyModel):
 
     DELTA_SECTION = 0
 
-    def __init__(self, parent=None):
+    def __init__(self, modeldb, parent=None):
         """Initialize the RacerTableExtraColumnsProxyModel instance."""
         super().__init__(parent=parent)
+
+        # Need the racer model (our source model) to look up start and finish times.
+        # Don't want to rely on self.sourceModel() to actually be our racer model. It could be
+        # a proxy model.
+        self.modeldb = modeldb
 
         self.appendColumn('Delta')
 
     def extraColumnData(self, parent, row, extra_column, role=Qt.DisplayRole):
         """Provide extra columns for delta."""
-        if role == Qt.DisplayRole:
+        if role in (Qt.DisplayRole, Qt.EditRole):
             if extra_column == self.DELTA_SECTION:
-                model = self.sourceModel()
+                model = self.modeldb.racer_table_model
 
                 start = model.data(model.index(row, model.start_column))
                 if not msecs_is_valid(start):
@@ -429,8 +434,32 @@ class RacerTableExtraColumnsProxyModel(ExtraColumnsProxyModel):
 
                 return finish - start
 
-        return None
+        # Make the rest of our data (background, etc.) the same as the finish column.
+        else:
+            model = self.modeldb.racer_table_model
 
+            return model.data(model.index(row, model.finish_column), role)
+
+    def setExtraColumnData(self, parent, row, extra_column, data, role):
+        """Set extra column data."""
+        if role == Qt.EditRole:
+            if extra_column == self.DELTA_SECTION:
+                model = self.modeldb.racer_table_model
+
+                # Use our new delta value to modify the finish time. Our delta column will
+                # automatically recalculate.
+                start = model.data(model.index(row, model.start_column))
+                model.setData(model.index(row, model.finish_column), start + data)
+
+        return False
+
+    def flags(self, index):
+        """Make the Delta column editable."""
+        extra_col = self.extraColumnForProxyColumn(index.column())
+        if extra_col == self.DELTA_SECTION:
+            return Qt.ItemIsSelectable | Qt.ItemIsEnabled | Qt.ItemIsEditable
+
+        return super().flags(index)
 
 class RacerTableView(QTableView):
     """Table view for the racer table model."""
@@ -447,7 +476,7 @@ class RacerTableView(QTableView):
         self.source_model = self.modeldb.racer_table_model
 
         # Proxy model to add some columns.
-        self.proxy_model_extra_columns = RacerTableExtraColumnsProxyModel(parent=parent)
+        self.proxy_model_extra_columns = RacerTableExtraColumnsProxyModel(self.modeldb, parent=parent)
         self.proxy_model_extra_columns.setSourceModel(self.source_model)
 
         # Proxy model to present the time fields in our preferred format.
