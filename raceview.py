@@ -412,7 +412,7 @@ class RacerTableExtraColumnsProxyModel(ExtraColumnsProxyModel):
         super().__init__(parent=parent)
 
         # Need the racer model (our source model) to look up start and finish times.
-        # Don't want to rely on self.sourceModel() to actually be our racer model. It could be
+        # Don't want to rely on our source model to actually be the racer model. It could be
         # a proxy model.
         self.modeldb = modeldb
 
@@ -433,6 +433,8 @@ class RacerTableExtraColumnsProxyModel(ExtraColumnsProxyModel):
                     return MSECS_UNINITIALIZED
 
                 return finish - start
+            else:
+                raise IndexError('Unknown extra column number %s' % extra_column)
 
         # Make the rest of our data (background, etc.) the same as the finish column.
         else:
@@ -476,7 +478,8 @@ class RacerTableView(QTableView):
         self.source_model = self.modeldb.racer_table_model
 
         # Proxy model to add some columns.
-        self.proxy_model_extra_columns = RacerTableExtraColumnsProxyModel(self.modeldb, parent=parent)
+        self.proxy_model_extra_columns = RacerTableExtraColumnsProxyModel(self.modeldb,
+                                                                          parent=parent)
         self.proxy_model_extra_columns.setSourceModel(self.source_model)
 
         # Proxy model to present the time fields in our preferred format.
