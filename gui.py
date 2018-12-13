@@ -6,7 +6,6 @@ This module contains the top-level Qt GUI classes, such as the main window, the 
 central widget, status and menu bars, etc.
 """
 
-import csv
 import os
 from PyQt5.QtCore import QDate, QDateTime, QItemSelection, QObject, QRegExp, QSettings, QTime, \
                          QTimer, Qt
@@ -16,6 +15,7 @@ from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPu
 from PyQt5.QtWidgets import QLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from PyQt5.QtWidgets import QApplication, QMainWindow
+import bikereg
 import common
 from preferences import PreferencesWindow
 from racebuilder import Builder
@@ -707,34 +707,16 @@ class SexyThymeMainWindow(QMainWindow):
         if not import_filename:
             return
 
-        with open(import_filename) as import_file:
-            reader = csv.reader(import_file)
+        field_table_model = self.centralWidget().modeldb.field_table_model
+        racer_table_model = self.centralWidget().modeldb.racer_table_model
 
-            # Skip the heading row.
-            next(reader)
-
-            for row in reader:
-                age, bib, field, _, first_name, _, last_name, _, team, category, *_ = row
-
-                # BikeReg lists One-day License holders twice, and the second
-                # listing is missing the bib#, and instead has:
-                # "License - 1/1/2018 - One-day License" as the field. Skip over
-                # these entries.
-                if 'One-day License' in field:
-                    continue
-
-                racer_table_model = self.centralWidget().modeldb.racer_table_model
-
-                racer_table_model.add_racer(bib, first_name, last_name, field, category, team, age)
+        bikereg.import_csv(racer_table_model, import_filename)
 
         self.centralWidget().modeldb.add_defaults()
 
         # Open the racer and field windows so that the import actually looks like it did something.
         self.centralWidget().button_row.racer_button.click()
         self.centralWidget().button_row.field_button.click()
-
-        field_table_model = self.centralWidget().modeldb.field_table_model
-        racer_table_model = self.centralWidget().modeldb.racer_table_model
 
         # Show import summary.
         if ((field_table_model.rowCount() != 0) or
