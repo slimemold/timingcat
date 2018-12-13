@@ -49,6 +49,8 @@ __maintainer__ = common.MAINTAINER
 __email__ = common.EMAIL
 __status__ = common.STATUS
 
+EMPTY_JSON = '{}'
+
 # I know there's no max int value in python3, but since we're storing msecs time deltas as INT types
 # in the database, the database is probably using 64-bit signed integers. We need a few values with
 # special meanings, so use a few super-negative numbers for this purpose since it is unlikely that
@@ -573,6 +575,7 @@ class FieldTableModel(TableModel):
     ID = 'id'
     NAME = 'name'
     SUBFIELDS = 'subfields'
+    METADATA = 'metadata'
 
     def __init__(self, modeldb):
         """Initialize the FieldTableModel instance."""
@@ -587,9 +590,11 @@ class FieldTableModel(TableModel):
         self.id_column = self.fieldIndex(self.ID)
         self.name_column = self.fieldIndex(self.NAME)
         self.subfields_column = self.fieldIndex(self.SUBFIELDS)
+        self.metadata_column = self.fieldIndex(self.METADATA)
 
         self.setHeaderData(self.name_column, Qt.Horizontal, 'Field')
         self.setHeaderData(self.subfields_column, Qt.Horizontal, 'Subfields')
+        self.setHeaderData(self.metadata_column, Qt.Horizontal, 'Metadata')
 
         self.select()
 
@@ -600,8 +605,9 @@ class FieldTableModel(TableModel):
         if not query.exec(
             'CREATE TABLE IF NOT EXISTS "%s" ' % self.TABLE +
             '("%s" INTEGER NOT NULL PRIMARY KEY, ' % self.ID +
-             '"%s" TEXT UNIQUE NOT NULL,' % self.NAME +
-             '"%s" TEXT NOT NULL);' % self.SUBFIELDS):
+             '"%s" TEXT UNIQUE NOT NULL, ' % self.NAME +
+             '"%s" TEXT NOT NULL, ' % self.SUBFIELDS +
+             '"%s" TEXT NOT NULL);' % self.METADATA):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
@@ -609,7 +615,7 @@ class FieldTableModel(TableModel):
     def add_defaults(self):
         """Add default table entries."""
         if self.rowCount() == 0:
-            self.add_field(defaults.FIELD_NAME, '')
+            self.add_field(defaults.FIELD_NAME)
 
     def name_from_id(self, field_id):
         """Get field name, from field ID."""
@@ -635,7 +641,7 @@ class FieldTableModel(TableModel):
 
         return self.data(self.index(index.row(), self.id_column))
 
-    def add_field(self, name, subfields):
+    def add_field(self, name, subfields='', metadata=EMPTY_JSON):
         """Add a row to the database table."""
         if name == '':
             raise InputError('Field name "%s" is invalid' % name)
@@ -647,8 +653,9 @@ class FieldTableModel(TableModel):
 
         record = self.record()
         record.setGenerated(self.ID, False)
-        record.setValue(FieldTableModel.NAME, name)
-        record.setValue(FieldTableModel.SUBFIELDS, subfields)
+        record.setValue(self.NAME, name)
+        record.setValue(self.SUBFIELDS, subfields)
+        record.setValue(self.METADATA, metadata)
 
         self.insertRecord(-1, record)
 
@@ -685,7 +692,7 @@ class FieldTableModel(TableModel):
         if role == Qt.BackgroundRole:
             racer_table_model = self.modeldb.racer_table_model
 
-            field_name = self.record(index.row()).value(FieldTableModel.NAME)
+            field_name = self.record(index.row()).value(self.NAME)
 
             total = racer_table_model.racer_count_total_in_field(field_name)
             finished = racer_table_model.racer_count_finished_in_field(field_name)
@@ -717,6 +724,7 @@ class RacerTableModel(TableModel):
     START = 'start'
     FINISH = 'finish'
     STATUS = 'status'
+    METADATA = 'metadata'
 
     def __init__(self, modeldb):
         """Initialize the RacerTableModel instance."""
@@ -741,6 +749,7 @@ class RacerTableModel(TableModel):
         self.start_column = self.fieldIndex(self.START)
         self.finish_column = self.fieldIndex(self.FINISH)
         self.status_column = self.fieldIndex(self.STATUS)
+        self.metadata_column = self.fieldIndex(self.METADATA)
 
         self.setHeaderData(self.bib_column, Qt.Horizontal, 'Bib')
         self.setHeaderData(self.first_name_column, Qt.Horizontal, 'First Name')
@@ -752,6 +761,7 @@ class RacerTableModel(TableModel):
         self.setHeaderData(self.start_column, Qt.Horizontal, 'Start')
         self.setHeaderData(self.finish_column, Qt.Horizontal, 'Finish')
         self.setHeaderData(self.status_column, Qt.Horizontal, 'Status')
+        self.setHeaderData(self.metadata_column, Qt.Horizontal, 'Metadata')
 
         # After this relation is defined, the field name becomes
         # "field_name_2" (FIELD_ALIAS).
@@ -777,13 +787,15 @@ class RacerTableModel(TableModel):
              '"%s" INTEGER NOT NULL, ' % self.AGE +
              '"%s" INTEGER NOT NULL, ' % self.START +
              '"%s" INTEGER NOT NULL, ' % self.FINISH +
-             '"%s" TEXT NOT NULL);' % self.STATUS):
+             '"%s" TEXT NOT NULL, ' % self.STATUS +
+             '"%s" TEXT NOT NULL);' % self.METADATA):
             raise DatabaseError(query.lastError().text())
 
         query.finish()
 
     def add_racer(self, bib, first_name, last_name, field, category, team, age,
-                  start=MSECS_UNINITIALIZED, finish=MSECS_UNINITIALIZED, status='local'):
+                  start=MSECS_UNINITIALIZED, finish=MSECS_UNINITIALIZED, status='local',
+                  metadata=EMPTY_JSON):
         """Add a row to the database table.
 
         Do some validation.
@@ -817,7 +829,7 @@ class RacerTableModel(TableModel):
 
         field_id = self.modeldb.field_table_model.id_from_name(field)
         if not field_id:
-            self.modeldb.field_table_model.add_field(field, "")
+            self.modeldb.field_table_model.add_field(field)
             field_id = self.modeldb.field_table_model.id_from_name(field)
 
         if field_id is None:
@@ -846,6 +858,7 @@ class RacerTableModel(TableModel):
         record.setValue(self.START, start)
         record.setValue(self.FINISH, finish)
         record.setValue(self.STATUS, status)
+        record.setValue(self.METADATA, metadata)
 
         self.insertRecord(-1, record)
 
@@ -996,8 +1009,8 @@ class RacerTableModel(TableModel):
         if role == Qt.BackgroundRole:
             record = self.record(index.row())
 
-            start = record.value(RacerTableModel.START)
-            finish = record.value(RacerTableModel.FINISH)
+            start = record.value(self.START)
+            finish = record.value(self.FINISH)
 
             # No start time. Paint the cell red.
             if (index.column() == self.start_column and start == MSECS_UNINITIALIZED):
@@ -1009,9 +1022,9 @@ class RacerTableModel(TableModel):
 
             if finish != MSECS_UNINITIALIZED:
                 if self.remote:
-                    if record.value(RacerTableModel.STATUS) == 'local':
+                    if record.value(self.STATUS) == 'local':
                         return QBrush(Qt.yellow)
-                    elif record.value(RacerTableModel.STATUS) == 'remote':
+                    elif record.value(self.STATUS) == 'remote':
                         return QBrush(Qt.green)
                 else:
                     return QBrush(Qt.green)

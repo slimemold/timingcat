@@ -181,7 +181,9 @@ class FieldTableView(QTableView):
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
+        # Always hide id, metadata column.
         self.hideColumn(self.source_model.id_column)
+        self.hideColumn(self.source_model.metadata_column)
 
         # For each field, we make a racer in field table view ahead of time.
         # Note that we call dataChanged here because the initial reading of
@@ -509,13 +511,16 @@ class RacerTableView(QTableView):
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
-        self.hideColumn(self.source_model.id_column)
+        # Only hide field column if this table view is for a particular field.
         if self.field_id:
             self.proxy_model_filter.setFilterKeyColumn(self.source_model.field_column)
             self.hideColumn(self.source_model.field_column)
         # Hide the status by default. Show it if we have a remote
         # set up for this race.
         self.hideColumn(self.source_model.status_column)
+        # Always hide id, metadata column.
+        self.hideColumn(self.source_model.id_column)
+        self.hideColumn(self.source_model.metadata_column)
 
         self.read_settings()
 
