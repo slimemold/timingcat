@@ -3,6 +3,7 @@
 # Prerequisites
 
 ## For Running
+keyring
 PyQt5
 requests
 
