@@ -707,10 +707,7 @@ class SexyThymeMainWindow(QMainWindow):
         if not import_filename:
             return
 
-        field_table_model = self.centralWidget().modeldb.field_table_model
-        racer_table_model = self.centralWidget().modeldb.racer_table_model
-
-        bikereg.import_csv(racer_table_model, import_filename)
+        bikereg.import_csv(self.centralWidget().modeldb, import_filename)
 
         self.centralWidget().modeldb.add_defaults()
 
@@ -719,6 +716,9 @@ class SexyThymeMainWindow(QMainWindow):
         self.centralWidget().button_row.field_button.click()
 
         # Show import summary.
+        field_table_model = self.centralWidget().modeldb.field_table_model
+        racer_table_model = self.centralWidget().modeldb.racer_table_model
+
         if ((field_table_model.rowCount() != 0) or
             (racer_table_model.rowCount() != 0)):
             message_text = (('Imported %s. ' %

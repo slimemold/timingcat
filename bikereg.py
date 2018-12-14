@@ -32,11 +32,13 @@ __maintainer__ = common.MAINTAINER
 __email__ = common.EMAIL
 __status__ = common.STATUS
 
-def import_csv(racer_table_model, filename):
+def import_csv(modeldb, filename):
     """Import a BikeReg csv racers list export file.
 
     Open BikeReg csv export file and populate the field and racer lists.
     """
+    racer_table_model = modeldb.racer_table_model
+
     with open(filename) as import_file:
         reader = csv.reader(import_file)
 
