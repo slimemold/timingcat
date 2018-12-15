@@ -15,6 +15,10 @@ For example, simple authentication: get_race_list(('username', 'password'))
 
 from datetime import datetime
 import json
+import keyring
+from PyQt5.QtCore import QSettings, Qt
+from PyQt5.QtWidgets import QLabel, QLineEdit, QWidget, QWizard, QWizardPage
+from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
 import requests
 import common
 from racemodel import MSECS_UNINITIALIZED
@@ -176,3 +180,156 @@ def import_race(auth, modeldb, race):
 
     notes = 'Imported from OnTheDay.net on %s' % str(datetime.now())
     race_table_model.set_race_property(race_table_model.NOTES, notes)
+
+class IntroductionPage(QWizardPage):
+    """Introductory page of the import wizard that describes what we are about to do."""
+    def __init__(self, parent=None):
+        """Initialize the IntroductionPage instance."""
+        super().__init__(parent=parent)
+
+        self.setTitle('Introduction')
+
+        label = QLabel('This wizard will authenticate with OnTheDay.net and import an existing '
+                       'race configuration. Optionally, a remote connection to the race will be '
+                       'established (or this can be done at a later time).')
+        label.setWordWrap(True)
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(label)
+
+class AuthenticationPage(QWizardPage):
+    """Authentication page of the import wizard to get the OnTheDay.net username and password.
+
+    This class will look for a cached username, and if one exists, will auto-enter it into the
+    username field. It will then look for a password via keyring, and if exists, will auto-fill
+    the password field.
+    """
+    USERNAME_FIELD = 'Username'
+    PASSWORD_FIELD = 'Password'
+
+    KEYRING_SERVICE = 'ontheday.net'
+
+    USERNAME_QSETTING = 'username'
+
+    def __init__(self, parent=None):
+        """Initialize the AuthenticationPage instance."""
+        super().__init__(parent=parent)
+
+        self.setTitle('Authentication')
+        self.setSubTitle('Please provide OnTheDay.net account login credentials.')
+
+        self.username_lineedit = QLineEdit()
+
+        self.password_lineedit = QLineEdit()
+        self.password_lineedit.setEchoMode(QLineEdit.Password)
+
+        form_widget = QWidget()
+        form_widget.setLayout(QFormLayout())
+        form_widget.layout().addRow(self.USERNAME_FIELD, self.username_lineedit)
+        form_widget.layout().addRow(self.PASSWORD_FIELD, self.password_lineedit)
+
+        self.error_label = QLabel()
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(form_widget)
+        self.layout().addWidget(self.error_label)
+
+        # Register wizard page fields.
+        self.registerField(self.USERNAME_FIELD + '*', self.username_lineedit)
+        self.registerField(self.PASSWORD_FIELD + '*', self.password_lineedit)
+
+    def initializePage(self): #pylint: disable=invalid-name
+        """Initialize page fields."""
+        self.setField(self.USERNAME_FIELD, '')
+        self.setField(self.PASSWORD_FIELD, '')
+        self.error_label.setText('')
+
+        # See if we have an OnTheDay.net username cached in our application settings.
+        group_name = __name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+        username = settings.value(self.USERNAME_QSETTING)
+        settings.endGroup()
+        if not username:
+            return
+
+        # Autofill the username.
+        self.setField(self.USERNAME_FIELD, username)
+
+        # See if we have a password in our keyring for this username.
+        password = keyring.get_password(self.KEYRING_SERVICE, username)
+        if not password:
+            return
+
+        self.setField(self.PASSWORD_FIELD, password)
+
+    def validatePage(self): #pylint: disable=invalid-name
+        """Tries to access OnTheDay.net to make sure the account login credentials are okay.
+
+        Since we need to perform some kind of OnTheDay.net REST API operation, we might as well
+        try to grab the race list.
+        """
+        username = self.field(self.USERNAME_FIELD)
+        password = self.field(self.PASSWORD_FIELD)
+        auth = (username, password)
+
+        try:
+            race_list = get_race_list(auth)
+        except requests.exceptions.HTTPError:
+            self.error_label.setText('Authentication failure')
+            return False
+
+        self.wizard().auth = auth
+        self.wizard().race_list = race_list
+
+        # Cache the username, and stick the password into the keyring.
+        group_name = __name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+        settings.setValue(self.USERNAME_QSETTING, username)
+        settings.endGroup()
+
+        keyring.set_password(self.KEYRING_SERVICE, username, password)
+
+        return True
+
+class RaceSelectionPage(QWizardPage):
+    """Race selection page of the import wizard to choose a race to import.
+
+    This class presents the list of races known by the logged in OnTheDay.net account. The user
+    is expected to choose a race to import.
+    """
+    def __init__(self, parent=None):
+        """Initialize the RaceSelectionPage instance."""
+        super().__init__(parent=parent)
+
+        self.setTitle('Race Selection')
+        self.setSubTitle('Please select a race to import.')
+
+    def initializePage(self): #pylint: disable=invalid-name
+        """Initialize page fields."""
+        print('race_list = %s', json.dumps(self.wizard().race_list, indent=4))
+
+def launch_import_wizard():
+    """Launch the OnTheDay.net import wizard.
+
+    The import wizard presents a number of pages that walks the user through importing an
+    OnTheDay.net race config.
+
+    The user will be asked for authentication information. A list of races will then be presented
+    for selection.
+    """
+
+    # Create the race selection page.
+    race_selection_page = QWizardPage()
+    race_selection_page.setTitle('Race Selection')
+
+    # Create the wizard and add our pages.
+    wizard = QWizard()
+    wizard.setWindowTitle("OnTheDay.net race config import")
+    wizard.addPage(IntroductionPage())
+    wizard.addPage(AuthenticationPage())
+    wizard.addPage(RaceSelectionPage())
+    wizard.setWindowModality(Qt.ApplicationModal)
+
+    wizard.exec()

@@ -17,6 +17,7 @@ from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from PyQt5.QtWidgets import QApplication, QMainWindow
 import bikereg
 import common
+import ontheday
 from preferences import PreferencesWindow
 from racebuilder import Builder
 from racemodel import DatabaseError, ModelDatabase, RaceTableModel
@@ -509,6 +510,8 @@ class SexyThymeMainWindow(QMainWindow):
         config_menu.addAction('Preferences', self.config_preferences, QKeySequence.Preferences)
         config_menu.addAction('Race &Builder', self.config_builder, QKeySequence('CTRL+B'))
         config_menu.addAction('Import Bikereg csv...', self.import_bikereg_file)
+        config_menu.addAction('Import OnTheDay.net race config...',
+                              self.import_ontheday_race_config)
 
         config_menu.addSeparator()
 
@@ -741,6 +744,10 @@ class SexyThymeMainWindow(QMainWindow):
             if msg_box.exec() == QMessageBox.Ok:
                 self.config_builder()
                 self.centralWidget().builder.setCurrentIndex(1)
+
+    def import_ontheday_race_config(self):
+        """Call ontheday module to import race config."""
+        ontheday.launch_import_wizard()
 
     def generate_reports(self):
         """Show the reports window."""
