@@ -100,8 +100,6 @@ class DatabaseError(Exception):
     exception wrapper around that.
     """
 
-    pass
-
 class InputError(Exception):
     """Input Error exception
 
@@ -109,8 +107,6 @@ class InputError(Exception):
     certainly is a result of user input error, so the proper response is to put up a QMessageBox
     telling the user that they did something wrong.
     """
-
-    pass
 
 def _print_record(record):
     """Print a Qt SQL record.
@@ -214,7 +210,6 @@ class TableModel(QSqlRelationalTableModel):
 
     def add_defaults(self):
         """Add default table entries."""
-        pass
 
     def add_column_flags(self, column, flags):
         """Add flags to specified column.

@@ -88,7 +88,6 @@ class Remote(QObject):
 
     def disconnect(self, parent):
         """Disconnect from the remote."""
-        pass
 
     def submit_racer_update(self, update_list):
         """Submit a list of racer updates. Return status of the submit operation.
