@@ -454,6 +454,7 @@ class SexyThymeMainWindow(QMainWindow):
         self.setCentralWidget(StartCentralWidget())
 
         self.close_file_menu_action.setEnabled(False)
+        self.race_builder_menu.setEnabled(False)
         self.generate_reports_menu_action.setEnabled(False)
         self.journal_action.setEnabled(False)
         self.connect_remote_menu.setEnabled(False)
@@ -471,6 +472,7 @@ class SexyThymeMainWindow(QMainWindow):
         self.setCentralWidget(MainCentralWidget(model))
 
         self.close_file_menu_action.setEnabled(True)
+        self.race_builder_menu.setEnabled(True)
         self.generate_reports_menu_action.setEnabled(True)
         self.journal_action.setEnabled(True)
 
@@ -508,7 +510,8 @@ class SexyThymeMainWindow(QMainWindow):
         # Config menu.
         config_menu = self.menuBar().addMenu('&Config')
         config_menu.addAction('Preferences', self.config_preferences, QKeySequence.Preferences)
-        config_menu.addAction('Race &Builder', self.config_builder, QKeySequence('CTRL+B'))
+        self.race_builder_menu = config_menu.addAction('Race &Builder', self.config_builder,
+                                                       QKeySequence('CTRL+B'))
         config_menu.addAction('Import Bikereg csv...', self.import_bikereg_file)
         config_menu.addAction('Import OnTheDay.net race config...',
                               self.import_ontheday_race_config)
