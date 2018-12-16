@@ -60,6 +60,7 @@ class JournalTableView(QTableView):
 
         self.setAlternatingRowColors(True)
         self.setSortingEnabled(True)
+        self.setSelectionBehavior(QTableView.SelectRows)
         self.sortByColumn(self.source_model.timestamp_column, Qt.DescendingOrder)
         self.horizontalHeader().setHighlightSections(False)
         self.horizontalHeader().setStretchLastSection(True)
