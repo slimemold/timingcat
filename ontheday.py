@@ -13,12 +13,13 @@ For example, simple authentication: get_race_list(('username', 'password'))
 #pylint: disable=wrong-spelling-in-comment
 #pylint: disable=wrong-spelling-in-docstring
 
-from datetime import datetime
 import json
 import keyring
-from PyQt5.QtCore import QSettings, Qt
-from PyQt5.QtWidgets import QLabel, QLineEdit, QWidget, QWizard, QWizardPage
-from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
+from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt
+from PyQt5.QtWidgets import QAbstractItemView, QFileDialog, QLabel, QLineEdit, QPushButton, \
+                            QTableWidget, QTableWidgetItem, QWidget
+from PyQt5.QtWidgets import QWizard, QWizardPage
+from PyQt5.QtWidgets import QFormLayout, QHBoxLayout, QVBoxLayout
 import requests
 import common
 from racemodel import MSECS_UNINITIALIZED
@@ -132,7 +133,7 @@ def get_racer_list(auth, field):
     """
     racer_list = []
 
-    url = URL + '/api/starts/category/' + str(field['id']) + '/'
+    url = field['category_start_list_url']
 
     response = requests.get(url, auth=auth)
     if not response.ok:
@@ -143,7 +144,7 @@ def get_racer_list(auth, field):
 
     return racer_list
 
-def import_race(auth, modeldb, race):
+def import_race(modeldb, auth, race):
     """Import a race.
 
     The race is identified by passing a race record returned by get_race_list().
@@ -165,7 +166,7 @@ def import_race(auth, modeldb, race):
                                         racer['firstname'],
                                         racer['lastname'],
                                         field['name'],
-                                        4, # category missing!
+                                        racer['category'],
                                         racer['team'],
                                         racer['racing_age'],
                                         MSECS_UNINITIALIZED,
@@ -178,7 +179,7 @@ def import_race(auth, modeldb, race):
     race_table_model.set_race_property(race_table_model.NAME, race['name'])
     race_table_model.set_race_property(race_table_model.DATE, race['date'])
 
-    notes = 'Imported from OnTheDay.net on %s' % str(datetime.now())
+    notes = 'Imported from OnTheDay.net on %s' % QDateTime.currentDateTime()
     race_table_model.set_race_property(race_table_model.NOTES, notes)
 
 class IntroductionPage(QWizardPage):
@@ -228,11 +229,11 @@ class AuthenticationPage(QWizardPage):
         form_widget.layout().addRow(self.USERNAME_FIELD, self.username_lineedit)
         form_widget.layout().addRow(self.PASSWORD_FIELD, self.password_lineedit)
 
-        self.error_label = QLabel()
+        self.status_label = QLabel()
 
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(form_widget)
-        self.layout().addWidget(self.error_label)
+        self.layout().addWidget(self.status_label)
 
         # Register wizard page fields.
         self.registerField(self.USERNAME_FIELD + '*', self.username_lineedit)
@@ -242,7 +243,7 @@ class AuthenticationPage(QWizardPage):
         """Initialize page fields."""
         self.setField(self.USERNAME_FIELD, '')
         self.setField(self.PASSWORD_FIELD, '')
-        self.error_label.setText('')
+        self.status_label.setText('')
 
         # See if we have an OnTheDay.net username cached in our application settings.
         group_name = __name__
@@ -276,7 +277,7 @@ class AuthenticationPage(QWizardPage):
         try:
             race_list = get_race_list(auth)
         except requests.exceptions.HTTPError:
-            self.error_label.setText('Authentication failure')
+            self.status_label.setText('Authentication failure')
             return False
 
         self.wizard().auth = auth
@@ -299,6 +300,10 @@ class RaceSelectionPage(QWizardPage):
     This class presents the list of races known by the logged in OnTheDay.net account. The user
     is expected to choose a race to import.
     """
+
+    NAME_COLUMN = 0
+    DATE_COLUMN = 1
+
     def __init__(self, parent=None):
         """Initialize the RaceSelectionPage instance."""
         super().__init__(parent=parent)
@@ -306,30 +311,173 @@ class RaceSelectionPage(QWizardPage):
         self.setTitle('Race Selection')
         self.setSubTitle('Please select a race to import.')
 
+        self.race_table_widget = QTableWidget()
+        self.race_table_widget.setColumnCount(2)
+        self.race_table_widget.setAlternatingRowColors(True)
+        self.race_table_widget.setHorizontalHeaderLabels(['Race', 'Date'])
+        self.race_table_widget.horizontalHeader().setHighlightSections(False)
+        self.race_table_widget.horizontalHeader().setStretchLastSection(True)
+        self.race_table_widget.verticalHeader().setVisible(False)
+        self.race_table_widget.setSelectionBehavior(QTableWidget.SelectRows)
+        self.race_table_widget.setSelectionMode(QAbstractItemView.SingleSelection)
+        self.race_table_widget.itemSelectionChanged.connect(self.completeChanged)
+        self.race_table_widget.itemSelectionChanged.connect(self.check_race_date)
+
+        self.status_label = QLabel()
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(self.race_table_widget)
+        self.layout().addWidget(self.status_label)
+
     def initializePage(self): #pylint: disable=invalid-name
         """Initialize page fields."""
-        print('race_list = %s', json.dumps(self.wizard().race_list, indent=4))
+        self.race_table_widget.clearContents()
+        self.race_table_widget.setRowCount(len(self.wizard().race_list))
 
-def launch_import_wizard():
-    """Launch the OnTheDay.net import wizard.
+        # Qt warns us that inserting items while sorting is enabled will mess with the insertion
+        # order, so disable sorting before populating the list, and then re-enable sorting
+        # afterwards.
+        self.race_table_widget.setSortingEnabled(False)
+        for row, race in enumerate(self.wizard().race_list):
+            # Make our name item (non-editable).
+            name_item = QTableWidgetItem(race['name'])
+            name_item.setFlags(name_item.flags() ^ Qt.ItemIsEditable)
+            name_item.setData(Qt.UserRole, race)
+            self.race_table_widget.setItem(row, self.NAME_COLUMN, name_item)
+
+            # Make our date item (non-editable).
+            date_item = QTableWidgetItem(race['date'])
+            date_item.setFlags(date_item.flags() ^ Qt.ItemIsEditable)
+            date_item.setData(Qt.UserRole, race)
+            self.race_table_widget.setItem(row, self.DATE_COLUMN, date_item)
+        self.race_table_widget.setSortingEnabled(True)
+
+        self.race_table_widget.sortByColumn(self.DATE_COLUMN, Qt.DescendingOrder)
+
+    def isComplete(self): #pylint: disable=invalid-name
+        """Make sure a race is selected."""
+        return len(self.race_table_widget.selectedItems()) > 0
+
+    def validatePage(self): #pylint: disable=invalid-name
+        """No validation actually done here. Just store the selected race."""
+        if not self.race_table_widget.selectedItems():
+            return False
+
+        race = self.race_table_widget.selectedItems()[0].data(Qt.UserRole)
+        self.wizard().race = race
+
+        return True
+
+    def check_race_date(self):
+        """See if the selected race is in the past, and update status label."""
+        race_date = None
+
+        for item in self.race_table_widget.selectedItems():
+            if item.column() == self.DATE_COLUMN:
+                race_date = QDate.fromString(item.text(), Qt.ISODate)
+                break
+
+        if race_date is None:
+            return
+
+        if race_date < QDate.currentDate():
+            self.status_label.setText('Warning: Race date is in the past.')
+        else:
+            self.status_label.setText('')
+
+class FileSelectionPage(QWizardPage):
+    """File selection page of the import wizard to choose a save file."""
+
+    def __init__(self, parent=None):
+        """Initialize the FileSelectionPage instance."""
+        super().__init__(parent=parent)
+
+        self.setTitle('Save File')
+        self.setSubTitle('Please choose a save file for this race.')
+
+        self.file_lineedit = QLineEdit()
+
+        browse_button = QPushButton('Browse...')
+
+        self.setLayout(QHBoxLayout())
+        self.layout().addWidget(self.file_lineedit)
+        self.layout().addWidget(browse_button)
+
+        file_dialog = QFileDialog(self)
+        file_dialog.setAcceptMode(QFileDialog.AcceptSave)
+        file_dialog.setDefaultSuffix('rce')
+        file_dialog.setFileMode(QFileDialog.AnyFile)
+        file_dialog.setLabelText(QFileDialog.Accept, 'New')
+        file_dialog.setNameFilter('Race file (*.rce)')
+        file_dialog.setOptions(QFileDialog.DontUseNativeDialog)
+        file_dialog.setViewMode(QFileDialog.List)
+
+        browse_button.clicked.connect(file_dialog.exec)
+        file_dialog.fileSelected.connect(self.file_lineedit.setText)
+        self.file_lineedit.textChanged.connect(self.completeChanged)
+
+    def initializePage(self): #pylint: disable=invalid-name
+        """Initialize page fields."""
+        default_filename = (self.wizard().race['name'] + ' ' +
+                            self.wizard().race['date'] + '.rce')
+
+        self.file_lineedit.setText(default_filename)
+
+    def isComplete(self): #pylint: disable=invalid-name
+        """Make sure a race is selected."""
+        return len(self.file_lineedit.text()) > 0
+
+    def validatePage(self): #pylint: disable=invalid-name
+        """No validation actually done here. Just store the selected filename."""
+        self.wizard().filename = self.file_lineedit.text()
+        return True
+
+class ImportPage(QWizardPage):
+    """Page that shows import progress and status."""
+
+    def __init__(self, parent=None):
+        """Initialize the FileSelectionPage instance."""
+        super().__init__(parent=parent)
+
+        self.setTitle('Importing OnTheDay.net race')
+
+        label = QLabel('Import setup complete. Click "Finish" to begin the race import operation.')
+        label.setWordWrap(True)
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(label)
+
+        self.setButtonText(QWizard.FinishButton, 'Finish')
+
+    def initializePage(self): #pylint: disable=invalid-name
+        """Initialize page fields."""
+        self.setSubTitle('Preparing to import %s' % (self.wizard().race['name'] + ' ' +
+                                                     self.wizard().race['date']))
+
+class ImportWizard(QWizard):
+    """OnTheDay.net import wizard.
 
     The import wizard presents a number of pages that walks the user through importing an
     OnTheDay.net race config.
 
     The user will be asked for authentication information. A list of races will then be presented
     for selection.
+
+    When the dialog completes, race will hold the race to be imported, and filename will hold the
+    filename to use for the race data.
     """
+    def __init__(self, parent=None):
+        """Initialize the ImportWizard instance."""
+        super().__init__(parent=parent)
 
-    # Create the race selection page.
-    race_selection_page = QWizardPage()
-    race_selection_page.setTitle('Race Selection')
+        # Create the race selection page.
+        race_selection_page = QWizardPage()
+        race_selection_page.setTitle('Race Selection')
 
-    # Create the wizard and add our pages.
-    wizard = QWizard()
-    wizard.setWindowTitle("OnTheDay.net race config import")
-    wizard.addPage(IntroductionPage())
-    wizard.addPage(AuthenticationPage())
-    wizard.addPage(RaceSelectionPage())
-    wizard.setWindowModality(Qt.ApplicationModal)
-
-    wizard.exec()
+        # Create the wizard and add our pages.
+        self.setWindowTitle("OnTheDay.net race config import")
+        self.addPage(IntroductionPage())
+        self.addPage(AuthenticationPage())
+        self.addPage(RaceSelectionPage())
+        self.addPage(FileSelectionPage())
+        self.addPage(ImportPage())

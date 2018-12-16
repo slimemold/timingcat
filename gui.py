@@ -750,7 +750,11 @@ class SexyThymeMainWindow(QMainWindow):
 
     def import_ontheday_race_config(self):
         """Call ontheday module to import race config."""
-        ontheday.launch_import_wizard()
+        ontheday_import_wizard = ontheday.ImportWizard()
+        ontheday_import_wizard.exec()
+
+        print('race = %s' % ontheday_import_wizard.race)
+        print('filename = %s' % ontheday_import_wizard.filename)
 
     def generate_reports(self):
         """Show the reports window."""
