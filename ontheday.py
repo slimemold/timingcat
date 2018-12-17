@@ -14,13 +14,13 @@ For example, simple authentication: get_race_list(('username', 'password'))
 #pylint: disable=wrong-spelling-in-docstring
 
 import json
-import keyring
-from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt
+from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt, QTime
 from PyQt5.QtWidgets import QAbstractItemView, QFileDialog, QLabel, QLineEdit, QPushButton, \
                             QTableWidget, QTableWidgetItem, QWidget
 from PyQt5.QtWidgets import QWizard, QWizardPage
 from PyQt5.QtWidgets import QFormLayout, QHBoxLayout, QVBoxLayout
 import requests
+import keyring
 import common
 from racemodel import MSECS_UNINITIALIZED
 
@@ -158,18 +158,29 @@ def import_race(modeldb, auth, race):
     field_list = get_field_list(auth, race)
 
     for field in field_list:
+        # This is wall clock, date of today, which is what the reference clock
+        # is by default (before it's set to something else).
+        reference_clock = modeldb.race_table_model.get_reference_clock_datetime()
+
+        # This is start time expressed as wall time, from OnTheDay.net.
+        start_clock = QDateTime(QDate.currentDate(),
+                                QTime.fromString(field['time_start'], Qt.ISODate))
+
+        # Delta msecs from reference clock.
+        start = reference_clock.msecsTo(start_clock)
+
         racer_list = get_racer_list(auth, field)
 
         for racer in racer_list:
             metadata = {'ontheday_id': racer['id']}
-            racer_table_model.add_racer(racer['race_number'],
+            racer_table_model.add_racer(str(racer['race_number']),
                                         racer['firstname'],
                                         racer['lastname'],
                                         field['name'],
                                         racer['category'],
                                         racer['team'],
                                         racer['racing_age'],
-                                        MSECS_UNINITIALIZED,
+                                        start,
                                         MSECS_UNINITIALIZED,
                                         'local',
                                         json.dumps(metadata))
@@ -463,12 +474,17 @@ class ImportWizard(QWizard):
     The user will be asked for authentication information. A list of races will then be presented
     for selection.
 
-    When the dialog completes, race will hold the race to be imported, and filename will hold the
-    filename to use for the race data.
+    When the dialog completes, race will hold the race to be imported, filename will hold the
+    filename to use for the race data, and auth will hold an authentication thing that can be
+    used as the authenticator for the various REST functions.
     """
     def __init__(self, parent=None):
         """Initialize the ImportWizard instance."""
         super().__init__(parent=parent)
+
+        self.filename = None
+        self.auth = None
+        self.race = None
 
         # Create the race selection page.
         race_selection_page = QWizardPage()

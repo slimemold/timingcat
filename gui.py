@@ -769,8 +769,23 @@ class SexyThymeMainWindow(QMainWindow):
         ontheday_import_wizard = ontheday.ImportWizard()
         ontheday_import_wizard.exec()
 
-        print('race = %s' % ontheday_import_wizard.race)
-        print('filename = %s' % ontheday_import_wizard.filename)
+        if not ontheday_import_wizard.filename:
+            return
+
+        filename = ontheday_import_wizard.filename
+        auth = ontheday_import_wizard.auth
+        race = ontheday_import_wizard.race
+
+        try:
+            self.switch_to_main(filename, True)
+        except DatabaseError as e:
+            QMessageBox.warning(self, 'Error', str(e))
+            self.switch_to_start()
+            return
+
+        self.centralWidget().modeldb.add_defaults()
+
+        ontheday.import_race(self.centralWidget().modeldb, auth, race)
 
     def generate_reports(self):
         """Show the reports window."""

@@ -807,9 +807,6 @@ class RacerTableModel(TableModel):
         Also, default QDateTime constructor makes an invalid time that ends up being stored as NULL
         in the table, which is what we want.
         """
-        if not bib.isdigit():
-            raise InputError('Racer bib "%s" is invalid.' % bib)
-
         dup_racer_index = self.match(self.index(0, self.bib_column),
                                      Qt.DisplayRole, bib, 1, Qt.MatchExactly)
         if dup_racer_index:
