@@ -182,9 +182,6 @@ class FieldTableView(QTableView):
         self.horizontalHeader().setStretchLastSection(True)
         self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
-        # Always hide id, metadata column.
-        self.hideColumn(self.source_model.id_column)
-        self.hideColumn(self.source_model.metadata_column)
 
         # For each field, we make a racer in field table view ahead of time.
         # Note that we call dataChanged here because the initial reading of
@@ -198,6 +195,10 @@ class FieldTableView(QTableView):
         self.doubleClicked.connect(self.handle_show_racer_in_field_table_view)
 
         self.read_settings()
+
+        # Always hide id, metadata column.
+        self.hideColumn(self.source_model.id_column)
+        self.hideColumn(self.source_model.metadata_column)
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
         """Handle key presses."""
@@ -516,14 +517,15 @@ class RacerTableView(QTableView):
         if self.field_id:
             self.proxy_model_filter.setFilterKeyColumn(self.source_model.field_column)
             self.hideColumn(self.source_model.field_column)
+
+        self.read_settings()
+
         # Hide the status by default. Show it if we have a remote
         # set up for this race.
         self.hideColumn(self.source_model.status_column)
         # Always hide id, metadata column.
         self.hideColumn(self.source_model.id_column)
         self.hideColumn(self.source_model.metadata_column)
-
-        self.read_settings()
 
     def keyPressEvent(self, event): #pylint: disable=invalid-name
         """Handle key presses."""
