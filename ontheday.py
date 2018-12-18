@@ -14,6 +14,7 @@ For example, simple authentication: get_race_list(('username', 'password'))
 #pylint: disable=wrong-spelling-in-docstring
 
 import json
+import os
 from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt, QTime
 from PyQt5.QtWidgets import QAbstractItemView, QFileDialog, QLabel, QLineEdit, QPushButton, \
                             QTableWidget, QTableWidgetItem, QWidget
@@ -241,6 +242,7 @@ class AuthenticationPage(QWizardPage):
         form_widget.layout().addRow(self.PASSWORD_FIELD, self.password_lineedit)
 
         self.status_label = QLabel()
+        self.status_label.setStyleSheet('QLabel{color:red;}')
 
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(form_widget)
@@ -335,6 +337,7 @@ class RaceSelectionPage(QWizardPage):
         self.race_table_widget.itemSelectionChanged.connect(self.check_race_date)
 
         self.status_label = QLabel()
+        self.status_label.setStyleSheet('QLabel{color:red;}')
 
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(self.race_table_widget)
@@ -410,9 +413,17 @@ class FileSelectionPage(QWizardPage):
 
         browse_button = QPushButton('Browse...')
 
-        self.setLayout(QHBoxLayout())
-        self.layout().addWidget(self.file_lineedit)
-        self.layout().addWidget(browse_button)
+        file_browse_widget = QWidget()
+        file_browse_widget.setLayout(QHBoxLayout())
+        file_browse_widget.layout().addWidget(self.file_lineedit)
+        file_browse_widget.layout().addWidget(browse_button)
+
+        self.status_label = QLabel()
+        self.status_label.setStyleSheet('QLabel{color:red;}')
+
+        self.setLayout(QVBoxLayout())
+        self.layout().addWidget(file_browse_widget)
+        self.layout().addWidget(self.status_label)
 
         file_dialog = QFileDialog(self)
         file_dialog.setAcceptMode(QFileDialog.AcceptSave)
@@ -436,7 +447,16 @@ class FileSelectionPage(QWizardPage):
 
     def isComplete(self): #pylint: disable=invalid-name
         """Make sure a race is selected."""
-        return len(self.file_lineedit.text()) > 0
+        filename = self.file_lineedit.text()
+        if not filename:
+            return False
+
+        if os.path.isfile(filename):
+            self.status_label.setText('Warming: File already exists!')
+        else:
+            self.status_label.setText('')
+
+        return True
 
     def validatePage(self): #pylint: disable=invalid-name
         """No validation actually done here. Just store the selected filename."""
