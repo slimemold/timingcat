@@ -651,7 +651,7 @@ class ReferenceClock(QWidget):
         reference_clock_maual_selection_widget = QGroupBox('Reference clock manual setup:')
 
         self.datetime_datetimeedit = QDateTimeEdit()
-        self.datetime_datetimeedit.setDisplayFormat('M/d/yyyy @ h:mm:ss.zzz')
+        self.datetime_datetimeedit.setDisplayFormat('yyyy-MM-dd @ h:mm:ss.zzz')
         self.datetime_datetimeedit.setCalendarPopup(True)
         date_today_button = QPushButton('Today')
 
@@ -669,7 +669,7 @@ class ReferenceClock(QWidget):
 
         # Signals/slots plumbing.
         date_today_button.clicked.connect(
-            lambda: self.datetime_datetimeedit.setDate(QDate.currentDate()))
+            lambda: self.datetime_datetimeedit.setDateTime(QDateTime(QDate.currentDate())))
         set_reference_clock_button.clicked.connect(self.handle_manual_reference_clock_setup_done)
 
         return reference_clock_maual_selection_widget
@@ -687,15 +687,15 @@ class ReferenceClock(QWidget):
 
             # Make our own combined string, because I haven't found a QDateTime format that I like.
             # Guess I'll keep looking...this looks really hokey.
-            date_string = reference_datetime.date().toString(Qt.SystemLocaleLongDate)
-            time_string = reference_datetime.time().toString(defaults.DATETIME_FORMAT)
-            datetime_string = ' @ '.join([date_string, time_string])
+            datetime_string = reference_datetime.toString('yyyy-MM-dd @ h:mm:ss.zzz')
 
             self.reference_datetime_label.setText(datetime_string)
         else: # Otherwise, just use the race day's date, time zero.
+            reference_datetime = QDateTime(QDate.currentDate())
+
             self.reference_datetime_label.setText('Reference clock not set up')
 
-        self.datetime_datetimeedit.setDate(self.race_table_model.get_date())
+        self.datetime_datetimeedit.setDateTime(reference_datetime)
 
     def toggle_reference_clock_setup(self, enable):
         """Toggle reference clock enable/disable.

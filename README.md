@@ -27,3 +27,5 @@ pylint
   violation doesn't get written to the database. The main issue is that there
   is no visual indication of anything going wrong other than the fact that
   the table becomes uneditable (until you edit the offending cell).
+- Pressing "Today" on the clock tab of the race builder does not update the
+  edit box, although the calendar popup is updated.
