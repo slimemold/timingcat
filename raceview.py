@@ -164,6 +164,7 @@ class FieldTableView(QTableView):
 
         self.modeldb = modeldb
         self.remote = None
+        self.preferences = None
 
         """Use a proxy model so we can add some interesting columns."""
         self.source_model = self.modeldb.field_table_model
@@ -305,6 +306,7 @@ class FieldTableView(QTableView):
             else:
                 new_racer_table_view_dict[field_id] = RacerTableView(self.modeldb, field_id)
                 new_racer_table_view_dict[field_id].set_remote(self.remote)
+                new_racer_table_view_dict[field_id].connect_preferences(self.preferences)
 
         self.racer_in_field_table_view_dict = new_racer_table_view_dict
 
@@ -372,6 +374,13 @@ class FieldTableView(QTableView):
         for _, racer_in_field_table_view in self.racer_in_field_table_view_dict.items():
             racer_in_field_table_view.set_remote(remote)
 
+    def connect_preferences(self, preferences):
+        """Connect preferences signals to the various slots that care."""
+        self.preferences = preferences
+
+        for racer_table_view in self.racer_in_field_table_view_dict.values():
+            racer_table_view.connect_preferences(preferences)
+
     def read_settings(self):
         """Read settings."""
         group_name = self.__class__.__name__
@@ -426,7 +435,7 @@ class RacerTableExtraColumnsProxyModel(ExtraColumnsProxyModel):
         """Provide extra columns for delta."""
         if role in (Qt.DisplayRole, Qt.EditRole):
             if extra_column == self.DELTA_SECTION:
-                model = self.modeldb.racer_table_model
+                model = self.sourceModel()
 
                 start = model.data(model.index(row, model.start_column))
                 if not msecs_is_valid(start):
@@ -434,7 +443,7 @@ class RacerTableExtraColumnsProxyModel(ExtraColumnsProxyModel):
 
                 finish = model.data(model.index(row, model.finish_column))
                 if not msecs_is_valid(finish):
-                    return MSECS_UNINITIALIZED
+                    return finish
 
                 return finish - start
             else:
@@ -450,7 +459,7 @@ class RacerTableExtraColumnsProxyModel(ExtraColumnsProxyModel):
         """Set extra column data."""
         if role == Qt.EditRole:
             if extra_column == self.DELTA_SECTION:
-                model = self.modeldb.racer_table_model
+                model = self.sourceModel()
 
                 # Use our new delta value to modify the finish time. Our delta column will
                 # automatically recalculate.
@@ -490,9 +499,9 @@ class RacerTableView(QTableView):
         self.proxy_model_msecs = MSecsColumnsProxyModel(self.modeldb, parent=parent)
         delta_column = (self.source_model.columnCount() +
                         RacerTableExtraColumnsProxyModel.DELTA_SECTION)
-        self.proxy_model_msecs.setMSecsColumns([self.source_model.start_column,
-                                                self.source_model.finish_column,
-                                                delta_column])
+        self.proxy_model_msecs.setMSecsFromReferenceColumns([self.source_model.start_column,
+                                                             self.source_model.finish_column])
+        self.proxy_model_msecs.setMSecsDeltaColumns([delta_column])
         self.proxy_model_msecs.setSourceModel(self.proxy_model_extra_columns)
 
         # Proxy model to potentially filter by field.
@@ -600,6 +609,18 @@ class RacerTableView(QTableView):
         else:
             self.hideColumn(self.source_model.status_column)
 
+    def set_wall_times(self, wall_times):
+        """Set whether to display wall times or time from reference clock."""
+        self.proxy_model_msecs.set_wall_times(wall_times)
+
+    def connect_preferences(self, preferences):
+        """Connect preferences signals to the various slots that care."""
+        if not preferences:
+            return
+
+        self.set_wall_times(preferences.wall_times_checkbox.isChecked())
+        preferences.wall_times_checkbox.stateChanged.connect(self.proxy_model_msecs.set_wall_times)
+
     def read_settings(self):
         """Read settings."""
         group_name = self.__class__.__name__
@@ -653,7 +674,7 @@ class ResultTableView(QTableView):
 
         self.source_model = self.modeldb.result_table_model
         self.proxy_model = MSecsColumnsProxyModel(self.modeldb, parent=parent)
-        self.proxy_model.setMSecsColumns([self.source_model.finish_column])
+        self.proxy_model.setMSecsFromReferenceColumns([self.source_model.finish_column])
         self.proxy_model.setSourceModel(self.source_model)
         self.setModel(self.proxy_model)
 
@@ -851,6 +872,18 @@ class ResultTableView(QTableView):
         # selectionChanged signal is NOT emitted. So, we have to emit that
         # ourselves here.
         self.selectionModel().selectionChanged.emit(QItemSelection(), deleted_selection)
+
+    def set_wall_times(self, wall_times):
+        """Set whether to display wall times or time from reference clock."""
+        self.proxy_model.wall_times = wall_times
+
+    def connect_preferences(self, preferences):
+        """Connect preferences signals to the various slots that care."""
+        if not preferences:
+            return
+
+        self.set_wall_times(preferences.wall_times_checkbox.isChecked())
+        preferences.wall_times_checkbox.stateChanged.connect(self.proxy_model.set_wall_times)
 
     def read_settings(self):
         """Read settings."""

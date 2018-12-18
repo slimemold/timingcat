@@ -552,6 +552,13 @@ class RaceTableModel(TableModel):
 
         return reference_datetime.msecsTo(current_datetime)
 
+    def get_wall_time_msecs(self):
+        """Get the number of milliseconds elapsed since today at midnight."""
+        reference_datetime = QDateTime(QDate.currentDate())
+        current_datetime = QDateTime.currentDateTime()
+
+        return reference_datetime.msecsTo(current_datetime)
+
     def change_reference_clock_datetime(self, old_datetime, new_datetime):
         """Undo old reference clock datetime, and apply new reference clock datetime."""
         # Nothing to do.

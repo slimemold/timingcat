@@ -102,6 +102,7 @@ class DigitalClock(QLCDNumber):
         super().__init__(8, parent=parent)
 
         self.modeldb = modeldb
+        self.preferences = None
 
         self.setFrameShape(QFrame.NoFrame)
         self.setSegmentStyle(QLCDNumber.Filled)
@@ -116,7 +117,11 @@ class DigitalClock(QLCDNumber):
     def update(self):
         """Update text on the LCD display."""
         race_table_model = self.modeldb.race_table_model
-        msecs = race_table_model.get_reference_msecs()
+
+        if self.preferences and self.preferences.wall_times_checkbox.isChecked():
+            msecs = race_table_model.get_wall_time_msecs()
+        else:
+            msecs = race_table_model.get_reference_msecs()
         datetime = QDateTime(QDate(1, 1, 1), QTime(0, 0)).addMSecs(msecs)
 
         if datetime.time().second() % 2:
@@ -125,6 +130,14 @@ class DigitalClock(QLCDNumber):
             text = datetime.toString('hh:mm:ss')
 
         self.display(text)
+
+    def connect_preferences(self, preferences):
+        """Connect preferences settings to this widget."""
+        self.preferences = preferences
+
+        preferences.digital_clock_checkbox.stateChanged.connect(self.setVisible)
+        self.setVisible(preferences.digital_clock_checkbox.checkState())
+        preferences.wall_times_checkbox.stateChanged.connect(self.update)
 
 class CentralWidget(QObject):
     """Central Widget base class.
@@ -408,8 +421,11 @@ class MainCentralWidget(QWidget, CentralWidget):
 
     def connect_preferences(self, preferences):
         """Connect preferences signals to the various slots that care."""
-        preferences.digital_clock_checkbox.stateChanged.connect(self.digital_clock.setVisible)
-        self.digital_clock.setVisible(preferences.digital_clock_checkbox.checkState())
+        self.digital_clock.connect_preferences(preferences)
+
+        self.field_table_view.connect_preferences(preferences)
+        self.racer_table_view.connect_preferences(preferences)
+        self.result_table_view.connect_preferences(preferences)
 
 class SexyThymeMainWindow(QMainWindow):
     """Main Application Window.

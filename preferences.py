@@ -41,6 +41,7 @@ class PreferencesWindow(QWidget):
     # QSettings keys.
     ALWAYS_ON_TOP = 'always_on_top'
     DIGITAL_CLOCK = 'digital_clock'
+    WALL_TIMES = 'wall_times'
 
     def __init__(self, parent=None):
         """Initialize the PreferencesWindow instance."""
@@ -50,15 +51,26 @@ class PreferencesWindow(QWidget):
 
         # Window Appearance and Behavior preferences.
         self.always_on_top_checkbox = QCheckBox('Main Window Always On Top')
+        self.always_on_top_checkbox.setTristate(False)
         self.digital_clock_checkbox = QCheckBox('LCD clock')
+        self.digital_clock_checkbox.setTristate(False)
 
         appearance_groupbox = QGroupBox('Window Appearance and Behavior')
         appearance_groupbox.setLayout(QVBoxLayout())
         appearance_groupbox.layout().addWidget(self.always_on_top_checkbox)
         appearance_groupbox.layout().addWidget(self.digital_clock_checkbox)
 
+        # Clock display.
+        self.wall_times_checkbox = QCheckBox('Show Wall Times')
+        self.wall_times_checkbox.setTristate(False)
+
+        clock_groupbox = QGroupBox('Clock Display')
+        clock_groupbox.setLayout(QVBoxLayout())
+        clock_groupbox.layout().addWidget(self.wall_times_checkbox)
+
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(appearance_groupbox)
+        self.layout().addWidget(clock_groupbox)
 
         self.read_settings()
 
@@ -82,6 +94,9 @@ class PreferencesWindow(QWidget):
         self.digital_clock_checkbox.setCheckState(int(settings.value(self.DIGITAL_CLOCK,
                                                                      defaults.DIGITAL_CLOCK)))
 
+        self.wall_times_checkbox.setCheckState(int(settings.value(self.WALL_TIMES,
+                                                                  defaults.WALL_TIMES)))
+
         settings.endGroup()
 
     def write_settings(self):
@@ -95,5 +110,7 @@ class PreferencesWindow(QWidget):
         settings.setValue(self.ALWAYS_ON_TOP, self.always_on_top_checkbox.checkState())
 
         settings.setValue(self.DIGITAL_CLOCK, self.digital_clock_checkbox.checkState())
+
+        settings.setValue(self.WALL_TIMES, self.wall_times_checkbox.checkState())
 
         settings.endGroup()

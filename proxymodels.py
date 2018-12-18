@@ -14,7 +14,7 @@ The proxy model classes here are made to be as Qt-like as possible. Therefore, w
 naming convention by using camelCase for method names.
 """
 
-from PyQt5.QtCore import QDateTime, QModelIndex, Qt, QTime
+from PyQt5.QtCore import QDate, QDateTime, QModelIndex, Qt, QTime
 from PyQt5.QtCore import QItemSelection, QItemSelectionModel, QItemSelectionRange
 from PyQt5.QtCore import QIdentityProxyModel
 import common
@@ -410,18 +410,42 @@ class MSecsColumnsProxyModel(QIdentityProxyModel):
         super().__init__(parent=parent)
 
         self.modeldb = modeldb
-        self.msecs_columns = []
+        self.msecs_from_reference_columns = []
+        self.msecs_delta_columns = []
 
-    def setMSecsColumns(self, msecs_columns): #pylint: disable=invalid-name
+        self.wall_times = defaults.WALL_TIMES
+
+    def set_wall_times(self, wall_times):
+        """Set whether msecs columns should be expressed as wall times.
+
+        If True, msecs should be expressed as wall times. If False, msecs should be expressed
+        relative to reference clock.
+        """
+        self.wall_times = wall_times
+
+        for column in self.msecs_from_reference_columns + self.msecs_delta_columns:
+            top_left = self.index(0, column)
+            bottom_right = self.index(self.rowCount(), column)
+            self.dataChanged.emit(top_left, bottom_right, [Qt.DisplayRole])
+
+    def setMSecsFromReferenceColumns(self, columns): #pylint: disable=invalid-name
         """Specify the columns that contain msecs from reference datetime."""
-        self.msecs_columns = msecs_columns
+        self.msecs_from_reference_columns = columns
+
+    def setMSecsDeltaColumns(self, columns): #pylint: disable=invalid-name
+        """Specify the columns that contain msecs from reference datetime."""
+        self.msecs_delta_columns = columns
 
     def data(self, index, role=Qt.DisplayRole):
         """Convert msecs to something that looks like a time."""
         if role in (Qt.DisplayRole, Qt.EditRole):
-            if index.column() in self.msecs_columns:
+            if index.column() in self.msecs_from_reference_columns + self.msecs_delta_columns:
                 race_table_model = self.modeldb.race_table_model
-                reference_datetime = race_table_model.get_reference_clock_datetime()
+                if index.column() in self.msecs_from_reference_columns and self.wall_times:
+                    reference_datetime = race_table_model.get_reference_clock_datetime()
+                else:
+                    reference_datetime = QDateTime(QDate.currentDate())
+
                 msecs = self.sourceModel().data(self.mapToSource(index), role)
 
                 if msecs == MSECS_UNINITIALIZED:
@@ -441,7 +465,7 @@ class MSecsColumnsProxyModel(QIdentityProxyModel):
         """Convert the friendly representation back to msecs."""
 
         if role in (Qt.DisplayRole, Qt.EditRole):
-            if index.column() in self.msecs_columns:
+            if index.column() in self.msecs_from_reference_columns + self.msecs_delta_columns:
                 if not value:
                     msecs = MSECS_UNINITIALIZED
                 elif value.upper() == 'DNS':
@@ -452,7 +476,12 @@ class MSecsColumnsProxyModel(QIdentityProxyModel):
                     msecs = MSECS_DNP
                 else:
                     race_table_model = self.modeldb.race_table_model
-                    reference_datetime = race_table_model.get_reference_clock_datetime()
+
+                    if index.column() in self.msecs_from_reference_columns and self.wall_times:
+                        reference_datetime = race_table_model.get_reference_clock_datetime()
+                    else:
+                        reference_datetime = QDateTime(QDate.currentDate())
+
                     date = reference_datetime.date()
                     time = QTime.fromString(value, defaults.DATETIME_FORMAT)
                     if time.isValid():
