@@ -16,8 +16,8 @@ For example, simple authentication: get_race_list(('username', 'password'))
 import json
 import os
 from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt, QTime
-from PyQt5.QtWidgets import QAbstractItemView, QFileDialog, QLabel, QLineEdit, QPushButton, \
-                            QTableWidget, QTableWidgetItem, QWidget
+from PyQt5.QtWidgets import QAbstractItemView, QFileDialog, QHeaderView, QLabel, QLineEdit, \
+                            QPushButton, QTableWidget, QTableWidgetItem, QWidget
 from PyQt5.QtWidgets import QWizard, QWizardPage
 from PyQt5.QtWidgets import QFormLayout, QHBoxLayout, QVBoxLayout
 import requests
@@ -367,6 +367,8 @@ class RaceSelectionPage(QWizardPage):
         self.race_table_widget.setSortingEnabled(True)
 
         self.race_table_widget.sortByColumn(self.DATE_COLUMN, Qt.DescendingOrder)
+
+        self.race_table_widget.horizontalHeader().resizeSections(QHeaderView.ResizeToContents)
 
     def isComplete(self): #pylint: disable=invalid-name
         """Make sure a race is selected."""
