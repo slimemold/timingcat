@@ -7,12 +7,13 @@ remote service on which we can push results (typically, racer finishes).
 """
 
 from random import random
-#import requests
 import sys
-from PyQt5.QtCore import QObject, QTimer, Qt, pyqtSignal
+from PyQt5.QtCore import QObject, QSettings, QTimer, Qt, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QWidget
 from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
+import keyring
 import common
+import ontheday
 from racemodel import msecs_is_valid
 
 __copyright__ = '''
@@ -125,11 +126,13 @@ class SimulatedRemote(Remote):
         self.remote_timer = None
 
     def connect(self, parent):
+        race_table_model = self.modeldb.race_table_model
+
         dialog = QDialog(parent=parent)
         dialog.setWindowModality(Qt.ApplicationModal)
 
         username_lineedit = QLineEdit()
-        username = self.modeldb.race_table_model.get_race_property(self.USERNAME)
+        username = race_table_model.get_race_property(self.USERNAME)
         if username:
             username_lineedit.setText(username)
 
@@ -161,12 +164,12 @@ class SimulatedRemote(Remote):
         password = password_lineedit.text()
 
         if username != 'simulated' or password != 'remote':
-            self.modeldb.race_table_model.delete_race_property(self.USERNAME)
+            race_table_model.delete_race_property(self.USERNAME)
 
             QMessageBox.warning(parent, 'Error', 'Username or password is incorrect.')
             return self.set_status(Status.Rejected)
 
-        self.modeldb.race_table_model.set_race_property(self.USERNAME, username)
+        race_table_model.set_race_property(self.USERNAME, username)
 
         # Start our update timer.
         self.remote_timer = QTimer(self)
@@ -177,7 +180,9 @@ class SimulatedRemote(Remote):
         return self.set_status(Status.Ok)
 
     def disconnect(self, parent):
-        self.modeldb.race_table_model.delete_race_property(self.USERNAME)
+        race_table_model = self.modeldb.race_table_model
+
+        race_table_model.delete_race_property(self.USERNAME)
 
         # Stop update timer.
         self.remote_timer.stop()
@@ -250,3 +255,102 @@ class SimulatedRemote(Remote):
 class OnTheDayRemote(Remote):
     """OnTheDay.net remote, to be implemented."""
     name = 'OnTheDay.net Remote'
+
+    USERNAME = 'username'
+
+    def __init__(self, modeldb):
+        """Initialize the SimulatedRemote instance."""
+        super().__init__(modeldb)
+
+        self.auth = None
+        self.remote_timer = None
+
+    def connect(self, parent):
+        race_table_model = self.modeldb.race_table_model
+
+        # Present a dialog where the user can enter the OnTheDay.net user name and password.
+        dialog = QDialog(parent=parent)
+        dialog.setWindowModality(Qt.ApplicationModal)
+
+        # Try to auto-fill the user name. First, we look in the race properties. Secondly, we look
+        # at application-wide QSettings.
+        username_lineedit = QLineEdit()
+        username = race_table_model.get_race_property(self.USERNAME)
+        if not username:
+            settings = QSettings()
+            settings.beginGroup(ontheday.QSETTINGS_GROUP)
+            username = settings.value(ontheday.QSETTINGS_KEY_USERNAME)
+            settings.endGroup()
+
+        if username:
+            username_lineedit.setText(username)
+
+        # Try to auto-fill the password, only if we have auto-filled the user name (otherwise, it
+        # doesn't make any sense). We look in the keyring to see if there's a password stored there.
+        password_lineedit = QLineEdit()
+        password_lineedit.setEchoMode(QLineEdit.Password)
+        if username:
+            password = keyring.get_password(ontheday.KEYRING_SERVICE, username)
+            if password:
+                password_lineedit.setText(password)
+
+        form_widget = QWidget()
+        form_widget.setLayout(QFormLayout())
+        form_widget.layout().addRow('Username', username_lineedit)
+        form_widget.layout().addRow('Password', password_lineedit)
+
+        button_box = QDialogButtonBox(QDialogButtonBox.Ok | QDialogButtonBox.Cancel)
+        button_box.accepted.connect(dialog.accept)
+        button_box.rejected.connect(dialog.reject)
+
+        dialog.setLayout(QVBoxLayout())
+        dialog.layout().addWidget(form_widget)
+        dialog.layout().addWidget(button_box)
+
+        if username:
+            password_lineedit.setFocus()
+        else:
+            username_lineedit.setFocus()
+
+        # Execute the dialog.
+        if dialog.exec() == QDialog.Rejected:
+            return self.set_status(Status.Rejected)
+
+        # Check our authentication to see if it's good.
+        username = username_lineedit.text()
+        password = password_lineedit.text()
+        auth = (username, password)
+        try:
+            if not ontheday.check_auth(auth):
+                status = Status.Rejected
+
+            status = Status.Ok
+        except (ConnectionError, IOError):
+            status = Status.Rejected
+
+        # Authentication failed. Oh well.
+        if status != Status.Ok:
+            QMessageBox.warning(parent, 'Error',
+                                'OnTheDay.net remote connection failed.')
+            return self.set_status(status)
+
+        # Authentication succeeded. Save the user name in the race properties, the password in the
+        # keyring, and stash away our authenticator so we can use it in subsequent ontheday module
+        # function calls to post results!
+        race_table_model.set_race_property(self.USERNAME, username)
+        keyring.set_password(ontheday.KEYRING_SERVICE, username, password)
+        self.auth = auth
+
+        QMessageBox.information(parent, 'Success',
+                                'OnTheDay.net remote connected successfully.')
+
+        return self.set_status(status)
+
+    def disconnect(self, parent):
+        race_table_model = self.modeldb.race_table_model
+
+        # We've been asked to disconnect (by the user). Forget our user name.
+        race_table_model.delete_race_property(self.USERNAME)
+
+        QMessageBox.information(parent, 'Disconnected',
+                                'OnTheDay.net remote disconnected successfully.')

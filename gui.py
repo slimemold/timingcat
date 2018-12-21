@@ -783,9 +783,33 @@ class SexyThymeMainWindow(QMainWindow):
             self.switch_to_start()
             return
 
+        ontheday.import_race(self.centralWidget().modeldb, auth, race)
+
         self.centralWidget().modeldb.add_defaults()
 
-        ontheday.import_race(self.centralWidget().modeldb, auth, race)
+        # Show import summary, and ask if we want to set up the remote connection.
+        field_table_model = self.centralWidget().modeldb.field_table_model
+        racer_table_model = self.centralWidget().modeldb.racer_table_model
+
+        message_text = (('Imported %s. ' %
+                         common.pretty_list([common.pluralize('field',
+                                                              field_table_model.rowCount()),
+                                      common.pluralize('racer',
+                                                       racer_table_model.rowCount())])) +
+                        'Would you like to set up the OnTheDay.net remote connection?')
+
+        msg_box = QMessageBox()
+        msg_box.setWindowTitle(common.APPLICATION_NAME)
+        msg_box.setText('Import complete.')
+
+        msg_box.setInformativeText(message_text)
+        msg_box.addButton(QMessageBox.Ok)
+        msg_box.addButton('Later', QMessageBox.RejectRole)
+        msg_box.setDefaultButton(QMessageBox.Ok)
+        msg_box.setIcon(QMessageBox.Question)
+
+        if msg_box.exec() == QMessageBox.Ok:
+            self.connect_remote(remotes.OnTheDayRemote)
 
     def generate_reports(self):
         """Show the reports window."""

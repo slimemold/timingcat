@@ -50,6 +50,17 @@ __email__ = common.EMAIL
 __status__ = common.STATUS
 
 URL = 'https://ontheday.net'
+KEYRING_SERVICE = 'ontheday.net'
+QSETTINGS_GROUP = 'ontheday'
+QSETTINGS_KEY_USERNAME = 'username'
+
+def check_auth(auth):
+    """Check that the authenticator is good.
+
+    For this, we can do a simple transaction and make sure it comes back with
+    something.
+    """
+    return len(get_race_list(auth)) > 0
 
 def get_race_list(auth):
     """Gets the list of races that are visible from a particular authentication.
@@ -173,7 +184,9 @@ def import_race(modeldb, auth, race):
         racer_list = get_racer_list(auth, field)
 
         for racer in racer_list:
-            metadata = {'ontheday_id': racer['id']}
+            metadata = {'ontheday': {'id': racer['id'],
+                                     'tt_finish_time_url': racer['tt_finish_time_url']}}
+
             racer_table_model.add_racer(str(racer['race_number']),
                                         racer['firstname'],
                                         racer['lastname'],
@@ -190,21 +203,20 @@ def import_race(modeldb, auth, race):
     race_table_model = modeldb.race_table_model
     race_table_model.set_race_property(race_table_model.NAME, race['name'])
     race_table_model.set_race_property(race_table_model.DATE, race['date'])
+    race_table_model.set_race_property('ontheday_race', json.dumps(race))
 
-    notes = 'Imported from OnTheDay.net on %s' % QDateTime.currentDateTime()
+    notes = 'Imported from OnTheDay.net on %s.' % QDateTime.currentDateTime().toString(Qt.ISODate)
     race_table_model.set_race_property(race_table_model.NOTES, notes)
 
 class IntroductionPage(QWizardPage):
     """Introductory page of the import wizard that describes what we are about to do."""
-    def __init__(self, parent=None):
+    def __init__(self, intro_text, parent=None):
         """Initialize the IntroductionPage instance."""
         super().__init__(parent=parent)
 
         self.setTitle('Introduction')
 
-        label = QLabel('This wizard will authenticate with OnTheDay.net and import an existing '
-                       'race configuration. Optionally, a remote connection to the race will be '
-                       'established (or this can be done at a later time).')
+        label = QLabel(intro_text)
         label.setWordWrap(True)
 
         self.setLayout(QVBoxLayout())
@@ -219,10 +231,6 @@ class AuthenticationPage(QWizardPage):
     """
     USERNAME_FIELD = 'Username'
     PASSWORD_FIELD = 'Password'
-
-    KEYRING_SERVICE = 'ontheday.net'
-
-    USERNAME_QSETTING = 'username'
 
     def __init__(self, parent=None):
         """Initialize the AuthenticationPage instance."""
@@ -259,10 +267,9 @@ class AuthenticationPage(QWizardPage):
         self.status_label.setText('')
 
         # See if we have an OnTheDay.net username cached in our application settings.
-        group_name = __name__
         settings = QSettings()
-        settings.beginGroup(group_name)
-        username = settings.value(self.USERNAME_QSETTING)
+        settings.beginGroup(QSETTINGS_GROUP)
+        username = settings.value(QSETTINGS_KEY_USERNAME)
         settings.endGroup()
         if not username:
             return
@@ -271,7 +278,7 @@ class AuthenticationPage(QWizardPage):
         self.setField(self.USERNAME_FIELD, username)
 
         # See if we have a password in our keyring for this username.
-        password = keyring.get_password(self.KEYRING_SERVICE, username)
+        password = keyring.get_password(KEYRING_SERVICE, username)
         if not password:
             return
 
@@ -297,13 +304,12 @@ class AuthenticationPage(QWizardPage):
         self.wizard().race_list = race_list
 
         # Cache the username, and stick the password into the keyring.
-        group_name = __name__
         settings = QSettings()
-        settings.beginGroup(group_name)
-        settings.setValue(self.USERNAME_QSETTING, username)
+        settings.beginGroup(QSETTINGS_GROUP)
+        settings.setValue(QSETTINGS_KEY_USERNAME, username)
         settings.endGroup()
 
-        keyring.set_password(self.KEYRING_SERVICE, username, password)
+        keyring.set_password(KEYRING_SERVICE, username, password)
 
         return True
 
@@ -513,9 +519,27 @@ class ImportWizard(QWizard):
         race_selection_page.setTitle('Race Selection')
 
         # Create the wizard and add our pages.
-        self.setWindowTitle("OnTheDay.net race config import")
-        self.addPage(IntroductionPage())
+        self.setWindowTitle('OnTheDay.net race config import')
+        self.addPage(IntroductionPage('This wizard will authenticate with OnTheDay.net and import '
+                                      'an existing race configuration. Optionally, a remote '
+                                      'connection to the race will be established (or this can be '
+                                      'done at a later time).'))
         self.addPage(AuthenticationPage())
         self.addPage(RaceSelectionPage())
         self.addPage(FileSelectionPage())
         self.addPage(ImportPage())
+
+class RemoteSetupWizard(QWizard):
+    """OnTheDay.net remote setup wizard.
+
+    """
+    def __init__(self, race, parent=None):
+        """Initialize the RemoteSetupWizard instance."""
+        super().__init__(parent=parent)
+
+        self.setWindowTitle('OnTheDay.net remote setup')
+        self.addPage(IntroductionPage('This wizard will set up the OnTheDay.net remote connection, '
+                                      'allowing race results to be pushed up to the OnTheDay.net '
+                                      'server as they are committed.'))
+        self.addPage(AuthenticationPage())
+        self.addPage(RaceSelectionPage(race))
