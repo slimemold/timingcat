@@ -904,6 +904,9 @@ class SexyThymeMainWindow(QMainWindow):
 
             return msg_box.exec() == QMessageBox.Ok
 
+        if self.remote:
+            self.remote.stop()
+
         return True
 
     def set_window_flag_stays_on_top(self, state):

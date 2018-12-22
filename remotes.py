@@ -6,8 +6,10 @@ This module contains implementations for the optional remotes that can be used. 
 remote service on which we can push results (typically, racer finishes).
 """
 
+import queue
 from random import random
 import sys
+import threading
 from PyQt5.QtCore import QObject, QSettings, QTimer, Qt, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QWidget
 from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
@@ -257,13 +259,17 @@ class OnTheDayRemote(Remote):
     name = 'OnTheDay.net Remote'
 
     USERNAME = 'username'
+    TIMER_INTERVAL_MS = 1000 # 1 second
 
     def __init__(self, modeldb):
-        """Initialize the SimulatedRemote instance."""
+        """Initialize the OnTheDayRemote instance."""
         super().__init__(modeldb)
 
         self.auth = None
-        self.remote_timer = None
+        self.timer = None
+        self.pending_queue = queue.Queue()
+        self.done_queue = queue.Queue()
+        self.thread = OnTheDayThread(self.pending_queue, self.done_queue)
 
     def connect(self, parent):
         race_table_model = self.modeldb.race_table_model
@@ -341,10 +347,22 @@ class OnTheDayRemote(Remote):
         keyring.set_password(ontheday.KEYRING_SERVICE, username, password)
         self.auth = auth
 
+        # Start our worker thread.
+        self.thread.start()
+
+        # Start our update timer.
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.timer_tick)
+        self.timer.start(self.TIMER_INTERVAL_MS)
+
         QMessageBox.information(parent, 'Success',
                                 'OnTheDay.net remote connected successfully.')
 
         return self.set_status(status)
+
+    def stop(self):
+        # Stop our worker thread.
+        self.thread.should_run = False
 
     def disconnect(self, parent):
         race_table_model = self.modeldb.race_table_model
@@ -352,5 +370,79 @@ class OnTheDayRemote(Remote):
         # We've been asked to disconnect (by the user). Forget our user name.
         race_table_model.delete_race_property(self.USERNAME)
 
+        # Stop our update timer.
+        self.timer.stop()
+        self.timer = None
+
+        # Stop our worker thread.
+        self.stop()
+
         QMessageBox.information(parent, 'Disconnected',
                                 'OnTheDay.net remote disconnected successfully.')
+
+    def timer_tick(self):
+        """Called by Qt every TIMER_INTERVAL_MS (1s) within the main event thread.
+
+        Use this function to collect results to post to OnTheDay.net.
+        """
+        # If results queue is not empty, there is still work to do, so don't bother collecting more
+        # results.
+        if not self.pending_queue.empty():
+            return
+
+        # Iterate through all racers and put pending results on the results queue.
+        racer_table_model = self.modeldb.racer_table_model
+        for row in range(racer_table_model.rowCount()):
+            record = racer_table_model.record(row)
+
+            bib = record.value(racer_table_model.BIB)
+            start = record.value(racer_table_model.START)
+            finish = record.value(racer_table_model.FINISH)
+            status = record.value(racer_table_model.STATUS)
+
+            if msecs_is_valid(start) and msecs_is_valid(finish) and (status != 'remote'):
+                result = {'bib': bib,
+                          'start': start,
+                          'finish': finish,
+                          'row': row}
+
+                self.pending_queue.put(result)
+                print('ontheday remote queued up bib #%s' % result['bib'])
+
+        # Process all done requests (by marking the status column as submitted).
+        while not self.done_queue.empty():
+            result = self.done_queue.get()
+
+            print('ontheday result submitted for bib #%s' % result['bib'])
+
+            racer_table_model = self.modeldb.racer_table_model
+            racer_status_column = racer_table_model.status_column
+
+            index = racer_table_model.index(result['row'], racer_status_column)
+            racer_table_model.setData(index, 'remote')
+            racer_table_model.dataChanged.emit(index, index)
+
+class OnTheDayThread(threading.Thread):
+    """OnTheDay.net worker actually does the REST call to submit a result.
+
+    Doing REST calls and waiting synchronously for results to come back will block for an
+    intolerably long time, so we do this in a separate thread such that we don't block the UI. This
+    is important for latching finish times accurately.
+    """
+
+    def __init__(self, pending_queue, done_queue):
+        """Initialize the OnTheDayRemoteWorker instance."""
+        super().__init__()
+
+        self.should_run = True
+        self.pending_queue = pending_queue
+        self.done_queue = done_queue
+
+    def run(self):
+        """Submit a batch of results to OnTheDay.net."""
+        while self.should_run:
+            try:
+                result = self.pending_queue.get(block=True, timeout=1)
+            except queue.Empty:
+                continue
+            self.done_queue.put(result)
