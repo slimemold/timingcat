@@ -361,7 +361,7 @@ class OnTheDayRemote(Remote):
         return self.set_status(status)
 
     def stop(self):
-        # Stop our worker thread.
+        """Stop our worker thread."""
         self.thread.should_run = False
 
     def disconnect(self, parent):
