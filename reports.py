@@ -201,9 +201,9 @@ def generate_finish_report(modeldb, field_name):
         html += '<table>'
 
         html += ('<tr><th class="place">Place</th> <th class="number">Bib #</th> ' +
-                '<th class="first">First</th> <th class="last">Last</th> ' +
-                '<th class="category">Cat</th> <th class="team">Team</th> ' + 
-                '<th class="finish_h">Finish</th> <th class="age">Age</th> </tr>')
+                 '<th class="first">First</th> <th class="last">Last</th> ' +
+                 '<th class="category">Cat</th> <th class="team">Team</th> ' +
+                 '<th class="finish_h">Finish</th> <th class="age">Age</th> </tr>')
 
         # Build (result, row) list and sort by result.
         result_list = get_result_row_list(model, cat_list)
