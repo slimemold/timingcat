@@ -443,8 +443,6 @@ class SexyThymeMainWindow(QMainWindow):
 
         self.read_settings()
 
-        self.setWindowTitle(common.APPLICATION_NAME)
-
         self.setup_menubar()
 
         self.remote = None
@@ -467,6 +465,9 @@ class SexyThymeMainWindow(QMainWindow):
         if self.centralWidget():
             self.centralWidget().close()
 
+        # No race file loaded. Just use the application name as the window title.
+        self.setWindowTitle(common.APPLICATION_NAME)
+
         self.setCentralWidget(StartCentralWidget())
 
         self.close_file_menu_action.setEnabled(False)
@@ -481,6 +482,10 @@ class SexyThymeMainWindow(QMainWindow):
         # Clean up old central widget, which will clean up the model we gave it.
         if self.centralWidget():
             self.centralWidget().close()
+
+        # Window title should be the path-less, extension-less name of the race file.
+        basename, _ = os.path.splitext(os.path.basename(filename))
+        self.setWindowTitle(basename)
 
         # Make a new model, and give it to a new central widget.
         model = ModelDatabase(filename, new)
