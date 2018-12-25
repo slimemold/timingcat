@@ -70,6 +70,9 @@ def get_race_list(auth):
         "url": URL to this race's event list
         "name": Printable name of the race
         "date": yyyy-mm-dd of the race
+        "bulk_update_url": URL for posting results
+        "bulk_update_limit": number of results that can be posted in a single transaction
+        "bulk_update_fields": fields in a result dict
     }
     """
     race_list = []
@@ -84,6 +87,18 @@ def get_race_list(auth):
 
         race_list += response['results']
         next_url = response['next']
+
+    # For each race in the race list, get some details that are available in the race's event list.
+    for race in race_list:
+        url = race['url']
+        response = requests.get(url, auth=auth)
+        if not response.ok:
+            response.raise_for_status()
+        response = json.loads(response.text)
+
+        race['bulk_update_url'] = response['bulk_update_url']
+        race['bulk_update_limit'] = response['bulk_update_limit']
+        race['bulk_update_fields'] = response['bulk_update_fields']
 
     return race_list
 
@@ -207,6 +222,23 @@ def import_race(modeldb, auth, race):
 
     notes = 'Imported from OnTheDay.net on %s.' % QDateTime.currentDateTime().toString(Qt.ISODate)
     race_table_model.set_race_property(race_table_model.NOTES, notes)
+
+def submit_results(auth, race, result_list):
+    """Submits a list of results.
+
+    A result is a dict that takes the following form:
+        {'id': 137217,
+         'watch_finish_time': '00:18:30.9'}
+
+    URL: https://ontheday.net/api/entry/tt_finish_time/
+    """
+    url = race['bulk_update_url']
+    headers = {'content-type': 'application/json'}
+    data = json.dumps(result_list)
+
+    response = requests.post(url, auth=auth, headers=headers, data=data)
+    if not response.ok:
+        response.raise_for_status()
 
 class IntroductionPage(QWizardPage):
     """Introductory page of the import wizard that describes what we are about to do."""

@@ -6,14 +6,16 @@ This module contains implementations for the optional remotes that can be used. 
 remote service on which we can push results (typically, racer finishes).
 """
 
-import queue
+import json
 from random import random
 import sys
 import threading
+import time
 from PyQt5.QtCore import QObject, QSettings, QTimer, Qt, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QWidget
 from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
 import keyring
+import requests
 import common
 import ontheday
 from racemodel import msecs_is_valid
@@ -73,13 +75,13 @@ def get_remote_class_from_string(class_string):
 
 class Remote(QObject):
     """Parent class of all remotes."""
-    last_status = Status.Ok
 
     def __init__(self, modeldb):
         """Initialize the Remote instance."""
         super().__init__()
 
         self.modeldb = modeldb
+        self.last_status = Status.Ok
 
     def connect(self, parent):
         """Connect to the remote. Return status of the connect operation.
@@ -266,10 +268,13 @@ class OnTheDayRemote(Remote):
         super().__init__(modeldb)
 
         self.auth = None
+        self.race = None
         self.timer = None
-        self.pending_queue = queue.Queue()
-        self.done_queue = queue.Queue()
-        self.thread = OnTheDayThread(self.pending_queue, self.done_queue)
+        self.pending_queue = []
+        self.pending_queue_lock = threading.Lock()
+        self.done_queue = []
+        self.done_queue_lock = threading.Lock()
+        self.thread = OnTheDayThread(self)
 
     def connect(self, parent):
         race_table_model = self.modeldb.race_table_model
@@ -327,10 +332,10 @@ class OnTheDayRemote(Remote):
         password = password_lineedit.text()
         auth = (username, password)
         try:
-            if not ontheday.check_auth(auth):
+            if ontheday.check_auth(auth):
+                status = Status.Ok
+            else:
                 status = Status.Rejected
-
-            status = Status.Ok
         except (ConnectionError, IOError):
             status = Status.Rejected
 
@@ -346,6 +351,9 @@ class OnTheDayRemote(Remote):
         race_table_model.set_race_property(self.USERNAME, username)
         keyring.set_password(ontheday.KEYRING_SERVICE, username, password)
         self.auth = auth
+
+        # Save the race, needed for results submission.
+        self.race = json.loads(race_table_model.get_race_property('ontheday_race'))
 
         # Start our worker thread.
         self.thread.start()
@@ -376,6 +384,7 @@ class OnTheDayRemote(Remote):
 
         # Stop our worker thread.
         self.stop()
+        self.thread = None
 
         QMessageBox.information(parent, 'Disconnected',
                                 'OnTheDay.net remote disconnected successfully.')
@@ -385,42 +394,47 @@ class OnTheDayRemote(Remote):
 
         Use this function to collect results to post to OnTheDay.net.
         """
-        # If results queue is not empty, there is still work to do, so don't bother collecting more
-        # results.
-        if not self.pending_queue.empty():
-            return
+        # If results queue is empty, try to fill it by scanning the racer list for pending results.
+        if not self.pending_queue:
+            with self.pending_queue_lock:
+                race_table_model = self.modeldb.race_table_model
+                racer_table_model = self.modeldb.racer_table_model
 
-        # Iterate through all racers and put pending results on the results queue.
-        racer_table_model = self.modeldb.racer_table_model
-        for row in range(racer_table_model.rowCount()):
-            record = racer_table_model.record(row)
+                # Iterate through all racers and put pending results on the results queue.
+                for row in range(racer_table_model.rowCount()):
+                    record = racer_table_model.record(row)
 
-            bib = record.value(racer_table_model.BIB)
-            start = record.value(racer_table_model.START)
-            finish = record.value(racer_table_model.FINISH)
-            status = record.value(racer_table_model.STATUS)
+                    metadata = json.loads(record.value(racer_table_model.METADATA))
+                    start = record.value(racer_table_model.START)
+                    finish = record.value(racer_table_model.FINISH)
+                    status = record.value(racer_table_model.STATUS)
 
-            if msecs_is_valid(start) and msecs_is_valid(finish) and (status != 'remote'):
-                result = {'bib': bib,
-                          'start': start,
-                          'finish': finish,
-                          'row': row}
+                    # Stuff to go into the ontheday result submission.
+                    ontheday_id = metadata['ontheday']['id']
+                    reference_clock_datetime = race_table_model.get_reference_clock_datetime()
+                    finish_time = reference_clock_datetime.addMSecs(finish)
+                    ontheday_watch_finish_time = finish_time.time().toString(Qt.ISODateWithMs)
 
-                self.pending_queue.put(result)
-                print('ontheday remote queued up bib #%s' % result['bib'])
+                    if msecs_is_valid(start) and msecs_is_valid(finish) and (status != 'remote'):
+                        result = {'ontheday': {'id': ontheday_id,
+                                               'watch_finish_time': ontheday_watch_finish_time},
+                                  'row': row}
+
+                        self.pending_queue.append(result)
 
         # Process all done requests (by marking the status column as submitted).
-        while not self.done_queue.empty():
-            result = self.done_queue.get()
+        if self.done_queue:
+            with self.done_queue_lock:
+                for result in self.done_queue:
 
-            print('ontheday result submitted for bib #%s' % result['bib'])
+                    racer_table_model = self.modeldb.racer_table_model
+                    racer_status_column = racer_table_model.status_column
 
-            racer_table_model = self.modeldb.racer_table_model
-            racer_status_column = racer_table_model.status_column
+                    index = racer_table_model.index(result['row'], racer_status_column)
+                    racer_table_model.setData(index, 'remote')
+                    racer_table_model.dataChanged.emit(index, index)
 
-            index = racer_table_model.index(result['row'], racer_status_column)
-            racer_table_model.setData(index, 'remote')
-            racer_table_model.dataChanged.emit(index, index)
+                self.done_queue = []
 
 class OnTheDayThread(threading.Thread):
     """OnTheDay.net worker actually does the REST call to submit a result.
@@ -430,19 +444,33 @@ class OnTheDayThread(threading.Thread):
     is important for latching finish times accurately.
     """
 
-    def __init__(self, pending_queue, done_queue):
+    def __init__(self, remote):
         """Initialize the OnTheDayRemoteWorker instance."""
         super().__init__()
 
         self.should_run = True
-        self.pending_queue = pending_queue
-        self.done_queue = done_queue
+        self.remote = remote
 
     def run(self):
         """Submit a batch of results to OnTheDay.net."""
         while self.should_run:
-            try:
-                result = self.pending_queue.get(block=True, timeout=1)
-            except queue.Empty:
-                continue
-            self.done_queue.put(result)
+            ontheday_results_list = None
+            limit = self.remote.race['bulk_update_limit']
+
+            with self.remote.pending_queue_lock:
+                ontheday_results_list = list(map(lambda result: result['ontheday'],
+                                                 self.remote.pending_queue[0:limit]))
+            if ontheday_results_list:
+                try:
+                    ontheday.submit_results(self.remote.auth, self.remote.race,
+                                            ontheday_results_list)
+
+                    with self.remote.pending_queue_lock and self.remote.done_queue_lock:
+                        self.remote.done_queue += self.remote.pending_queue[0:limit]
+                        self.remote.pending_queue = self.remote.pending_queue[limit:]
+
+                    self.remote.set_status(Status.Ok)
+                except requests.exceptions.ConnectionError:
+                    self.remote.set_status(Status.TimedOut)
+
+            time.sleep(1)
