@@ -894,6 +894,8 @@ class SexyThymeMainWindow(QMainWindow):
 
     def should_close(self):
         """Ask user if we really want to close the app."""
+        should_close = True
+
         # If there are unsubmitted results, give the user a chance to cancel
         # the quit...not that the user will lose anything, but just as a heads
         # up that there's unfinished business on the part of the user.
@@ -908,12 +910,12 @@ class SexyThymeMainWindow(QMainWindow):
             msg_box.setDefaultButton(QMessageBox.Cancel)
             msg_box.setIcon(QMessageBox.Information)
 
-            return msg_box.exec() == QMessageBox.Ok
+            should_close = msg_box.exec() == QMessageBox.Ok
 
-        if self.remote:
+        if should_close and self.remote:
             self.remote.stop()
 
-        return True
+        return should_close
 
     def set_window_flag_stays_on_top(self, state):
         """Change the Qt.WindowStaysOnTop window flag.
