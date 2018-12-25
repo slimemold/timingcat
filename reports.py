@@ -157,7 +157,8 @@ def generate_finish_report(modeldb, field_name):
     model.setFilter('%s = "%s"' % (RacerTableModel.FIELD_ALIAS, field_name))
     model.select()
 
-    html =  '<style>'
+    html = ''
+    html += '<style>'
     html += ('h1 {'
              '   font-size: 12pt;'
              '}')
@@ -166,7 +167,7 @@ def generate_finish_report(modeldb, field_name):
              '}')
     html += ('h3 {'
              '   font-size: 10pt;'
-             '}')    
+             '}')
     html += ('table {'
              '   font-size: 10pt;'
              '}')
@@ -179,10 +180,10 @@ def generate_finish_report(modeldb, field_name):
              '}')
     html += ('.first, .last, .team {'
              '   text-align: left;'
-             '}') 
+             '}')
     html += ('.finish {'
              '   text-align: right;'
-             '}') 
+             '}')
     html += '</style>'
 
     html += '<h1>%s</h1>' % modeldb.race_table_model.get_race_property(RaceTableModel.NAME)
@@ -199,9 +200,10 @@ def generate_finish_report(modeldb, field_name):
 
         html += '<table>'
 
-        html += ('<tr><th class="place">Place</th> <th class="number">Bib #</th> <th class="first">First</th> ' + 
-            '<th class="last">Last</th> <th class="category">Cat</th> <th class="team">Team</th> ' +
-            '<th class="finish_h">Finish</th> <th class="age">Age</th> </tr>')
+        html += ('<tr><th class="place">Place</th> <th class="number">Bib #</th> ' +
+                '<th class="first">First</th> <th class="last">Last</th> ' +
+                '<th class="category">Cat</th> <th class="team">Team</th> ' + 
+                '<th class="finish_h">Finish</th> <th class="age">Age</th> </tr>')
 
         # Build (result, row) list and sort by result.
         result_list = get_result_row_list(model, cat_list)
