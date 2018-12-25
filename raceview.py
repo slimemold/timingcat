@@ -728,6 +728,19 @@ class ResultTableView(QTableView):
 
         return super().eventFilter(watched, event)
 
+    def mouseReleaseEvent(self, event): #pylint: disable=invalid-name
+        """Do normal processing of mouse release, emit signal if this results in no selection.
+
+        Emit clicked_without_selection signal if the mouse release (perhaps as a result of a click
+        or double click) results in no selection. Useful for allowing this widget to be robbed of
+        its keyboard focus.
+        """
+        super().mouseReleaseEvent(event)
+
+        # See if there is a selection. If not, give up the keyboard focus.
+        if not self.selectionModel().hasSelection():
+            self.clicked_without_selection.emit()
+
     def setup_tooltip(self):
         """Set up the state required for supporting the racer info on hover tool tip."""
         self.popup = QDialog(self, Qt.Popup | Qt.ToolTip)
@@ -914,3 +927,4 @@ class ResultTableView(QTableView):
 
     # Signals.
     visibleChanged = pyqtSignal(bool)
+    clicked_without_selection = pyqtSignal()

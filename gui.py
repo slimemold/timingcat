@@ -261,6 +261,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.result_table_view.selectionModel().selectionChanged.connect(
                                                   self.result_selection_changed)
         self.result_table_view.resultDeleted.connect(self.return_focus_to_result_input)
+        self.result_table_view.clicked_without_selection.connect(self.return_focus_to_result_input)
 
         # Signals/slots for result input.
         self.result_input.returnPressed.connect(self.new_result)
