@@ -6,7 +6,7 @@ This module contains the dialog that can be used to generate race reports.
 """
 
 import re
-from PyQt5.QtCore import QSettings
+from PyQt5.QtCore import QSettings, Qt
 from PyQt5.QtGui import QTextDocument
 from PyQt5.QtPrintSupport import QPrintDialog, QPrinter
 from PyQt5.QtWidgets import QComboBox, QDialog, QGroupBox, QPushButton, QRadioButton
@@ -157,8 +157,36 @@ def generate_finish_report(modeldb, field_name):
     model.setFilter('%s = "%s"' % (RacerTableModel.FIELD_ALIAS, field_name))
     model.select()
 
-    html = '<h1>%s</h1>' % modeldb.race_table_model.get_race_property(RaceTableModel.NAME)
-    html += '%s' % modeldb.race_table_model.get_date().toString()
+    html =  '<style>'
+    html += ('h1 {'
+             '   font-size: 12pt;'
+             '}')
+    html += ('h2 {'
+             '   font-size: 10pt;'
+             '}')
+    html += ('h3 {'
+             '   font-size: 10pt;'
+             '}')    
+    html += ('table {'
+             '   font-size: 10pt;'
+             '}')
+    html += ('td, th {'
+             '   border: 3px solid black;'
+             '   padding: 5px;'
+             '}')
+    html += ('.place, .number, .category, .age, .finish_h {'
+             '   text-align: center;'
+             '}')
+    html += ('.first, .last, .team {'
+             '   text-align: left;'
+             '}') 
+    html += ('.finish {'
+             '   text-align: right;'
+             '}') 
+    html += '</style>'
+
+    html += '<h1>%s</h1>' % modeldb.race_table_model.get_race_property(RaceTableModel.NAME)
+    html += '%s' % modeldb.race_table_model.get_date().toString(Qt.DefaultLocaleLongDate)
     html += '<h2>Results: %s</h2>' % field_name
 
     for cat_list in subfield_list_by_cat:
@@ -171,8 +199,9 @@ def generate_finish_report(modeldb, field_name):
 
         html += '<table>'
 
-        html += ('<tr><td>Place</td> <td>#</td> <td>First</td> <td>Last</td> <td>Cat</td> ' +
-                 '<td>Team</td> <td>Finish</td> <td>Age</td> </tr>')
+        html += ('<tr><th class="place">Place</th> <th class="number">Bib #</th> <th class="first">First</th> ' + 
+            '<th class="last">Last</th> <th class="category">Cat</th> <th class="team">Team</th> ' +
+            '<th class="finish_h">Finish</th> <th class="age">Age</th> </tr>')
 
         # Build (result, row) list and sort by result.
         result_list = get_result_row_list(model, cat_list)
@@ -192,14 +221,14 @@ def generate_finish_report(modeldb, field_name):
             team = model.index(row, model.team_column).data()
             age = model.index(row, model.age_column).data()
 
-            html += ('<tr><td>%s</td> ' % place +
-                     '<td>%s</td> ' % bib +
-                     '<td>%s</td> ' % first_name +
-                     '<td>%s</td> ' % last_name +
-                     '<td>%s</td> ' % category +
-                     '<td>%s</td> ' % team +
-                     '<td>%s</td> ' % result +
-                     '<td>%s</td> ' % age +
+            html += ('<tr><td class="place">%s</td> ' % place +
+                     '<td class="number">%s</td> ' % bib +
+                     '<td class="first">%s</td> ' % first_name +
+                     '<td class="last">%s</td> ' % last_name +
+                     '<td class="category">%s</td> ' % category +
+                     '<td class="team">%s</td> ' % team +
+                     '<td class="finish">%s</td> ' % result +
+                     '<td class="age">%s</td> ' % age +
                      '</tr>')
 
             place += 1
