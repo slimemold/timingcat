@@ -7,7 +7,8 @@ This is the execution entry point for the app.
 
 import argparse
 import sys
-from PyQt5.QtWidgets import QApplication
+import traceback
+from PyQt5.QtWidgets import QApplication, QMessageBox
 import common
 from gui import SexyThymeMainWindow
 
@@ -34,6 +35,23 @@ __version__ = common.VERSION
 __maintainer__ = common.MAINTAINER
 __email__ = common.EMAIL
 __status__ = common.STATUS
+
+def excepthook(exc_type, exc_value, exc_traceback):
+    """Show the exception in an error dialog.
+
+    Also, call the old except hook to get the normal behavior as well.
+    """
+    if _old_excepthook:
+        _old_excepthook(exc_type, exc_value, exc_traceback)
+
+    exception_str = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
+    QMessageBox.critical(None, exc_type.__name__,
+                         'Unhandled exception (please send to %s)!\n\n%s' % (common.EMAIL,
+                                                                              exception_str))
+
+# Install our custom exception hook.
+_old_excepthook = sys.excepthook #pylint: disable=invalid-name
+sys.excepthook = excepthook
 
 def main():
     """The main() function creates the main window and starts the event loop."""
