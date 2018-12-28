@@ -4,6 +4,8 @@ commonizes
 config
 csv
 datetime
+deselect
+deselects
 enum
 Faure
 linting

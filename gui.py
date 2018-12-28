@@ -273,6 +273,12 @@ class MainCentralWidget(QWidget, CentralWidget):
         shortcut = QShortcut(QKeySequence('CTRL+S'), self)
         shortcut.activated.connect(self.handle_submit_shortcut)
 
+        shortcut = QShortcut(QKeySequence('CTRL+A'), self)
+        shortcut.activated.connect(self.handle_select_all_shortcut)
+
+        shortcut = QShortcut(QKeySequence('CTRL+D'), self)
+        shortcut.activated.connect(self.handle_deselect_all_shortcut)
+
         shortcut = QShortcut(QKeySequence('CTRL+R'), self)
         shortcut.activated.connect(self.handle_racer_shortcut)
 
@@ -400,6 +406,21 @@ class MainCentralWidget(QWidget, CentralWidget):
             self.result_table_view.selectAll()
 
         self.handle_result_submit()
+
+    def handle_select_all_shortcut(self):
+        """Handle select all shortcut.
+
+        Regardless of the current selection, this shortcut selects everything in the results list.
+        """
+        self.result_table_view.selectAll()
+
+    def handle_deselect_all_shortcut(self):
+        """Handle deselect all shortcut.
+
+        Regardless of the current selection, this shortcut deselects everything in the results
+        list.
+        """
+        self.result_table_view.clearSelection()
 
     def handle_racer_shortcut(self):
         """Handle show racer table shortcut."""
