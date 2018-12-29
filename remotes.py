@@ -18,7 +18,7 @@ import keyring
 import requests
 import common
 import ontheday
-from racemodel import msecs_is_valid
+from racemodel import msecs_is_valid, MSECS_DNF, MSECS_DNP
 
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
@@ -412,8 +412,13 @@ class OnTheDayRemote(Remote):
                     # Stuff to go into the ontheday result submission.
                     ontheday_id = metadata['ontheday']['id']
                     reference_clock_datetime = race_table_model.get_reference_clock_datetime()
-                    finish_time = reference_clock_datetime.addMSecs(finish)
-                    ontheday_watch_finish_time = finish_time.time().toString(Qt.ISODateWithMs)
+                    if msecs_is_valid(finish):
+                        finish_time = reference_clock_datetime.addMSecs(finish)
+                        ontheday_watch_finish_time = finish_time.time().toString(Qt.ISODateWithMs)
+                    elif finish in (MSECS_DNF, MSECS_DNP):
+                        ontheday_watch_finish_time = 'DNF'
+                    else:
+                        ontheday_watch_finish_time = '0'
 
                     if msecs_is_valid(start) and msecs_is_valid(finish) and (status != 'remote'):
                         result = {'ontheday': {'id': ontheday_id,

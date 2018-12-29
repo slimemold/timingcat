@@ -16,14 +16,15 @@ For example, simple authentication: get_race_list(('username', 'password'))
 import json
 import os
 from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt, QTime
-from PyQt5.QtWidgets import QAbstractItemView, QFileDialog, QHeaderView, QLabel, QLineEdit, \
-                            QPushButton, QTableWidget, QTableWidgetItem, QWidget
+from PyQt5.QtWidgets import QAbstractItemView, QCheckBox, QFileDialog, QHeaderView, QLabel, \
+                            QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QWidget
 from PyQt5.QtWidgets import QWizard, QWizardPage
 from PyQt5.QtWidgets import QFormLayout, QHBoxLayout, QVBoxLayout
 import requests
 import keyring
 import common
-from racemodel import MSECS_UNINITIALIZED
+import defaults
+from racemodel import msecs_is_valid, MSECS_DNF, MSECS_UNINITIALIZED
 
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
@@ -80,7 +81,7 @@ def get_race_list(auth):
     next_url = URL + '/api/races/'
 
     while next_url:
-        response = requests.get(next_url, auth=auth)
+        response = requests.get(next_url, auth=auth, timeout=defaults.REQUESTS_TIMEOUT_SECS)
         if not response.ok:
             response.raise_for_status()
         response = json.loads(response.text)
@@ -91,7 +92,7 @@ def get_race_list(auth):
     # For each race in the race list, get some details that are available in the race's event list.
     for race in race_list:
         url = race['url']
-        response = requests.get(url, auth=auth)
+        response = requests.get(url, auth=auth, timeout=defaults.REQUESTS_TIMEOUT_SECS)
         if not response.ok:
             response.raise_for_status()
         response = json.loads(response.text)
@@ -122,7 +123,7 @@ def get_field_list(auth, race):
 
     url = race['url']
 
-    response = requests.get(url, auth=auth)
+    response = requests.get(url, auth=auth, timeout=defaults.REQUESTS_TIMEOUT_SECS)
     if not response.ok:
         response.raise_for_status()
     response = json.loads(response.text)
@@ -140,7 +141,7 @@ def get_field_list(auth, race):
 
     return field_list
 
-def get_racer_list(auth, field):
+def get_racer_list(auth, field, get_results=False):
     """Gets the list of racers for a particular field.
 
     The field is identified by passing a field record returned by get_field_list().
@@ -156,22 +157,58 @@ def get_racer_list(auth, field):
         "team": Racer team name
         "racing_age": Racer racing age
         "gender": Racer gender
+        "finish": Finish time of racer (if get_results is True...otherwise, MSECS_UNINITIALIZED)
     }
     """
     racer_list = []
 
     url = field['category_start_list_url']
 
-    response = requests.get(url, auth=auth)
+    response = requests.get(url, auth=auth, timeout=defaults.REQUESTS_TIMEOUT_SECS)
     if not response.ok:
         response.raise_for_status()
     response = json.loads(response.text)
 
     racer_list = response['entries']
 
+    # Also get finish times for each racer.
+    for racer in racer_list:
+        if not get_results:
+            racer['finish'] = MSECS_UNINITIALIZED
+            continue
+
+        url = racer['tt_finish_time_url']
+
+        response = requests.get(url, auth=auth, timeout=defaults.REQUESTS_TIMEOUT_SECS)
+        if not response.ok:
+            response.raise_for_status()
+        response = json.loads(response.text)
+
+        finish_str = response['watch_finish_time']
+
+        print('Importing finish time for %s %s: %s' %
+              (racer['firstname'], racer['lastname'], finish_str))
+
+        if finish_str.upper() == 'DNF':
+            finish = MSECS_DNF
+        elif finish_str == '00:00:00':
+            finish = MSECS_UNINITIALIZED
+        else:
+            reference_datetime = QDateTime(QDate.currentDate())
+
+            date = reference_datetime.date()
+            time = QTime.fromString(finish_str, Qt.ISODateWithMs)
+            if time.isValid():
+                datetime = QDateTime(date, time)
+                finish = reference_datetime.msecsTo(datetime)
+            else:
+                finish = MSECS_UNINITIALIZED
+
+        racer['finish'] = finish
+
     return racer_list
 
-def import_race(modeldb, auth, race):
+def import_race(modeldb, auth, race, get_results=False):
     """Import a race.
 
     The race is identified by passing a race record returned by get_race_list().
@@ -191,16 +228,21 @@ def import_race(modeldb, auth, race):
 
         # This is start time expressed as wall time, from OnTheDay.net.
         start_clock = QDateTime(QDate.currentDate(),
-                                QTime.fromString(field['time_start'], Qt.ISODate))
+                                QTime.fromString(field['time_start'], Qt.ISODateWithMs))
 
         # Delta msecs from reference clock.
         start = reference_clock.msecsTo(start_clock)
 
-        racer_list = get_racer_list(auth, field)
+        racer_list = get_racer_list(auth, field, get_results)
 
         for racer in racer_list:
             metadata = {'ontheday': {'id': racer['id'],
                                      'tt_finish_time_url': racer['tt_finish_time_url']}}
+
+            if msecs_is_valid(racer['finish']):
+                status = 'remote'
+            else:
+                status = 'local'
 
             racer_table_model.add_racer(str(racer['race_number']),
                                         racer['firstname'],
@@ -210,8 +252,8 @@ def import_race(modeldb, auth, race):
                                         racer['team'],
                                         racer['racing_age'],
                                         start,
-                                        MSECS_UNINITIALIZED,
-                                        'local',
+                                        racer['finish'],
+                                        status,
                                         json.dumps(metadata))
 
     # Set race data.
@@ -236,7 +278,8 @@ def submit_results(auth, race, result_list):
     headers = {'content-type': 'application/json'}
     data = json.dumps(result_list)
 
-    response = requests.post(url, auth=auth, headers=headers, data=data)
+    response = requests.post(url, auth=auth, headers=headers, data=data,
+                             timeout=defaults.REQUESTS_TIMEOUT_SECS)
     if not response.ok:
         response.raise_for_status()
 
@@ -330,6 +373,9 @@ class AuthenticationPage(QWizardPage):
             race_list = get_race_list(auth)
         except requests.exceptions.HTTPError:
             self.status_label.setText('Authentication failure')
+            return False
+        except (requests.exceptions.ConnectTimeout, requests.exceptions.Timeout):
+            self.status_label.setText('Timeout')
             return False
 
         self.wizard().auth = auth
@@ -515,8 +561,12 @@ class ImportPage(QWizardPage):
         label = QLabel('Import setup complete. Click "Finish" to begin the race import operation.')
         label.setWordWrap(True)
 
+        self.get_results_checkbox = QCheckBox('Import racer finish times')
+        self.get_results_checkbox.setCheckState(Qt.Checked)
+
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(label)
+        self.layout().addWidget(self.get_results_checkbox)
 
         self.setButtonText(QWizard.FinishButton, 'Finish')
 
@@ -524,6 +574,11 @@ class ImportPage(QWizardPage):
         """Initialize page fields."""
         self.setSubTitle('Preparing to import %s' % (self.wizard().race['name'] + ' ' +
                                                      self.wizard().race['date']))
+
+    def validatePage(self): #pylint: disable=invalid-name
+        """No validation actually done here. Just store the check box state."""
+        self.wizard().get_results = self.get_results_checkbox.checkState() == Qt.Checked
+        return True
 
 class ImportWizard(QWizard):
     """OnTheDay.net import wizard.

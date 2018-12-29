@@ -15,6 +15,7 @@ from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPu
 from PyQt5.QtWidgets import QLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from PyQt5.QtWidgets import QApplication, QMainWindow
+import requests
 import bikereg
 import common
 import ontheday
@@ -802,6 +803,7 @@ class SexyThymeMainWindow(QMainWindow):
         filename = ontheday_import_wizard.filename
         auth = ontheday_import_wizard.auth
         race = ontheday_import_wizard.race
+        get_results = ontheday_import_wizard.get_results
 
         try:
             self.switch_to_main(filename, True)
@@ -810,7 +812,14 @@ class SexyThymeMainWindow(QMainWindow):
             self.switch_to_start()
             return
 
-        ontheday.import_race(self.centralWidget().modeldb, auth, race)
+        try:
+            ontheday.import_race(self.centralWidget().modeldb, auth, race, get_results)
+        except requests.exceptions.HTTPError:
+            QMessageBox.warning(self, 'Error', 'Authentication failure')
+            return
+        except (requests.exceptions.ConnectTimeout, requests.exceptions.Timeout):
+            QMessageBox.warning(self, 'Error', 'Import timeout')
+            return
 
         self.centralWidget().modeldb.add_defaults()
 
