@@ -208,7 +208,7 @@ def generate_finish_report(modeldb, field_name):
         # Build (result, row) list and sort by result.
         result_list = get_result_row_list(model, cat_list)
 
-        place = 1
+        position = 1
         for result, row in result_list:
             category = model.data(model.index(row, model.category_column))
             if not category or category == '':
@@ -222,6 +222,13 @@ def generate_finish_report(modeldb, field_name):
             last_name = model.index(row, model.last_name_column).data()
             team = model.index(row, model.team_column).data()
             age = model.index(row, model.age_column).data()
+            finish = model.index(row, model.finish_column).data()
+
+            if msecs_is_valid(finish):
+                place = position
+            else:
+                place = 'DNP'
+                result = '-'
 
             html += ('<tr><td class="place">%s</td> ' % place +
                      '<td class="number">%s</td> ' % bib +
@@ -233,7 +240,7 @@ def generate_finish_report(modeldb, field_name):
                      '<td class="age">%s</td> ' % age +
                      '</tr>')
 
-            place += 1
+            position += 1
 
         html += '</table>'
 
