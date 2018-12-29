@@ -11,7 +11,7 @@ from random import random
 import sys
 import threading
 import time
-from PyQt5.QtCore import QObject, QSettings, QTimer, Qt, pyqtSignal
+from PyQt5.QtCore import QDateTime, QDate, QObject, QSettings, QTimer, Qt, pyqtSignal
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QLineEdit, QMessageBox, QWidget
 from PyQt5.QtWidgets import QFormLayout, QVBoxLayout
 import keyring
@@ -397,7 +397,6 @@ class OnTheDayRemote(Remote):
         # If results queue is empty, try to fill it by scanning the racer list for pending results.
         if not self.pending_queue:
             with self.pending_queue_lock:
-                race_table_model = self.modeldb.race_table_model
                 racer_table_model = self.modeldb.racer_table_model
 
                 # Iterate through all racers and put pending results on the results queue.
@@ -411,9 +410,12 @@ class OnTheDayRemote(Remote):
 
                     # Stuff to go into the ontheday result submission.
                     ontheday_id = metadata['ontheday']['id']
-                    reference_clock_datetime = race_table_model.get_reference_clock_datetime()
                     if msecs_is_valid(finish):
-                        finish_time = reference_clock_datetime.addMSecs(finish)
+                        # Report time relative to reference clock (which means just use msecs since
+                        # midnight).
+                        reference_datetime = QDateTime(QDate.currentDate())
+
+                        finish_time = reference_datetime.addMSecs(finish)
                         ontheday_watch_finish_time = finish_time.time().toString(Qt.ISODateWithMs)
                     elif finish in (MSECS_DNF, MSECS_DNP):
                         ontheday_watch_finish_time = 'DNF'
