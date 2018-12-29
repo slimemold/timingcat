@@ -225,7 +225,7 @@ def import_race(modeldb, auth, race):
                     finish = MSECS_UNINITIALIZED
 
             if finish == MSECS_UNINITIALIZED:
-                status = 'local'
+                status = ''
             else:
                 status = 'remote'
 

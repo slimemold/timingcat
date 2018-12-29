@@ -263,6 +263,9 @@ class OnTheDayRemote(Remote):
     USERNAME = 'username'
     TIMER_INTERVAL_MS = 1000 # 1 second
 
+    WATCH_FINISH_TIME_DNF = 'DNF'
+    WATCH_FINISH_TIME_TO_POST = '00:00:00'
+
     def __init__(self, modeldb):
         """Initialize the OnTheDayRemote instance."""
         super().__init__(modeldb)
@@ -404,7 +407,6 @@ class OnTheDayRemote(Remote):
                     record = racer_table_model.record(row)
 
                     metadata = json.loads(record.value(racer_table_model.METADATA))
-                    start = record.value(racer_table_model.START)
                     finish = record.value(racer_table_model.FINISH)
                     status = record.value(racer_table_model.STATUS)
 
@@ -418,11 +420,11 @@ class OnTheDayRemote(Remote):
                         finish_time = reference_datetime.addMSecs(finish)
                         ontheday_watch_finish_time = finish_time.time().toString(Qt.ISODateWithMs)
                     elif finish in (MSECS_DNF, MSECS_DNP):
-                        ontheday_watch_finish_time = 'DNF'
+                        ontheday_watch_finish_time = self.WATCH_FINISH_TIME_DNF
                     else:
-                        ontheday_watch_finish_time = '0'
+                        ontheday_watch_finish_time = self.WATCH_FINISH_TIME_TO_POST
 
-                    if msecs_is_valid(start) and msecs_is_valid(finish) and (status != 'remote'):
+                    if status == 'local':
                         result = {'ontheday': {'id': ontheday_id,
                                                'watch_finish_time': ontheday_watch_finish_time},
                                   'row': row}
@@ -438,7 +440,10 @@ class OnTheDayRemote(Remote):
                     racer_status_column = racer_table_model.status_column
 
                     index = racer_table_model.index(result['row'], racer_status_column)
-                    racer_table_model.setData(index, 'remote')
+                    if result['ontheday']['watch_finish_time'] == self.WATCH_FINISH_TIME_TO_POST:
+                        racer_table_model.setData(index, '')
+                    else:
+                        racer_table_model.setData(index, 'remote')
                     racer_table_model.dataChanged.emit(index, index)
 
                 self.done_queue = []

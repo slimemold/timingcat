@@ -796,7 +796,7 @@ class RacerTableModel(TableModel):
         query.finish()
 
     def add_racer(self, bib, first_name, last_name, field, category, team, age,
-                  start=MSECS_UNINITIALIZED, finish=MSECS_UNINITIALIZED, status='local',
+                  start=MSECS_UNINITIALIZED, finish=MSECS_UNINITIALIZED, status='',
                   metadata=EMPTY_JSON):
         """Add a row to the database table.
 
@@ -1019,20 +1019,25 @@ class RacerTableModel(TableModel):
             if (index.column() == self.finish_column and msecs_is_valid(finish) and finish < start):
                 return QBrush(Qt.red)
 
-            if finish != MSECS_UNINITIALIZED:
-                if self.remote:
-                    if record.value(self.STATUS) == 'local':
-                        return QBrush(Qt.yellow)
-                    elif record.value(self.STATUS) == 'remote':
-                        return QBrush(Qt.green)
-                else:
+            if self.remote:
+                if record.value(self.STATUS) == 'local':
+                    return QBrush(Qt.yellow)
+                elif record.value(self.STATUS) == 'remote':
                     return QBrush(Qt.green)
+            else:
+                return QBrush(Qt.green)
 
         return super().data(index, role)
 
     def setData(self, index, value, role=Qt.EditRole): #pylint: disable=invalid-name
-        """If start or finish time is set, and remote is set up, set status to local."""
-        if index.column() == self.start_column or index.column() == self.finish_column:
+        """Update start and finish time.
+
+        If finish time is set, and remote is set up, set status to local so that the remote
+        handler can push the new finish time.
+        """
+        if index.column() == self.start_column:
+            old_value = self.data(index, Qt.DisplayRole)
+        elif index.column() == self.finish_column:
             old_value = self.data(index, Qt.DisplayRole)
             if old_value != value:
                 super().setData(index.siblingAtColumn(self.status_column), 'local', role)
