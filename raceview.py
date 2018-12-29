@@ -595,8 +595,8 @@ class RacerTableView(QTableView):
         if self.field_id:
             field_name = self.modeldb.field_table_model.name_from_id(self.field_id)
             self.setWindowTitle('Racers (%s)' % field_name)
-            self.proxy_model_filter.setFilterRegExp(QRegExp(field_name, Qt.CaseSensitive,
-                                                            QRegExp.FixedString))
+            regexp = '^' + field_name + '$'
+            self.proxy_model_filter.setFilterRegExp(QRegExp(regexp, Qt.CaseSensitive))
         else:
             self.setWindowTitle('Racers')
 
