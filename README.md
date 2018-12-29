@@ -12,7 +12,6 @@ pyenchant
 pylint
 
 ## TODO
-- Implement OnTheDay.net result submit hook.
 - Implement 12-hour time.
 
 ## Known Bugs

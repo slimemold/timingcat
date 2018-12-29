@@ -1,4 +1,4 @@
-pylint==2.1.1
-requests==2.20.0
-keyring==17.0.0
+pylint==2.2.2
+requests==2.21.0
+keyring==17.1.1
 PyQt5==5.11.3
