@@ -803,7 +803,6 @@ class SexyThymeMainWindow(QMainWindow):
         filename = ontheday_import_wizard.filename
         auth = ontheday_import_wizard.auth
         race = ontheday_import_wizard.race
-        get_results = ontheday_import_wizard.get_results
 
         try:
             self.switch_to_main(filename, True)
@@ -813,7 +812,7 @@ class SexyThymeMainWindow(QMainWindow):
             return
 
         try:
-            ontheday.import_race(self.centralWidget().modeldb, auth, race, get_results)
+            ontheday.import_race(self.centralWidget().modeldb, auth, race)
         except requests.exceptions.HTTPError:
             QMessageBox.warning(self, 'Error', 'Authentication failure')
             return
