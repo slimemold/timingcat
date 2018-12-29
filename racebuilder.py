@@ -302,9 +302,11 @@ class StartTimeSetup(QWidget):
     def showEvent(self, event): #pylint: disable=invalid-name
         """Set up input widgets when this widget is shown.
 
-        Basically, this amounts to populating the start time edit box with the current time, plus
-        some time ahead, rounded to the nearest 5 minutes.
+        Basically, this amounts to populating the start time edit box with the current date and
+        time, plus some time ahead, rounded to the nearest 5 minutes.
         """
+        self.start_time_datetimeedit.setDate(QDate.currentDate())
+
         now = QTime.currentTime().addSecs(defaults.START_TIME_FROM_NOW_SECS)
         now.setHMS(now.hour(), now.minute() + 5 - now.minute()%5, 0, 0)
         self.start_time_datetimeedit.setTime(now)
