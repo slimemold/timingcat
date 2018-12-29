@@ -849,7 +849,6 @@ class SexyThymeMainWindow(QMainWindow):
     def generate_reports(self):
         """Show the reports window."""
         dialog = ReportsWindow(self.centralWidget().modeldb, self)
-        dialog.setWindowModality(Qt.ApplicationModal)
         dialog.show()
 
     def config_preferences(self):
