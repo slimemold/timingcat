@@ -263,7 +263,6 @@ class OnTheDayRemote(Remote):
     USERNAME = 'username'
     TIMER_INTERVAL_MS = 1000 # 1 second
 
-    WATCH_FINISH_TIME_DNF = 'DNF'
     WATCH_FINISH_TIME_TO_POST = '00:00:00'
 
     def __init__(self, modeldb):
@@ -417,14 +416,18 @@ class OnTheDayRemote(Remote):
 
                         finish_time = reference_datetime.addMSecs(finish)
                         ontheday_watch_finish_time = finish_time.time().toString(Qt.ISODateWithMs)
+                        ontheday_tt_dnf = False
                     elif finish in (MSECS_DNF, MSECS_DNP):
-                        ontheday_watch_finish_time = self.WATCH_FINISH_TIME_DNF
+                        ontheday_watch_finish_time = self.WATCH_FINISH_TIME_TO_POST
+                        ontheday_tt_dnf = True
                     else:
                         ontheday_watch_finish_time = self.WATCH_FINISH_TIME_TO_POST
+                        ontheday_tt_dnf = False
 
                     if status == 'local':
                         result = {'ontheday': {'id': ontheday_id,
                                                'watch_finish_time': ontheday_watch_finish_time,
+                                               'tt_dnf': ontheday_tt_dnf,
                                                'submitted': False},
                                   'row': row}
 
@@ -482,6 +485,8 @@ class OnTheDayThread(threading.Thread):
                         ontheday_result['submitted'] = True
 
                     self.remote.set_status(Status.Ok)
+                except requests.exceptions.HTTPError:
+                    self.remote.set_status(Status.Rejected)
                 except requests.exceptions.ConnectionError:
                     self.remote.set_status(Status.TimedOut)
 

@@ -255,7 +255,12 @@ def submit_results(auth, race, result_list):
 
     A result is a dict that takes the following form:
         {'id': 137217,
-         'watch_finish_time': '00:18:30.9'}
+         'watch_finish_time': '00:18:30.9',
+         'tt_dnf': False}
+
+    To reset a result, use watch_finish_time of 00:00:00 and tt_dnf of False.
+    To submit a DNF, tt_dnf should be True, and watch_finish_time should be 00:00:00.
+    To submit a finish time, tt_dnf should be False, and watch_finish_time is a non-zero time.
 
     URL: https://ontheday.net/api/entry/tt_finish_time/
     """
