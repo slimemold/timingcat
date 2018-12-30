@@ -275,8 +275,6 @@ class OnTheDayRemote(Remote):
         self.timer = None
         self.pending_queue = []
         self.pending_queue_lock = threading.Lock()
-        self.done_queue = []
-        self.done_queue_lock = threading.Lock()
         self.thread = OnTheDayThread(self)
 
     def connect(self, parent):
@@ -426,16 +424,18 @@ class OnTheDayRemote(Remote):
 
                     if status == 'local':
                         result = {'ontheday': {'id': ontheday_id,
-                                               'watch_finish_time': ontheday_watch_finish_time},
+                                               'watch_finish_time': ontheday_watch_finish_time,
+                                               'submitted': False},
                                   'row': row}
 
                         self.pending_queue.append(result)
 
         # Process all done requests (by marking the status column as submitted).
-        if self.done_queue:
-            with self.done_queue_lock:
-                for result in self.done_queue:
-
+        with self.pending_queue_lock:
+            old_pending_queue = self.pending_queue
+            self.pending_queue = []
+            for result in old_pending_queue:
+                if result['ontheday']['submitted']:
                     racer_table_model = self.modeldb.racer_table_model
                     racer_status_column = racer_table_model.status_column
 
@@ -445,8 +445,9 @@ class OnTheDayRemote(Remote):
                     else:
                         racer_table_model.setData(index, 'remote')
                     racer_table_model.dataChanged.emit(index, index)
+                else:
+                    self.pending_queue.append(result)
 
-                self.done_queue = []
 
 class OnTheDayThread(threading.Thread):
     """OnTheDay.net worker actually does the REST call to submit a result.
@@ -477,9 +478,8 @@ class OnTheDayThread(threading.Thread):
                     ontheday.submit_results(self.remote.auth, self.remote.race,
                                             ontheday_results_list)
 
-                    with self.remote.pending_queue_lock and self.remote.done_queue_lock:
-                        self.remote.done_queue += self.remote.pending_queue[0:limit]
-                        self.remote.pending_queue = self.remote.pending_queue[limit:]
+                    for ontheday_result in ontheday_results_list:
+                        ontheday_result['submitted'] = True
 
                     self.remote.set_status(Status.Ok)
                 except requests.exceptions.ConnectionError:
