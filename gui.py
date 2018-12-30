@@ -473,6 +473,8 @@ class SexyThymeMainWindow(QMainWindow):
         self.preferences_window = PreferencesWindow()
         self.connect_preferences(self.preferences_window)
 
+        self.reports_window = None
+
         if filename:
             try:
                 self.switch_to_main(filename)
@@ -545,7 +547,8 @@ class SexyThymeMainWindow(QMainWindow):
         file_menu.addSeparator()
 
         self.generate_reports_menu_action = file_menu.addAction('Generate reports',
-                                                                self.generate_reports)
+                                                                self.generate_reports,
+                                                                QKeySequence.Print)
 
         file_menu.addSeparator()
 
@@ -848,8 +851,9 @@ class SexyThymeMainWindow(QMainWindow):
 
     def generate_reports(self):
         """Show the reports window."""
-        dialog = ReportsWindow(self.centralWidget().modeldb, self)
-        dialog.show()
+        if not self.reports_window:
+            self.reports_window = ReportsWindow(self.centralWidget().modeldb, self)
+        self.reports_window.show()
 
     def config_preferences(self):
         """Show the preferences window."""
