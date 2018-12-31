@@ -24,7 +24,7 @@ import requests
 import keyring
 import common
 import defaults
-from racemodel import MSECS_DNF, MSECS_UNINITIALIZED
+from racemodel import MSECS_DNP, MSECS_UNINITIALIZED
 
 __copyright__ = '''
     Copyright (C) 2018 Andrew Chew
@@ -207,17 +207,18 @@ def import_race(modeldb, auth, race):
             metadata = {'ontheday': {'id': racer['id'],
                                      'tt_finish_time_url': racer['tt_finish_time_url']}}
 
-            finish_str = racer['watch_finish_time']
+            ontheday_watch_finish_time = racer['watch_finish_time']
+            ontheday_tt_dnf = racer['tt_dnf']
 
-            if finish_str.upper() == 'DNF':
-                finish = MSECS_DNF
-            elif finish_str == '00:00:00':
+            if ontheday_tt_dnf:
+                finish = MSECS_DNP
+            elif ontheday_watch_finish_time == '00:00:00':
                 finish = MSECS_UNINITIALIZED
             else:
                 reference_datetime = QDateTime(QDate.currentDate())
 
                 date = reference_datetime.date()
-                time = QTime.fromString(finish_str, Qt.ISODateWithMs)
+                time = QTime.fromString(ontheday_watch_finish_time, Qt.ISODateWithMs)
                 if time.isValid():
                     datetime = QDateTime(date, time)
                     finish = reference_datetime.msecsTo(datetime)
