@@ -443,7 +443,9 @@ class OnTheDayRemote(Remote):
                     racer_status_column = racer_table_model.status_column
 
                     index = racer_table_model.index(result['row'], racer_status_column)
-                    if result['ontheday']['watch_finish_time'] == self.WATCH_FINISH_TIME_TO_POST:
+                    if ((result['ontheday']['watch_finish_time'] ==
+                         self.WATCH_FINISH_TIME_TO_POST) and
+                        (result['ontheday']['tt_dnf'] == False)):
                         racer_table_model.setData(index, '')
                     else:
                         racer_table_model.setData(index, 'remote')
