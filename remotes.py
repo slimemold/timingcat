@@ -445,7 +445,7 @@ class OnTheDayRemote(Remote):
                     index = racer_table_model.index(result['row'], racer_status_column)
                     if ((result['ontheday']['watch_finish_time'] ==
                          self.WATCH_FINISH_TIME_TO_POST) and
-                        (result['ontheday']['tt_dnf'] == False)):
+                        (not result['ontheday']['tt_dnf'])):
                         racer_table_model.setData(index, '')
                     else:
                         racer_table_model.setData(index, 'remote')
@@ -489,6 +489,8 @@ class OnTheDayThread(threading.Thread):
                     self.remote.set_status(Status.Ok)
                 except requests.exceptions.HTTPError:
                     self.remote.set_status(Status.Rejected)
+                    json_str = json.dumps(ontheday_results_list, indent=4)
+                    QMessageBox.critical(None, 'Error', 'Submission rejected: %s' % json_str)
                 except requests.exceptions.ConnectionError:
                     self.remote.set_status(Status.TimedOut)
 
