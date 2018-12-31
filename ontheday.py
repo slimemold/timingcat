@@ -51,6 +51,7 @@ __email__ = common.EMAIL
 __status__ = common.STATUS
 
 URL = 'https://ontheday.net'
+HEADERS = {'User-Agent': '%s/%s' % (common.APPLICATION_NAME, common.VERSION)}
 KEYRING_SERVICE = 'ontheday.net'
 QSETTINGS_GROUP = 'ontheday'
 QSETTINGS_KEY_USERNAME = 'username'
@@ -81,7 +82,8 @@ def get_race_list(auth):
     next_url = URL + '/api/races/'
 
     while next_url:
-        response = requests.get(next_url, auth=auth, timeout=defaults.REQUESTS_TIMEOUT_SECS)
+        response = requests.get(next_url, auth=auth, headers=HEADERS,
+                                timeout=defaults.REQUESTS_TIMEOUT_SECS)
         if not response.ok:
             response.raise_for_status()
         response = json.loads(response.text)
@@ -92,7 +94,8 @@ def get_race_list(auth):
     # For each race in the race list, get some details that are available in the race's event list.
     for race in race_list:
         url = race['url']
-        response = requests.get(url, auth=auth, timeout=defaults.REQUESTS_TIMEOUT_SECS)
+        response = requests.get(url, auth=auth, headers=HEADERS,
+                                timeout=defaults.REQUESTS_TIMEOUT_SECS)
         if not response.ok:
             response.raise_for_status()
         response = json.loads(response.text)
@@ -123,7 +126,8 @@ def get_field_list(auth, race):
 
     url = race['url']
 
-    response = requests.get(url, auth=auth, timeout=defaults.REQUESTS_TIMEOUT_SECS)
+    response = requests.get(url, auth=auth, headers=HEADERS,
+                            timeout=defaults.REQUESTS_TIMEOUT_SECS)
     if not response.ok:
         response.raise_for_status()
     response = json.loads(response.text)
@@ -166,7 +170,8 @@ def get_racer_list(auth, field):
 
     url = field['category_start_list_url']
 
-    response = requests.get(url, auth=auth, timeout=defaults.REQUESTS_TIMEOUT_SECS)
+    response = requests.get(url, auth=auth, headers=HEADERS,
+                            timeout=defaults.REQUESTS_TIMEOUT_SECS)
     if not response.ok:
         response.raise_for_status()
     response = json.loads(response.text)
@@ -266,7 +271,7 @@ def submit_results(auth, race, result_list):
     URL: https://ontheday.net/api/entry/tt_finish_time/
     """
     url = race['bulk_update_url']
-    headers = {'content-type': 'application/json'}
+    headers = {**HEADERS, **{'content-type': 'application/json'}}
     data = json.dumps(result_list)
 
     response = requests.post(url, auth=auth, headers=headers, data=data,
