@@ -689,7 +689,7 @@ class ReferenceClock(QWidget):
 
             # Make our own combined string, because I haven't found a QDateTime format that I like.
             # Guess I'll keep looking...this looks really hokey.
-            datetime_string = reference_datetime.toString('yyyy-MM-dd @ h:mm:ss.zzz')
+            datetime_string = reference_datetime.toString(defaults.REFERENCE_CLOCK_DATETIME_FORMAT)
 
             self.reference_datetime_label.setText(datetime_string)
         else: # Otherwise, just use the race day's date, time zero.

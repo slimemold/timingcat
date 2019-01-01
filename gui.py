@@ -18,6 +18,7 @@ from PyQt5.QtWidgets import QApplication, QMainWindow
 import requests
 import bikereg
 import common
+import defaults
 import ontheday
 from preferences import PreferencesWindow
 from racebuilder import Builder
@@ -798,7 +799,8 @@ class SexyThymeMainWindow(QMainWindow):
     def import_ontheday_race_config(self):
         """Call ontheday module to import race config."""
         ontheday_import_wizard = ontheday.ImportWizard()
-        ontheday_import_wizard.exec()
+        if ontheday_import_wizard.exec() == QDialog.Rejected:
+            return
 
         if not ontheday_import_wizard.filename:
             return
@@ -813,6 +815,20 @@ class SexyThymeMainWindow(QMainWindow):
             QMessageBox.warning(self, 'Error', str(e))
             self.switch_to_start()
             return
+
+        if ontheday_import_wizard.enable_reference_clock:
+            race_table_model = self.centralWidget().modeldb.race_table_model
+
+            old_datetime = race_table_model.get_reference_clock_datetime()
+            new_datetime = ontheday_import_wizard.reference_clock
+
+            race_table_model.set_reference_clock_datetime(new_datetime)
+            race_table_model.enable_reference_clock()
+            race_table_model.change_reference_clock_datetime(old_datetime, new_datetime)
+
+            message = ('Setting reference clock to %s' %
+                       new_datetime.toString(defaults.REFERENCE_CLOCK_DATETIME_FORMAT))
+            QMessageBox.information(self, 'Info', message)
 
         try:
             ontheday.import_race(self.centralWidget().modeldb, auth, race)

@@ -16,8 +16,8 @@ For example, simple authentication: get_race_list(('username', 'password'))
 import json
 import os
 from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt, QTime
-from PyQt5.QtWidgets import QAbstractItemView, QFileDialog, QHeaderView, QLabel, QLineEdit, \
-                            QPushButton, QTableWidget, QTableWidgetItem, QWidget
+from PyQt5.QtWidgets import QAbstractItemView, QCheckBox, QFileDialog, QHeaderView, QLabel, \
+                            QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QWidget
 from PyQt5.QtWidgets import QWizard, QWizardPage
 from PyQt5.QtWidgets import QFormLayout, QHBoxLayout, QVBoxLayout
 import requests
@@ -72,6 +72,7 @@ def get_race_list(auth):
         "url": URL to this race's event list
         "name": Printable name of the race
         "date": yyyy-mm-dd of the race
+        "tt_watch_start_time": reference clock (for time trials only)
         "bulk_update_url": URL for posting results
         "bulk_update_limit": number of results that can be posted in a single transaction
         "bulk_update_fields": fields in a result dict
@@ -99,6 +100,10 @@ def get_race_list(auth):
         if not response.ok:
             response.raise_for_status()
         response = json.loads(response.text)
+
+        # Only time trials have a tt_watch_start_time.
+        if 'tt_watch_start_time' in response.keys():
+            race['tt_watch_start_time'] = response['tt_watch_start_time']
 
         race['bulk_update_url'] = response['bulk_update_url']
         race['bulk_update_limit'] = response['bulk_update_limit']
@@ -557,8 +562,11 @@ class ImportPage(QWizardPage):
         label = QLabel('Import setup complete. Click "Finish" to begin the race import operation.')
         label.setWordWrap(True)
 
+        self.reference_clock_checkbox = QCheckBox()
+
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(label)
+        self.layout().addWidget(self.reference_clock_checkbox)
 
         self.setButtonText(QWizard.FinishButton, 'Finish')
 
@@ -566,6 +574,27 @@ class ImportPage(QWizardPage):
         """Initialize page fields."""
         self.setSubTitle('Preparing to import %s' % (self.wizard().race['name'] + ' ' +
                                                      self.wizard().race['date']))
+
+        if 'tt_watch_start_time' in self.wizard().race.keys():
+            self.reference_clock_checkbox.show()
+            self.reference_clock_checkbox.setChecked(True)
+
+            text = ('Import reference clock setting of %s' %
+                    self.wizard().race['tt_watch_start_time'])
+            self.reference_clock_checkbox.setText(text)
+        else:
+            self.reference_clock_checkbox.hide()
+
+    def validatePage(self): #pylint: disable=invalid-name
+        """No validation actually done here. Just store the reference clock import preferences."""
+        self.wizard().enable_reference_clock = self.reference_clock_checkbox.isChecked()
+        if self.wizard().enable_reference_clock:
+            reference_clock_date = QDate.currentDate()
+            reference_clock_time = QTime.fromString(self.wizard().race['tt_watch_start_time'],
+                                                    Qt.ISODateWithMs)
+            self.wizard().reference_clock = QDateTime(reference_clock_date, reference_clock_time)
+
+        return True
 
 class ImportWizard(QWizard):
     """OnTheDay.net import wizard.
