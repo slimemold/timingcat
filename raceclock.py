@@ -89,22 +89,30 @@ class DigitalClock(QLCDNumber):
 
         San Bruno Hill Climb 2019's mysterious ~40s offset issue. Never forget!
         """
-        ntp_client = ntplib.NTPClient()
-        response = ntp_client.request(NTP_SERVER)
+        err_text = None
 
-        if abs(response.offset) < ACCEPTABLE_OFFSET:
+        try:
+            ntp_client = ntplib.NTPClient()
+            response = ntp_client.request(NTP_SERVER)
+
+            if abs(response.offset) > ACCEPTABLE_OFFSET:
+                err_text = ('System time seems to be off by %.2f seconds! ' % abs(response.offset) +
+                            'Please check system settings to ensure that the clock is being ' +
+                            'synchronized with an internet time server.')
+
+        except Exception as e: #pylint: disable=broad-except
+            err_text = ('Failed to validate clock against NTP server ' + NTP_SERVER + '.\n\n' +
+                        'Reason: %s' % str(e))
+
+        if not err_text:
             return
 
-        message = ('System time seems to be off by %.2f seconds! ' % abs(response.offset) +
-                   'Please check system settings to ensure that the clock is being synchronized ' +
-                   'with an internet time server.')
-
-        if QMessageBox.warning(self, 'Warning', message,
+        if QMessageBox.warning(self, 'Warning', err_text,
                                QMessageBox.Abort | QMessageBox.Ignore,
                                QMessageBox.Abort) == QMessageBox.Abort:
-            raise RaceClockException('Aborting due to bad system time.')
+            raise RaceClockException('Aborting due to system time validation failure.')
 
         message = ("Recorded times will not be consistent with officials' times if Internet " +
-                   "(cellphone) time is used. YOU HAVE BEEN WARNED!")
+                   "(cellphone) time is used.\n\nYOU HAVE BEEN WARNED!")
 
         QMessageBox.warning(self, 'Warning', message)
