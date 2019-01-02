@@ -12,6 +12,9 @@ requests
 pyenchant
 pylint
 
+## For regenerating requirements.txt
+pipreqs
+
 ## TODO
 - Implement 12-hour time.
 
