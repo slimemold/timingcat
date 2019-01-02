@@ -7,11 +7,9 @@ central widget, status and menu bars, etc.
 """
 
 import os
-from PyQt5.QtCore import QDate, QDateTime, QItemSelection, QObject, QRegExp, QSettings, QTime, \
-                         QTimer, Qt
+from PyQt5.QtCore import QDateTime, QItemSelection, QObject, QRegExp, QSettings, Qt
 from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
-from PyQt5.QtWidgets import QFrame, QLabel, QLCDNumber, QLineEdit, QMenuBar, QPushButton, \
-                            QShortcut, QStatusBar, QWidget
+from PyQt5.QtWidgets import QLabel, QLineEdit, QMenuBar, QPushButton, QShortcut, QStatusBar, QWidget
 from PyQt5.QtWidgets import QLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
 from PyQt5.QtWidgets import QApplication, QMainWindow
@@ -22,6 +20,7 @@ import defaults
 import ontheday
 from preferences import PreferencesWindow
 from racebuilder import Builder
+from raceclock import DigitalClock
 from racemodel import DatabaseError, ModelDatabase, RaceTableModel
 from raceview import FieldTableView, JournalTableView, RacerTableView, ResultTableView
 import remotes
@@ -96,50 +95,6 @@ class AboutDialog(QDialog):
         self.layout().addWidget(copyright_label)
         self.layout().addWidget(button_box)
         self.layout().setSizeConstraint(QLayout.SetFixedSize)
-
-class DigitalClock(QLCDNumber):
-    """Old-fashioned 7-segment display digital clock showing current time."""
-    def __init__(self, modeldb, parent=None):
-        """Initialize the DigitalClock instance."""
-        super().__init__(8, parent=parent)
-
-        self.modeldb = modeldb
-        self.preferences = None
-
-        self.setFrameShape(QFrame.NoFrame)
-        self.setSegmentStyle(QLCDNumber.Filled)
-
-        self.timer = QTimer()
-        self.timer.timeout.connect(self.update)
-        self.update()
-        self.timer.start(100)
-
-        self.setMinimumHeight(48)
-
-    def update(self):
-        """Update text on the LCD display."""
-        race_table_model = self.modeldb.race_table_model
-
-        if self.preferences and self.preferences.wall_times_checkbox.isChecked():
-            msecs = race_table_model.get_wall_time_msecs()
-        else:
-            msecs = race_table_model.get_reference_msecs()
-        datetime = QDateTime(QDate(1, 1, 1), QTime(0, 0)).addMSecs(msecs)
-
-        if datetime.time().second() % 2:
-            text = datetime.toString('hh:mm ss')
-        else:
-            text = datetime.toString('hh:mm:ss')
-
-        self.display(text)
-
-    def connect_preferences(self, preferences):
-        """Connect preferences settings to this widget."""
-        self.preferences = preferences
-
-        preferences.digital_clock_checkbox.stateChanged.connect(self.setVisible)
-        self.setVisible(preferences.digital_clock_checkbox.checkState())
-        preferences.wall_times_checkbox.stateChanged.connect(self.update)
 
 class CentralWidget(QObject):
     """Central Widget base class.
@@ -445,7 +400,9 @@ class MainCentralWidget(QWidget, CentralWidget):
 
     def connect_preferences(self, preferences):
         """Connect preferences signals to the various slots that care."""
-        self.digital_clock.connect_preferences(preferences)
+        preferences.digital_clock_checkbox.stateChanged.connect(self.digital_clock.setVisible)
+        self.digital_clock.setVisible(preferences.digital_clock_checkbox.checkState())
+        preferences.wall_times_checkbox.stateChanged.connect(self.digital_clock.update)
 
         self.field_table_view.connect_preferences(preferences)
         self.racer_table_view.connect_preferences(preferences)
