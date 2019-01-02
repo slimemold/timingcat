@@ -9,7 +9,7 @@ import csv
 import common
 
 __copyright__ = '''
-    Copyright (C) 2018 Andrew Chew
+    Copyright (C) 2018-2019 Andrew Chew
 
     This program is free software: you can redistribute it and/or modify
     it under the terms of the GNU General Public License as published by
