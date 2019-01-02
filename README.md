@@ -4,6 +4,7 @@
 
 ## For Running
 keyring
+ntplib
 PyQt5
 requests
 
