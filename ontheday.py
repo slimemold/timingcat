@@ -78,7 +78,7 @@ def get_race_list(auth):
         "bulk_update_fields": fields in a result dict
     }
     """
-    race_list = []
+    full_race_list = []
 
     next_url = URL + '/api/races/'
 
@@ -89,11 +89,15 @@ def get_race_list(auth):
             response.raise_for_status()
         response = json.loads(response.text)
 
-        race_list += response['results']
+        full_race_list += response['results']
         next_url = response['next']
 
-    # For each race in the race list, get some details that are available in the race's event list.
-    for race in race_list:
+    # For each race in the full race list, filter out unsupported races, and get some details that
+    # are available in the race's event list.
+
+    race_list = []
+
+    for race in full_race_list:
         url = race['url']
         response = requests.get(url, auth=auth, headers=HEADERS,
                                 timeout=defaults.REQUESTS_TIMEOUT_SECS)
@@ -102,12 +106,15 @@ def get_race_list(auth):
         response = json.loads(response.text)
 
         # Only time trials have a tt_watch_start_time.
-        if 'tt_watch_start_time' in response.keys():
-            race['tt_watch_start_time'] = response['tt_watch_start_time']
+        if not 'tt_watch_start_time' in response.keys():
+            continue
 
+        race['tt_watch_start_time'] = response['tt_watch_start_time']
         race['bulk_update_url'] = response['bulk_update_url']
         race['bulk_update_limit'] = response['bulk_update_limit']
         race['bulk_update_fields'] = response['bulk_update_fields']
+
+        race_list.append(race)
 
     return race_list
 
@@ -173,7 +180,7 @@ def get_racer_list(auth, field):
     """
     racer_list = []
 
-    url = field['category_start_list_url']
+    url = field['category_entry_list_url']
 
     response = requests.get(url, auth=auth, headers=HEADERS,
                             timeout=defaults.REQUESTS_TIMEOUT_SECS)
