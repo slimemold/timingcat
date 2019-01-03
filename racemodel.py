@@ -1025,7 +1025,8 @@ class RacerTableModel(TableModel):
                 elif record.value(self.STATUS) == 'remote':
                     return QBrush(Qt.green)
             else:
-                return QBrush(Qt.green)
+                if finish != MSECS_UNINITIALIZED:
+                    return QBrush(Qt.green)
 
         return super().data(index, role)
 
