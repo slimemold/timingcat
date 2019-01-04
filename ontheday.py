@@ -56,6 +56,11 @@ KEYRING_SERVICE = 'ontheday.net'
 QSETTINGS_GROUP = 'ontheday'
 QSETTINGS_KEY_USERNAME = 'username'
 
+ResultStatus = common.enum(
+    Ok=0,
+    Rejected=1
+)
+
 def check_auth(auth):
     """Check that the authenticator is good.
 
@@ -274,22 +279,50 @@ def submit_results(auth, race, result_list):
     A result is a dict that takes the following form:
         {'id': 137217,
          'watch_finish_time': '00:18:30.9',
-         'tt_dnf': False}
+         'tt_dnf': False,
+         'status': None}
 
     To reset a result, use watch_finish_time of 00:00:00 and tt_dnf of False.
     To submit a DNF, tt_dnf should be True, and watch_finish_time should be 00:00:00.
     To submit a finish time, tt_dnf should be False, and watch_finish_time is a non-zero time.
+
+    Upon completion of this call, the status will have the following value:
+        ResultStatus.Ok means that the result has been committed.
+        ResultStatus.Rejected means the result has failed, and should not be resubmitted as is.
+        None means the result was not processed, and should be resubmitted.
 
     URL: https://ontheday.net/api/entry/tt_finish_time/
     """
     url = race['bulk_update_url']
     headers = {**HEADERS, **{'content-type': 'application/json'}}
     data = json.dumps(result_list)
-
     response = requests.post(url, auth=auth, headers=headers, data=data,
                              timeout=defaults.REQUESTS_TIMEOUT_SECS)
+
+    _process_response_list(result_list, json.loads(response.text))
+
     if not response.ok:
         response.raise_for_status()
+
+def _process_response_list(result_list, response_list):
+    """Process list of result responses.
+
+    The REST response is a list, where each list entry corresponds to a submitted result. Process
+    each result response.
+    """
+    for result, response in zip(result_list, response_list):
+        _process_response(result, response)
+
+def _process_response(result, response):
+    """Process individual response.
+
+    'non_field_errors' in the response is a list of strings, where those strings are JSON encodings
+    of dicts. Unravel the JSON strings and store as dict.
+    """
+    if 'non_field_errors' in response.keys():
+        result['status'] = ResultStatus.Rejected
+    elif response.keys():
+        result['status'] = ResultStatus.Ok
 
 class IntroductionPage(QWizardPage):
     """Introductory page of the import wizard that describes what we are about to do."""

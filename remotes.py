@@ -391,54 +391,78 @@ class OnTheDayRemote(Remote):
         Use this function to collect results to post to OnTheDay.net.
         """
         # If results queue is empty, try to fill it by scanning the racer list for pending results.
-        if not self.pending_queue:
-            with self.pending_queue_lock:
-                racer_table_model = self.modeldb.racer_table_model
+        self.collect_result_submits()
 
-                # Iterate through all racers and put pending results on the results queue.
-                for row in range(racer_table_model.rowCount()):
-                    record = racer_table_model.record(row)
+        # Process all done requests (by marking the status column).
+        self.process_result_responses()
 
-                    metadata = json.loads(record.value(racer_table_model.METADATA))
-                    finish = record.value(racer_table_model.FINISH)
-                    status = record.value(racer_table_model.STATUS)
+    def collect_result_submits(self):
+        """Go through the racer table and find stuff that needs submitting.
 
-                    # Stuff to go into the ontheday result submission.
-                    ontheday_id = metadata['ontheday']['id']
-                    if msecs_is_valid(finish):
-                        # Report time relative to reference clock (which means just use msecs since
-                        # midnight).
-                        reference_datetime = QDateTime(QDate.currentDate())
+        We collect the list of results that need submitting into self.pending_queue.
 
-                        finish_time = reference_datetime.addMSecs(finish)
-                        ontheday_watch_finish_time = finish_time.time().toString(Qt.ISODateWithMs)
-                        ontheday_tt_dnf = False
-                    elif finish in (MSECS_DNF, MSECS_DNP):
-                        ontheday_watch_finish_time = self.WATCH_FINISH_TIME_TO_POST
-                        ontheday_tt_dnf = True
-                    else:
-                        ontheday_watch_finish_time = self.WATCH_FINISH_TIME_TO_POST
-                        ontheday_tt_dnf = False
+        The current implementation of this function won't do a collection until the pending_queue
+        has been drained.
+        """
+        if self.pending_queue:
+            return
 
-                    if status == 'local':
-                        result = {'ontheday': {'id': ontheday_id,
-                                               'watch_finish_time': ontheday_watch_finish_time,
-                                               'tt_dnf': ontheday_tt_dnf,
-                                               'submitted': False},
-                                  'row': row}
+        racer_table_model = self.modeldb.racer_table_model
 
-                        self.pending_queue.append(result)
+        with self.pending_queue_lock:
+            # Iterate through all racers and put pending results on the results queue.
+            for row in range(racer_table_model.rowCount()):
+                record = racer_table_model.record(row)
 
-        # Process all done requests (by marking the status column as submitted).
+                if record.value(racer_table_model.STATUS) != 'local':
+                    continue
+
+                metadata = json.loads(record.value(racer_table_model.METADATA))
+                finish = record.value(racer_table_model.FINISH)
+
+                # Stuff to go into the ontheday result submission.
+                ontheday_id = metadata['ontheday']['id']
+                if msecs_is_valid(finish):
+                    # Report time relative to reference clock (which means just use msecs since
+                    # midnight).
+                    reference_datetime = QDateTime(QDate.currentDate())
+
+                    finish_time = reference_datetime.addMSecs(finish)
+                    ontheday_watch_finish_time = finish_time.time().toString(Qt.ISODateWithMs)
+                    ontheday_tt_dnf = False
+                elif finish in (MSECS_DNF, MSECS_DNP):
+                    ontheday_watch_finish_time = self.WATCH_FINISH_TIME_TO_POST
+                    ontheday_tt_dnf = True
+                else:
+                    ontheday_watch_finish_time = self.WATCH_FINISH_TIME_TO_POST
+                    ontheday_tt_dnf = False
+
+                result = {'ontheday': {'id': ontheday_id,
+                                       'watch_finish_time': ontheday_watch_finish_time,
+                                       'tt_dnf': ontheday_tt_dnf,
+                                       'status': None},
+                          'row': row}
+
+                self.pending_queue.append(result)
+
+    def process_result_responses(self):
+        """Go through the pending queue and remove the results that have been submitted.
+
+        Also remove results that failed submission so that we don't resubmit them.
+        """
+        racer_table_model = self.modeldb.racer_table_model
+        racer_status_column = racer_table_model.status_column
+
         with self.pending_queue_lock:
             old_pending_queue = self.pending_queue
             self.pending_queue = []
-            for result in old_pending_queue:
-                if result['ontheday']['submitted']:
-                    racer_table_model = self.modeldb.racer_table_model
-                    racer_status_column = racer_table_model.status_column
 
-                    index = racer_table_model.index(result['row'], racer_status_column)
+            for result in old_pending_queue:
+                index = racer_table_model.index(result['row'], racer_status_column)
+                result_status = result['ontheday']['status']
+
+                # Result is processed. Mark as "remote".
+                if result_status == ontheday.ResultStatus.Ok:
                     if ((result['ontheday']['watch_finish_time'] ==
                          self.WATCH_FINISH_TIME_TO_POST) and
                         (not result['ontheday']['tt_dnf'])):
@@ -446,9 +470,15 @@ class OnTheDayRemote(Remote):
                     else:
                         racer_table_model.setData(index, 'remote')
                     racer_table_model.dataChanged.emit(index, index)
+
+                # Result is rejected. Mark as "rejected".
+                elif result_status == ontheday.ResultStatus.Rejected:
+                    racer_table_model.setData(index, 'rejected')
+
+                # Result is skipped. Don't do anything (let it be picked up again on the next
+                # time around).
                 else:
                     self.pending_queue.append(result)
-
 
 class OnTheDayThread(threading.Thread):
     """OnTheDay.net worker actually does the REST call to submit a result.
@@ -485,8 +515,6 @@ class OnTheDayThread(threading.Thread):
                     self.remote.set_status(Status.Ok)
                 except requests.exceptions.HTTPError:
                     self.remote.set_status(Status.Rejected)
-                    json_str = json.dumps(ontheday_results_list, indent=4)
-                    QMessageBox.critical(None, 'Error', 'Submission rejected: %s' % json_str)
                 except requests.exceptions.ConnectionError:
                     self.remote.set_status(Status.TimedOut)
 
