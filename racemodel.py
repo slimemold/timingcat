@@ -1006,27 +1006,37 @@ class RacerTableModel(TableModel):
         has been submitted successfully to the remote.
         """
         if role == Qt.BackgroundRole:
+            brush = None
+
             record = self.record(index.row())
 
+            column = index.column
             start = record.value(self.START)
             finish = record.value(self.FINISH)
 
-            # No start time. Paint the cell red.
-            if (index.column() == self.start_column and start == MSECS_UNINITIALIZED):
-                return QBrush(Qt.red)
+            # No start time. Paint the start time cell red.
+            if (column == self.start_column and start == MSECS_UNINITIALIZED):
+                brush = QBrush(Qt.red)
 
-            # Finish time is before the start time. Paint the cell red.
-            if (index.column() == self.finish_column and msecs_is_valid(finish) and finish < start):
-                return QBrush(Qt.red)
+            # Finish time is before the start time. Paint the finish time cell red.
+            elif (column == self.finish_column and msecs_is_valid(finish) and finish < start):
+                brush = QBrush(Qt.red)
 
-            if self.remote:
+            # If there is a remote, paint the row according to status.
+            elif self.remote:
                 if record.value(self.STATUS) == 'local':
-                    return QBrush(Qt.yellow)
+                    brush = QBrush(Qt.yellow)
                 elif record.value(self.STATUS) == 'remote':
-                    return QBrush(Qt.green)
+                    brush = QBrush(Qt.green)
+                elif record.value(self.STATUS) == 'rejected':
+                    brush = QBrush(Qt.red)
+            # No remote. Paint according to whether there is a finish time.
             else:
                 if finish != MSECS_UNINITIALIZED:
-                    return QBrush(Qt.green)
+                    brush = QBrush(Qt.green)
+
+            if brush:
+                return brush
 
         return super().data(index, role)
 
