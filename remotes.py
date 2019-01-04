@@ -44,11 +44,7 @@ __maintainer__ = common.MAINTAINER
 __email__ = common.EMAIL
 __status__ = common.STATUS
 
-def enum(**enums):
-    """Simulate an enum."""
-    return type('Enum', (), enums)
-
-Status = enum(
+Status = common.enum(
     Ok=0,
     Rejected=1,
     TimedOut=2,

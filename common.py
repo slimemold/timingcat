@@ -65,3 +65,7 @@ def pluralize(word, count):
         return '%s %s' % (count, word)
 
     return '%s %s' % (count, word + 's')
+
+def enum(**enums):
+    """Simulate an enum."""
+    return type('Enum', (), enums)
