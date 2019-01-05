@@ -13,6 +13,9 @@ For example, simple authentication: get_race_list(('username', 'password'))
 #pylint: disable=wrong-spelling-in-comment
 #pylint: disable=wrong-spelling-in-docstring
 
+import argparse
+import fnmatch
+from getpass import getpass
 import json
 import os
 from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt, QTime
@@ -97,12 +100,16 @@ def get_race_list(auth):
         full_race_list += response['results']
         next_url = response['next']
 
-    # For each race in the full race list, filter out unsupported races, and get some details that
-    # are available in the race's event list.
+    # For each race in the full race list, filter out unsupported races, and get some details.
 
     race_list = []
 
     for race in full_race_list:
+        # Parse out the race id. This is a handy identifier to use to uniquely identify the race.
+        # url is of the form "https://ontheday.net/api/races/179/".
+        race['id'] = race['url'].rsplit('/', 2)[1]
+
+        # This stuff is available in the race's event list.
         url = race['url']
         response = requests.get(url, auth=auth, headers=HEADERS,
                                 timeout=defaults.REQUESTS_TIMEOUT_SECS)
@@ -686,3 +693,142 @@ class RemoteSetupWizard(QWizard):
                                       'server as they are committed.'))
         self.addPage(AuthenticationPage())
         self.addPage(RaceSelectionPage(race))
+
+class CommandLineTool():
+    """Class that supports command-line ontheday.net tools."""
+    def __init__(self):
+        """Command-line entry point to some useful OnTheDay.net stuff."""
+        # Define top-level parser.
+        parser = argparse.ArgumentParser()
+        parser.add_argument('--version', '-v', action='version',
+                            version=common.APPLICATION_NAME + ' v' + common.VERSION)
+        parser.add_argument('--username', '-u')
+        parser.add_argument('--password', '-p')
+        parser.set_defaults(func=parser.print_help)
+        subparsers = parser.add_subparsers()
+
+        # Define 'list' parser.
+        list_parser = subparsers.add_parser('list')
+        list_parser.set_defaults(func=list_parser.print_help)
+        list_subparsers = list_parser.add_subparsers()
+
+        # Define 'list races' parser.
+        list_races_parser = list_subparsers.add_parser('races')
+        list_races_parser.set_defaults(func=self.list_races)
+
+        # Define 'list fields' parser.
+        list_fields_parser = list_subparsers.add_parser('fields')
+        list_fields_parser.set_defaults(func=self.list_fields)
+        list_fields_parser.add_argument('race_id')
+
+        # Define 'list racers' parser.
+        list_racers_parser = list_subparsers.add_parser('racers')
+        list_racers_parser.set_defaults(func=self.list_racers)
+        list_racers_parser.add_argument('race_id')
+        list_racers_parser.add_argument('field_name')
+
+        self.args = parser.parse_args()
+        self.args.func()
+
+    def get_auth(self):
+        """Get authentication information from the user."""
+        username = self.args.username
+        if not username:
+            username = input('Username: ')
+
+        password = self.args.password
+        if not password:
+            password = getpass('Password: ')
+
+        return (username, password)
+
+    def list_races(self):
+        """List the supported races visible under the authenticated account.
+
+        Only time trials are currently supported.
+
+        If args.full, then also do a (full) dump of fields.
+        """
+        auth = self.get_auth()
+        race_list = get_race_list(auth)
+
+        print('%-8s%-11s%s' % ('race_id', 'date', 'name'))
+        print('======= ========== ====================================')
+        for race in race_list:
+            print('%-8s%-11s%s' % (race['id'], race['date'], race['name']))
+
+    def list_fields(self):
+        """List the fields of a specified race.
+
+        self.args.race_id is expected to have an (optionally) wildcarded race_id. All races that
+        match will have their fields listed.
+        """
+        auth = self.get_auth()
+        race_id = self.args.race_id
+
+        race_list = get_race_list(auth)
+        matching_race_list = list(filter(lambda race: fnmatch.fnmatchcase(race['id'], race_id),
+                                         race_list))
+        if len(matching_race_list) > 1:
+            field_indent = 4
+        else:
+            field_indent = 0
+
+        for race in matching_race_list:
+            # If more than one matching race, print the race name.
+            if len(matching_race_list) > 1:
+                print(race['name'])
+
+            field_list = get_field_list(auth, race)
+            for field in field_list:
+                print((' ' * field_indent) + field['name'])
+
+    def list_racers(self):
+        """List the racers of a specified race and field.
+
+        self.args.race_id is expected to have an (optionally) wildcarded race_id. All races that
+        match will have their racers listed.
+
+        self.args.field_name is expected to have an (optionally) wildcarded field_name. All fields
+        that match will have their racers listed.
+        """
+        auth = self.get_auth()
+        race_id = self.args.race_id
+        field_name = self.args.field_name
+
+        race_list = get_race_list(auth)
+        matching_race_list = list(filter(lambda race: fnmatch.fnmatchcase(race['id'], race_id),
+                                         race_list))
+        if len(matching_race_list) > 1:
+            field_indent = 4
+        else:
+            field_indent = 0
+
+        for race in matching_race_list:
+            # If more than one matching race, print the race name.
+            if len(matching_race_list) > 1:
+                print(race['name'])
+
+            field_list = get_field_list(auth, race)
+            matching_field_list = list(filter(lambda field: fnmatch.fnmatchcase(field['name'],
+                                                                                field_name),
+                                              field_list))
+            if len(matching_field_list) > 1:
+                racer_indent = field_indent + 4
+            else:
+                racer_indent = field_indent
+
+            for field in matching_field_list:
+                if len(matching_field_list) > 1:
+                    print((' ' * field_indent) + field['name'])
+
+                racer_list = get_racer_list(auth, field)
+
+                for racer in racer_list:
+                    print((' ' * racer_indent) + racer['firstname'] + ' ' + racer['lastname'])
+
+if __name__ == '__main__':
+    try:
+        CommandLineTool()
+    except requests.exceptions.HTTPError as e:
+        print(str(e))
