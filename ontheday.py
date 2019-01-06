@@ -18,7 +18,9 @@ import fnmatch
 from getpass import getpass
 import json
 import os
-from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt, QTime
+import sys
+from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt, QTime, QTimer
+from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QAbstractItemView, QCheckBox, QFileDialog, QHeaderView, QLabel, \
                             QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QWidget
 from PyQt5.QtWidgets import QWizard, QWizardPage
@@ -144,6 +146,7 @@ def get_field_list(auth, race):
         "number_start": First possible bib number
         "number_stop": Last possible bib number
         "time_start": Start time of the field
+        "entry_list_checksum": Checksum of the field (will change if racer results etc. change)
     }
     """
     field_list = []
@@ -188,6 +191,7 @@ def get_racer_list(auth, field):
         "watch_start_time": Start time relative to reference clock
         "watch_finish_time": Finish time relative to reference clock
         "elapsed_time": Delta of start and finish, expressed as a time
+        "tt_dnf": True if DNF
     }
     """
     racer_list = []
@@ -694,6 +698,113 @@ class RemoteSetupWizard(QWizard):
         self.addPage(AuthenticationPage())
         self.addPage(RaceSelectionPage(race))
 
+class FieldStatisticsTable(QTableWidget):
+    """QTableWidget subclass that shows statistics for the various fields in a race."""
+    INTERVAL_SECS = 10
+
+    NAME_COLUMN = 0
+    FINISHED_COLUMN = 1
+    TOTAL_COLUMN = 2
+
+    def __init__(self, auth, race, interval_secs=INTERVAL_SECS, parent=None):
+        """Initialize the FieldStatisticsTable instance."""
+        super().__init__(parent=parent)
+
+        self.auth = auth
+
+        field_list = get_field_list(self.auth, race)
+
+        # Set up the table.
+        self.setColumnCount(3)
+        self.setAlternatingRowColors(True)
+        self.setHorizontalHeaderLabels(['Field', 'Finished', 'Total'])
+        self.horizontalHeader().setHighlightSections(False)
+        self.horizontalHeader().setStretchLastSection(True)
+        self.verticalHeader().setVisible(False)
+        self.setSelectionMode(QAbstractItemView.NoSelection)
+
+        self.clearContents()
+        self.setRowCount(len(field_list))
+
+        # Qt warns us that inserting items while sorting is enabled will mess with the insertion
+        # order, so disable sorting before populating the list, and then re-enable sorting
+        # afterwards.
+        self.setSortingEnabled(False)
+        for row, field in enumerate(field_list):
+            # Make our name item.
+            item = QTableWidgetItem(field['name'])
+            item.setData(Qt.UserRole, field)
+            self.setItem(row, self.NAME_COLUMN, item)
+
+            # Make our finished item.
+            item = QTableWidgetItem(0)
+            self.setItem(row, self.FINISHED_COLUMN, item)
+
+            # Make our total item.
+            item = QTableWidgetItem(0)
+            self.setItem(row, self.TOTAL_COLUMN, item)
+
+        self.setSortingEnabled(True)
+        self.sortByColumn(self.NAME_COLUMN, Qt.AscendingOrder)
+        self.horizontalHeader().resizeSections(QHeaderView.ResizeToContents)
+
+        self.read_settings()
+
+        self.update()
+
+        # Start the update timer.
+        self.timer = QTimer(self)
+        self.timer.timeout.connect(self.update)
+        self.timer.start(interval_secs * 1000)
+
+    def close(self):
+        """Handle window close."""
+        self.write_settings()
+
+    def update(self):
+        """Update field statistics."""
+        for row in range(self.rowCount()):
+            field = self.item(row, self.NAME_COLUMN).data(Qt.UserRole)
+
+            racer_list = get_racer_list(self.auth, field)
+
+            total = len(racer_list)
+
+            finished = 0
+            for racer in racer_list:
+                if racer['watch_finish_time'] != '00:00:00' or racer['tt_dnf']:
+                    finished += 1
+
+            self.item(row, self.FINISHED_COLUMN).setData(Qt.DisplayRole, finished)
+            self.item(row, self.TOTAL_COLUMN).setData(Qt.DisplayRole, total)
+
+    def read_settings(self):
+        """Read settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        if settings.contains('size'):
+            self.resize(settings.value('size'))
+        if settings.contains('pos'):
+            self.move(settings.value('pos'))
+
+        if settings.contains('horizontal_header_state'):
+            self.horizontalHeader().restoreState(settings.value('horizontal_header_state'))
+
+        settings.endGroup()
+
+    def write_settings(self):
+        """Write settings."""
+        group_name = self.__class__.__name__
+        settings = QSettings()
+        settings.beginGroup(group_name)
+
+        settings.setValue('size', self.size())
+        settings.setValue('pos', self.pos())
+
+        settings.endGroup()
+
 class CommandLineTool():
     """Class that supports command-line ontheday.net tools."""
     def __init__(self):
@@ -726,6 +837,13 @@ class CommandLineTool():
         list_racers_parser.set_defaults(func=self.list_racers)
         list_racers_parser.add_argument('race_id')
         list_racers_parser.add_argument('field_name')
+
+        monitor_parser = subparsers.add_parser('monitor')
+        monitor_parser.set_defaults(func=self.monitor)
+        monitor_parser.add_argument('--interval', type=int, dest='monitor_interval',
+                                    default=FieldStatisticsTable.INTERVAL_SECS,
+                                    help='Interval in seconds between updates')
+        monitor_parser.add_argument('race_id')
 
         self.args = parser.parse_args()
         self.args.func()
@@ -826,6 +944,34 @@ class CommandLineTool():
 
                 for racer in racer_list:
                     print((' ' * racer_indent) + racer['firstname'] + ' ' + racer['lastname'])
+
+    def monitor(self):
+        """Launch a table view of fields and field statistics."""
+        auth = self.get_auth()
+        race_id = self.args.race_id
+
+        race_list = get_race_list(auth)
+        matching_race_list = list(filter(lambda race: fnmatch.fnmatchcase(race['id'], race_id),
+                                         race_list))
+        if len(matching_race_list) > 1:
+            sys.stderr.write('Ambiguous race id %s, can match: %s.\n' %
+                  (race_id, ', '.join(map(lambda race: race['id'], matching_race_list))))
+            sys.exit(-1)
+        race = matching_race_list[0]
+
+        QApplication.setOrganizationName(common.ORGANIZATION_NAME)
+        QApplication.setOrganizationDomain(common.ORGANIZATION_DOMAIN)
+        QApplication.setApplicationName(common.APPLICATION_NAME)
+        QApplication.setApplicationVersion(common.VERSION)
+
+        app = QApplication(sys.argv)
+
+        main_window = FieldStatisticsTable(auth, race, self.args.monitor_interval)
+        main_window.show()
+        retcode = app.exec_()
+
+        main_window.close()
+        sys.exit(retcode)
 
 if __name__ == '__main__':
     try:
