@@ -19,7 +19,9 @@ from getpass import getpass
 import json
 import os
 import sys
-from PyQt5.QtCore import QDate, QDateTime, QSettings, Qt, QTime, QTimer
+import threading
+from PyQt5.QtCore import QDate, QDateTime, QObject, QSettings, Qt, QTime, QTimer, pyqtSignal
+from PyQt5.QtGui import QBrush
 from PyQt5.QtWidgets import QApplication
 from PyQt5.QtWidgets import QAbstractItemView, QCheckBox, QFileDialog, QHeaderView, QLabel, \
                             QLineEdit, QPushButton, QTableWidget, QTableWidgetItem, QWidget
@@ -700,7 +702,9 @@ class RemoteSetupWizard(QWizard):
 
 class FieldStatisticsTable(QTableWidget):
     """QTableWidget subclass that shows statistics for the various fields in a race."""
-    INTERVAL_SECS = 10
+
+    WINDOW_TITLE = 'Field Statistics Monitor'
+    INTERVAL_SECS = 5 # Seconds between update end and next update start.
 
     NAME_COLUMN = 0
     FINISHED_COLUMN = 1
@@ -710,9 +714,12 @@ class FieldStatisticsTable(QTableWidget):
         """Initialize the FieldStatisticsTable instance."""
         super().__init__(parent=parent)
 
+        self.setWindowTitle(' - '.join([self.WINDOW_TITLE, race['name']]))
+
         self.auth = auth
 
         field_list = get_field_list(self.auth, race)
+        self.field_list_lock = threading.Lock()
 
         # Set up the table.
         self.setColumnCount(3)
@@ -731,9 +738,10 @@ class FieldStatisticsTable(QTableWidget):
         # afterwards.
         self.setSortingEnabled(False)
         for row, field in enumerate(field_list):
-            # Make our name item.
+            # Make our name item. Stash our field dict into this item to associate the field with
+            # this row, even if the table gets resorted.
             item = QTableWidgetItem(field['name'])
-            item.setData(Qt.UserRole, field)
+            item.field = field
             self.setItem(row, self.NAME_COLUMN, item)
 
             # Make our finished item.
@@ -750,33 +758,57 @@ class FieldStatisticsTable(QTableWidget):
 
         self.read_settings()
 
-        self.update()
-
-        # Start the update timer.
+        # Make our single-shot update timer.
         self.timer = QTimer(self)
-        self.timer.timeout.connect(self.update)
-        self.timer.start(interval_secs * 1000)
+        self.timer.setInterval(interval_secs * 1000)
+        self.timer.setTimerType(Qt.VeryCoarseTimer)
+        self.timer.setSingleShot(True)
+
+        self.timer.timeout.connect(self.schedule_work)
+
+        # Simulate a timer timeout so that we immediately schedule work.
+        self.schedule_work()
 
     def close(self):
         """Handle window close."""
         self.write_settings()
 
-    def update(self):
+    def schedule_work(self):
+        """Make our worker thread."""
+        worker_thread = self.WorkerThread(self)
+        worker_thread.done.connect(self.update_table)
+        worker_thread.start()
+
+    def update_table(self):
         """Update field statistics."""
         for row in range(self.rowCount()):
-            field = self.item(row, self.NAME_COLUMN).data(Qt.UserRole)
+            field = self.item(row, self.NAME_COLUMN).field
 
-            racer_list = get_racer_list(self.auth, field)
+            with self.field_list_lock:
+                finished = field['finished']
+                total = field['total']
 
-            total = len(racer_list)
-
-            finished = 0
-            for racer in racer_list:
-                if racer['watch_finish_time'] != '00:00:00' or racer['tt_dnf']:
-                    finished += 1
-
+            # Set finished and total.
             self.item(row, self.FINISHED_COLUMN).setData(Qt.DisplayRole, finished)
             self.item(row, self.TOTAL_COLUMN).setData(Qt.DisplayRole, total)
+
+            # Pick a background color for this row, depending on finished and total.
+            if total > 0:
+                if finished == 0:
+                    brush = None
+                elif 0 < finished < total:
+                    brush = QBrush(Qt.yellow)
+                elif finished == total:
+                    brush = QBrush(Qt.green)
+                else:
+                    brush = QBrush(Qt.red) # To show that something is horribly wrong.
+            else:
+                brush = None
+
+            for column in range(self.columnCount()):
+                self.item(row, column).setData(Qt.BackgroundRole, brush)
+
+        self.timer.start()
 
     def read_settings(self):
         """Read settings."""
@@ -804,6 +836,36 @@ class FieldStatisticsTable(QTableWidget):
         settings.setValue('pos', self.pos())
 
         settings.endGroup()
+
+    class WorkerThread(QObject, threading.Thread):
+        """Worker thread that does the REST calls to gather the field statistics."""
+        def __init__(self, parent):
+            """Initialize the OnTheDayRemoteWorker instance."""
+            super().__init__()
+
+            self.parent = parent
+
+        def run(self):
+            """Submit a batch of results to OnTheDay.net."""
+            for row in range(self.parent.rowCount()):
+                field = self.parent.item(row, self.parent.NAME_COLUMN).field
+
+                racer_list = get_racer_list(self.parent.auth, field)
+
+                total = len(racer_list)
+
+                finished = 0
+                for racer in racer_list:
+                    if racer['watch_finish_time'] != '00:00:00' or racer['tt_dnf']:
+                        finished += 1
+
+                with self.parent.field_list_lock:
+                    field['finished'] = finished
+                    field['total'] = total
+
+            self.done.emit()
+
+        done = pyqtSignal()
 
 class CommandLineTool():
     """Class that supports command-line ontheday.net tools."""
