@@ -130,7 +130,7 @@ class StartCentralWidget(QLabel, CentralWidget):
         """
         super().__init__(parent=parent)
 
-        self.setPixmap(QPixmap(os.path.join('resources', 'thyme.jpg')))
+        self.setPixmap(QPixmap(os.path.join(common.app_path(), 'resources', 'thyme.jpg')))
 
 class MainCentralWidget(QWidget, CentralWidget):
     """Main Central Widget.
