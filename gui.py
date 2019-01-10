@@ -569,14 +569,12 @@ class SexyThymeMainWindow(QMainWindow):
         Show a file selection dialog for choosing a new file name (or choose an existing file name
         to overwrite with a new race).
         """
-        dialog = QFileDialog(self)
+        dialog = common.FileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptSave)
         dialog.setDefaultSuffix('rce')
         dialog.setFileMode(QFileDialog.AnyFile)
         dialog.setLabelText(QFileDialog.Accept, 'New')
         dialog.setNameFilter('Race file (*.rce)')
-        dialog.setOptions(QFileDialog.DontUseNativeDialog)
-        dialog.setViewMode(QFileDialog.List)
 
         if not dialog.exec():
             return None
@@ -598,12 +596,10 @@ class SexyThymeMainWindow(QMainWindow):
 
         Show a file selection dialog for choosing an existing file name to load.
         """
-        dialog = QFileDialog(self)
+        dialog = common.FileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         dialog.setFileMode(QFileDialog.ExistingFile)
         dialog.setNameFilter('Race file (*.rce)')
-        dialog.setOptions(QFileDialog.DontUseNativeDialog)
-        dialog.setViewMode(QFileDialog.List)
 
         if not dialog.exec():
             return None
@@ -636,12 +632,10 @@ class SexyThymeMainWindow(QMainWindow):
         selecting an existing file).
         """
         # Pick the import file.
-        dialog = QFileDialog(self)
+        dialog = common.FileDialog(self)
         dialog.setAcceptMode(QFileDialog.AcceptOpen)
         dialog.setFileMode(QFileDialog.ExistingFile)
         dialog.setNameFilter('Bikereg file (*.csv)')
-        dialog.setOptions(QFileDialog.DontUseNativeDialog)
-        dialog.setViewMode(QFileDialog.List)
 
         if not dialog.exec():
             return None
@@ -650,14 +644,12 @@ class SexyThymeMainWindow(QMainWindow):
 
         # If we are not yet initialized, pick a new race file.
         if not self.centralWidget().has_model():
-            dialog = QFileDialog(self)
+            dialog = common.FileDialog(self)
             dialog.setAcceptMode(QFileDialog.AcceptSave)
             dialog.setDefaultSuffix('rce')
             dialog.setFileMode(QFileDialog.AnyFile)
             dialog.setLabelText(QFileDialog.Accept, 'New')
             dialog.setNameFilter('Race file (*.rce)')
-            dialog.setOptions(QFileDialog.DontUseNativeDialog)
-            dialog.setViewMode(QFileDialog.List)
 
             try:
                 if dialog.exec():

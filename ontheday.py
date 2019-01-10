@@ -565,14 +565,12 @@ class FileSelectionPage(QWizardPage):
         self.layout().addWidget(file_browse_widget)
         self.layout().addWidget(self.status_label)
 
-        file_dialog = QFileDialog(self)
+        file_dialog = common.FileDialog(self)
         file_dialog.setAcceptMode(QFileDialog.AcceptSave)
         file_dialog.setDefaultSuffix('rce')
         file_dialog.setFileMode(QFileDialog.AnyFile)
         file_dialog.setLabelText(QFileDialog.Accept, 'New')
         file_dialog.setNameFilter('Race file (*.rce)')
-        file_dialog.setOptions(QFileDialog.DontUseNativeDialog)
-        file_dialog.setViewMode(QFileDialog.List)
 
         browse_button.clicked.connect(file_dialog.exec)
         file_dialog.fileSelected.connect(self.file_lineedit.setText)
