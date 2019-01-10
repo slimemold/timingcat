@@ -101,6 +101,6 @@ if getattr(sys, 'frozen', False):
     elif _system == 'Linux':
         import keyring.backends.SecretService #pylint: disable=wrong-import-position
         keyring.set_keyring(keyring.backends.SecretService.Keyring())
-    elif _system == 'Linux':
+    elif _system == 'Windows':
         import keyring.backends.Windows #pylint: disable=wrong-import-position
         keyring.set_keyring(keyring.backends.Windows.WinVaultKeyring())
