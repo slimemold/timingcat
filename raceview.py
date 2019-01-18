@@ -10,7 +10,8 @@ and the models.
 import os
 from PyQt5.QtCore import QEvent, QItemSelection, QModelIndex, QRegExp, QSettings, \
                          QSortFilterProxyModel, Qt, pyqtSignal
-from PyQt5.QtWidgets import QDialog, QLabel, QMessageBox, QTableView, QVBoxLayout
+from PyQt5.QtWidgets import QDialog, QLabel, QMessageBox, QStyledItemDelegate, QTableView, \
+                            QVBoxLayout
 import common
 import defaults
 from delegates import SqlRelationalDelegate
@@ -42,6 +43,14 @@ __maintainer__ = common.MAINTAINER
 __email__ = common.EMAIL
 __status__ = common.STATUS
 
+class ReadOnlyStyledItemDelegate(QStyledItemDelegate):
+    """Item delegate that makes a view read-only."""
+    def createEditor(self, parent, option, index): #pylint: disable=invalid-name
+        """Never return any editors, making the item read-only."""
+        del parent
+        del option
+        del index
+
 class JournalTableView(QTableView):
     """Table view for the journal table model."""
 
@@ -67,6 +76,9 @@ class JournalTableView(QTableView):
         self.horizontalHeader().setSectionsMovable(True)
         self.verticalHeader().setVisible(False)
         self.hideColumn(self.source_model.id_column)
+
+        # Make this table view read-only.
+        self.setItemDelegate(ReadOnlyStyledItemDelegate())
 
         self.read_settings()
 
