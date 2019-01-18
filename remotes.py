@@ -18,7 +18,7 @@ import keyring
 import requests
 import common
 import ontheday
-from racemodel import msecs_is_valid, MSECS_DNF, MSECS_DNP
+from racemodel import Journal, msecs_is_valid, MSECS_DNF, MSECS_DNP
 
 __copyright__ = '''
     Copyright (C) 2018-2019 Andrew Chew
@@ -272,6 +272,8 @@ class OnTheDayRemote(Remote):
         self.pending_queue_lock = threading.Lock()
         self.thread = OnTheDayThread(self)
 
+        self.journal = Journal(modeldb.journal_table_model, 'ontheday')
+
     def connect(self, parent):
         race_table_model = self.modeldb.race_table_model
 
@@ -471,9 +473,13 @@ class OnTheDayRemote(Remote):
                         racer_table_model.setData(index, 'remote')
                     racer_table_model.dataChanged.emit(index, index)
 
-                # Result is rejected. Mark as "rejected".
+                # Result is rejected. Mark as "rejected", and emit list of errors to log.
                 elif result_status == ontheday.ResultStatus.Rejected:
                     racer_table_model.setData(index, 'rejected')
+
+                    result_errors = result['ontheday']['errors']
+                    for error in result_errors:
+                        self.journal.log(error)
 
                 # Result is skipped. Don't do anything (let it be picked up again on the next
                 # time around).

@@ -330,10 +330,11 @@ def _process_response(result, response):
     """Process individual response.
 
     'non_field_errors' in the response is a list of strings, where those strings are JSON encodings
-    of dicts. Unravel the JSON strings and store as dict.
+    of dicts. Store this list of strings in 'error' key of the result.
     """
     if 'non_field_errors' in response.keys():
         result['status'] = ResultStatus.Rejected
+        result['errors'] = response['non_field_errors']
     elif response.keys():
         result['status'] = ResultStatus.Ok
 
