@@ -10,7 +10,7 @@ all: $(OUT_DIR)/$(APP_NAME)
 clean:
 	rm -rf $(WORK_DIR) $(OUT_DIR)
 
-$(OUT_DIR)/$(APP_NAME):
+$(OUT_DIR)/$(APP_NAME): *.py resources/*
 	pyinstaller --noconfirm --onefile --windowed \
 	        --name $(APP_NAME) \
             --paths $(PROJECT_DIR) \
