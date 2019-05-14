@@ -93,6 +93,42 @@ def enum(**enums):
     """Simulate an enum."""
     return type('Enum', (), enums)
 
+def get_documents_dir():
+    """Returns the user's documents directory.
+
+    Use the saved setting if it exists. Otherwise, use the system's standard user Documents
+    directory.
+    """
+    standard_documents_dir = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+
+    group_name = GENERAL_QSETTINGS_GROUP
+    settings = QSettings()
+    settings.beginGroup(group_name)
+
+    documents_dir = settings.value(QSETTINGS_KEY_DOCUMENTS_FOLDER, standard_documents_dir)
+
+    settings.endGroup()
+
+    return documents_dir
+
+def set_documents_dir(dir_name):
+    """Set the user's documents directory.
+
+    Save the directory in settings. If settings matches default, remove settings.
+    """
+    standard_documents_dir = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
+
+    group_name = GENERAL_QSETTINGS_GROUP
+    settings = QSettings()
+    settings.beginGroup(group_name)
+
+    if dir_name == standard_documents_dir:
+        settings.remove(QSETTINGS_KEY_DOCUMENTS_FOLDER)
+    else:
+        settings.setValue(QSETTINGS_KEY_DOCUMENTS_FOLDER, dir_name)
+
+    settings.endGroup()
+
 class FileDialog(QFileDialog):
     """Our QFileDialog subclass.
 
@@ -104,7 +140,7 @@ class FileDialog(QFileDialog):
 
         self.setOptions(QFileDialog.DontUseNativeDialog)
         self.setViewMode(QFileDialog.List)
-        self.setDirectory(self.get_documents_dir())
+        self.setDirectory(get_documents_dir())
 
     def exec(self):
         """Executes the file dialog, and if accepted, saves the directory.
@@ -116,45 +152,9 @@ class FileDialog(QFileDialog):
         # If dialog is "accepted", save directory.
         if dialog_code:
             filename = self.selectedFiles()[0]
-            self.set_documents_dir(os.path.dirname(filename))
+            set_documents_dir(os.path.dirname(filename))
 
         return dialog_code
-
-    def get_documents_dir(self, ):
-        """Returns the user's documents directory.
-
-        Use the saved setting if it exists. Otherwise, use the system's standard user Documents
-        directory.
-        """
-        standard_documents_dir = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
-
-        group_name = GENERAL_QSETTINGS_GROUP
-        settings = QSettings()
-        settings.beginGroup(group_name)
-
-        documents_dir = settings.value(QSETTINGS_KEY_DOCUMENTS_FOLDER, standard_documents_dir)
-
-        settings.endGroup()
-
-        return documents_dir
-
-    def set_documents_dir(self, dir_name):
-        """Set the user's documents directory.
-
-        Save the directory in settings. If settings matches default, remove settings.
-        """
-        standard_documents_dir = QStandardPaths.writableLocation(QStandardPaths.DocumentsLocation)
-
-        group_name = GENERAL_QSETTINGS_GROUP
-        settings = QSettings()
-        settings.beginGroup(group_name)
-
-        if dir_name == standard_documents_dir:
-            settings.remove(QSETTINGS_KEY_DOCUMENTS_FOLDER)
-        else:
-            settings.setValue(QSETTINGS_KEY_DOCUMENTS_FOLDER, dir_name)
-
-        settings.endGroup()
 
 # Work around pyinstaller's inability to handle keyring's use of the entrypoint module. We have to
 # set the keyring backend manually (auto-detect doesn't work).
