@@ -6,6 +6,7 @@ This is the execution entry point for the app.
 """
 
 import argparse
+import os
 import sys
 import traceback
 from PyQt5.QtWidgets import QApplication, QMessageBox
@@ -68,6 +69,11 @@ def main():
     QApplication.setApplicationVersion(common.VERSION)
 
     app = QApplication(sys.argv)
+
+    # Set our current working directory to the documents folder. We need to do this because running
+    # a pyinstaller version of this app has the current working directory as "/" (at least, on OS X)
+    # which is always wrong. Therefore, always just start it off at somewhere sane and writable.
+    os.chdir(common.get_documents_dir())
 
     main_window = SexyThymeMainWindow(filename=args.racefile)
     main_window.show()
