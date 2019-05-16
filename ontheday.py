@@ -627,7 +627,8 @@ class ImportPage(QWizardPage):
         self.setSubTitle('Preparing to import %s' % (self.wizard().race['name'] + ' ' +
                                                      self.wizard().race['date']))
 
-        if 'tt_watch_start_time' in self.wizard().race.keys():
+        if ('tt_watch_start_time' in self.wizard().race.keys() and
+            self.wizard().race['tt_watch_start_time']):
             self.reference_clock_checkbox.show()
             self.reference_clock_checkbox.setChecked(True)
 
