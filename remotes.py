@@ -299,7 +299,11 @@ class OnTheDayRemote(Remote):
         password_lineedit = QLineEdit()
         password_lineedit.setEchoMode(QLineEdit.Password)
         if username:
-            password = keyring.get_password(ontheday.KEYRING_SERVICE, username)
+            password = None
+            try:
+                password = keyring.get_password(ontheday.KEYRING_SERVICE, username)
+            except keyring.errors.KeyringLocked:
+                pass
             if password:
                 password_lineedit.setText(password)
 

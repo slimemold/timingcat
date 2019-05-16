@@ -408,7 +408,11 @@ class AuthenticationPage(QWizardPage):
         self.setField(self.USERNAME_FIELD, username)
 
         # See if we have a password in our keyring for this username.
-        password = keyring.get_password(KEYRING_SERVICE, username)
+        password = None
+        try:
+            password = keyring.get_password(KEYRING_SERVICE, username)
+        except keyring.errors.KeyringLocked:
+            pass
         if not password:
             return
 
