@@ -7,16 +7,17 @@ OUT_DIR := dist
 PROJECT_DIR := $(shell pwd)
 
 ifeq ($(UNAME), Darwin)
+    APP_FILE := $(APP_NAME).app
     ICON_FILE := osx/sexythyme.icns
+    PACKAGE_FILE := SexyThyme.zip
 endif
 
-all: $(OUT_DIR)/$(APP_NAME)
+all: $(OUT_DIR)/$(PACKAGE_FILE)
 
 clean:
 	rm -rf $(WORK_DIR) $(OUT_DIR)
-	rm $(ICON_FILE)
 
-$(OUT_DIR)/$(APP_NAME): *.py osx/* resources/* $(ICON_FILE)
+$(OUT_DIR)/$(APP_FILE): *.py osx/* resources/* $(ICON_FILE)
 	pyinstaller --noconfirm --onefile --windowed \
             --name $(APP_NAME) \
             --paths $(PROJECT_DIR) \
@@ -27,5 +28,10 @@ $(OUT_DIR)/$(APP_NAME): *.py osx/* resources/* $(ICON_FILE)
             --icon $(ICON_FILE) \
             sexythyme.py
 
+ifeq ($(UNAME), Darwin)
 osx/sexythyme.icns: osx/sexythyme.iconset/*
-	iconutil -c icns osx/sexythyme.iconset
+	iconutil -o $@ -c icns osx/sexythyme.iconset
+
+$(OUT_DIR)/$(PACKAGE_FILE): $(OUT_DIR)/$(APP_FILE)
+	cd $(OUT_DIR); zip -r $(PACKAGE_FILE) $(APP_FILE)
+endif
