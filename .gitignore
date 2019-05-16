@@ -7,3 +7,4 @@ dist
 *.rce
 *.swo
 *.swp
+osx/*.icns
