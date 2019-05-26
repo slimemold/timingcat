@@ -424,14 +424,15 @@ class OnTheDayRemote(Remote):
                     continue
 
                 metadata = json.loads(record.value(racer_table_model.METADATA))
-                finish = record.value(racer_table_model.FINISH)
-
-                # If no ontheday metadata, this racer was not imported from ontheday.net, so skip.
-                if not 'ontheday' in metadata.keys():
-                    continue
 
                 # Stuff to go into the ontheday result submission.
-                ontheday_id = metadata['ontheday']['id']
+                # If no ontheday metadata, this racer was not imported from ontheday.net, so skip.
+                try:
+                    ontheday_id = metadata['ontheday']['id']
+                except KeyError:
+                    continue
+
+                finish = record.value(racer_table_model.FINISH)
                 if msecs_is_valid(finish):
                     # Report time relative to reference clock (which means just use msecs since
                     # midnight).
