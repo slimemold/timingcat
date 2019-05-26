@@ -81,10 +81,15 @@ class AboutDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
-        application_label = QLabel('<h1>' + common.APPLICATION_NAME + '</h1>')
+        application_label = QLabel('<h1>%s</h1>' % common.APPLICATION_NAME)
         application_label.setAlignment(Qt.AlignCenter)
 
+        version_label = QLabel('<h2>Version %s</h2>' % __version__)
+        version_label.setAlignment(Qt.AlignCenter)
+
         copyright_label = QLabel(__copyright__)
+
+        contact_label = QLabel('    For support, contact %s <%s>.' % (__maintainer__, __email__))
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok)
         button_box.setCenterButtons(True)
@@ -92,7 +97,9 @@ class AboutDialog(QDialog):
 
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(application_label)
+        self.layout().addWidget(version_label)
         self.layout().addWidget(copyright_label)
+        self.layout().addWidget(contact_label)
         self.layout().addWidget(button_box)
         self.layout().setSizeConstraint(QLayout.SetFixedSize)
 
