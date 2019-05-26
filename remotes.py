@@ -426,6 +426,10 @@ class OnTheDayRemote(Remote):
                 metadata = json.loads(record.value(racer_table_model.METADATA))
                 finish = record.value(racer_table_model.FINISH)
 
+                # If no ontheday metadata, this racer was not imported from ontheday.net, so skip.
+                if not 'ontheday' in metadata.keys():
+                    continue
+
                 # Stuff to go into the ontheday result submission.
                 ontheday_id = metadata['ontheday']['id']
                 if msecs_is_valid(finish):
