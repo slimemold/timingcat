@@ -11,6 +11,7 @@ import ntplib
 from PyQt5.QtCore import QDate, QDateTime, QTime, QTimer
 from PyQt5.QtWidgets import QFrame, QLCDNumber, QMessageBox
 import common
+from defaults import NTP_SERVER_NUM_CHECKS
 
 __copyright__ = '''
     Copyright (C) 2018-2019 Andrew Chew
@@ -91,18 +92,29 @@ class DigitalClock(QLCDNumber):
         """
         err_text = None
 
-        try:
-            ntp_client = ntplib.NTPClient()
-            response = ntp_client.request(NTP_SERVER)
+        ntp_client = ntplib.NTPClient()
 
-            if abs(response.offset) > ACCEPTABLE_OFFSET:
-                err_text = ('System time seems to be off by %.2f seconds! ' % abs(response.offset) +
+        # Try NTP server clock check some number of times, and take the average.
+        total = 0.0
+        num = 0
+        for _ in range(NTP_SERVER_NUM_CHECKS):
+            try:
+                response = ntp_client.request(NTP_SERVER)
+                total += response.offset
+                num += 1
+            except Exception as e: #pylint: disable=broad-except
+                reason = str(e)
+
+        if num == 0:
+            err_text = ('Failed to validate clock against NTP server ' + NTP_SERVER + '.\n\n' +
+                        'Reason: %s' % reason)
+        else:
+            average = total / num
+            if average > ACCEPTABLE_OFFSET:
+                err_text = ('System time seems to be off by %.2f seconds! ' % average +
+                            'Results were averaged across %s checks.' % num +
                             'Please check system settings to ensure that the clock is being ' +
                             'synchronized with an internet time server.')
-
-        except Exception as e: #pylint: disable=broad-except
-            err_text = ('Failed to validate clock against NTP server ' + NTP_SERVER + '.\n\n' +
-                        'Reason: %s' % str(e))
 
         if not err_text:
             return
