@@ -15,6 +15,7 @@ various table classes don't operate independently from one another...there are i
 and they get to sibling tables via the ModelDatabase instance.
 """
 
+import json
 import os
 import sys
 from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QObject, Qt, QTime
@@ -667,11 +668,34 @@ class FieldTableModel(TableModel):
                                 Qt.DisplayRole, name, 1, Qt.MatchExactly)
 
         if not index_list:
-            raise InputError('Failed to find field with NAME %s' % name)
+            raise InputError('Failed to find field with name %s' % name)
 
         index = index_list[0]
 
         self.removeRow(index.row())
+
+    def get_field_metadata(self, name):
+        """Returns the metadata of the field identified by "name"."""
+        index_list = self.match(self.index(0, self.name_column),
+                                Qt.DisplayRole, name, 1, Qt.MatchExactly)
+
+        if not index_list:
+            raise InputError('Failed to find field with name %s' % name)
+
+        record = self.record(index_list[0].row())
+        return record.value(self.METADATA)
+
+    def set_field_metadata(self, name, metadata):
+        """Sets the metadata of the field identified by "name"."""
+        index_list = self.match(self.index(0, self.name_column),
+                                Qt.DisplayRole, name, 1, Qt.MatchExactly)
+
+        if not index_list:
+            raise InputError('Failed to find field with name %s' % name)
+
+        index = index_list[0].siblingAtColumn(self.metadata_column)
+        self.setData(index, metadata)
+        self.dataChanged.emit(index, index)
 
     def get_subfields(self, name):
         """Get the value of the subfields column of the row specified by the field name.
@@ -861,6 +885,91 @@ class RacerTableModel(TableModel):
 
         self.insertRecord(-1, record)
 
+    def update_racer(self, bib, first_name, last_name, field, category, team, age,
+                     start=MSECS_UNINITIALIZED, finish=MSECS_UNINITIALIZED, status='',
+                     metadata=EMPTY_JSON): #pylint: disable=too-many-branches
+        """Update a row in the racer database table.
+
+        Do some validation.
+
+        Don't have to check for None, because that would fail the NOT NULL table constraint.
+
+        Also, default QDateTime constructor makes an invalid time that ends up being stored as NULL
+        in the table, which is what we want.
+        """
+        index_list = self.match(self.index(0, self.bib_column),
+                                Qt.DisplayRole, bib, 1, Qt.MatchExactly)
+        if not index_list:
+            raise InputError('Racer bib %s not found.' % bib)
+
+        if first_name == '' and last_name == '':
+            raise InputError('Racer first and last name is .')
+
+        # See if the field exists in our Field table.  If not, we add a new
+        # field.
+        if not field:
+            raise InputError('Racer field is missing.' % field)
+
+        field_id = self.modeldb.field_table_model.id_from_name(field)
+        if not field_id:
+            self.modeldb.field_table_model.add_field(field)
+            field_id = self.modeldb.field_table_model.id_from_name(field)
+
+        if field_id is None:
+            raise InputError('Racer field "%s" is invalid.' % field)
+
+        record = self.record(index_list[0].row())
+
+        if record.value(self.FIRST_NAME) != first_name:
+            index = index_list[0].siblingAtColumn(self.first_name_column)
+            self.setData(index, first_name)
+            self.dataChanged.emit(index, index)
+
+        if record.value(self.LAST_NAME) != last_name:
+            index = index_list[0].siblingAtColumn(self.last_name_column)
+            self.setData(index, last_name)
+            self.dataChanged.emit(index, index)
+
+        if record.value(self.FIELD) != field_id:
+            index = index_list[0].siblingAtColumn(self.field_column)
+            self.setData(index, field_id)
+            self.dataChanged.emit(index, index)
+
+        if record.value(self.CATEGORY) != category:
+            index = index_list[0].siblingAtColumn(self.category_column)
+            self.setData(index, category)
+            self.dataChanged.emit(index, index)
+
+        if record.value(self.TEAM) != team:
+            index = index_list[0].siblingAtColumn(self.team_column)
+            self.setData(index, team)
+            self.dataChanged.emit(index, index)
+
+        if record.value(self.AGE) != age:
+            index = index_list[0].siblingAtColumn(self.age_column)
+            self.setData(index, age)
+            self.dataChanged.emit(index, index)
+
+        if record.value(self.START) != start:
+            index = index_list[0].siblingAtColumn(self.start_column)
+            self.setData(index, start)
+            self.dataChanged.emit(index, index)
+
+        if record.value(self.FINISH) != finish:
+            index = index_list[0].siblingAtColumn(self.finish_column)
+            self.setData(index, finish)
+            self.dataChanged.emit(index, index)
+
+        if record.value(self.STATUS) != status:
+            index = index_list[0].siblingAtColumn(self.status_column)
+            self.setData(index, status)
+            self.dataChanged.emit(index, index)
+
+        if record.value(self.METADATA) != metadata:
+            index = index_list[0].siblingAtColumn(self.metadata_column)
+            self.setData(index, metadata)
+            self.dataChanged.emit(index, index)
+
     def delete_racer(self, bib):
         """Delete a row from the database table."""
         index_list = self.match(self.index(0, self.bib_column),
@@ -872,6 +981,29 @@ class RacerTableModel(TableModel):
         index = index_list[0]
 
         self.removeRow(index.row())
+
+    def get_racer_metadata(self, bib):
+        """Returns the metadata of the racer identified by "bib"."""
+        index_list = self.match(self.index(0, self.bib_column),
+                                Qt.DisplayRole, bib, 1, Qt.MatchExactly)
+
+        if not index_list:
+            raise InputError('Failed to find racer with bib %s' % bib)
+
+        record = self.record(index_list[0].row())
+        return record.value(self.METADATA)
+
+    def set_racer_metadata(self, bib, metadata):
+        """Returns the metadata of the racer identified by "bib"."""
+        index_list = self.match(self.index(0, self.bib_column),
+                                Qt.DisplayRole, bib, 1, Qt.MatchExactly)
+
+        if not index_list:
+            raise InputError('Failed to find racer with bib %s' % bib)
+
+        index = index_list[0].siblingAtColumn(self.metadata_column)
+        self.setData(index, metadata)
+        self.dataChanged.emit(index, index)
 
     def set_racer_start(self, bib, start):
         """Set start time of the racer identified by "bib"."""
@@ -895,6 +1027,18 @@ class RacerTableModel(TableModel):
 
         index = index_list[0].siblingAtColumn(self.finish_column)
         self.setData(index, finish)
+        self.dataChanged.emit(index, index)
+
+    def set_racer_status(self, bib, status):
+        """Set finish time of the racer identified by "bib"."""
+        index_list = self.match(self.index(0, self.bib_column),
+                                Qt.DisplayRole, bib, 1, Qt.MatchExactly)
+
+        if not index_list:
+            raise InputError('Failed to find racer with bib %s' % bib)
+
+        index = index_list[0].siblingAtColumn(self.status_column)
+        self.setData(index, status)
         self.dataChanged.emit(index, index)
 
     def assign_start_times(self, field_name, start, interval, dry_run=False):
@@ -1040,21 +1184,6 @@ class RacerTableModel(TableModel):
 
         return super().data(index, role)
 
-    def setData(self, index, value, role=Qt.EditRole): #pylint: disable=invalid-name
-        """Update start and finish time.
-
-        If finish time is set, and remote is set up, set status to local so that the remote
-        handler can push the new finish time.
-        """
-        if index.column() == self.start_column:
-            old_value = self.data(index, Qt.DisplayRole)
-        elif index.column() == self.finish_column:
-            old_value = self.data(index, Qt.DisplayRole)
-            if old_value != value:
-                super().setData(index.siblingAtColumn(self.status_column), 'local', role)
-
-        return super().setData(index, value, role)
-
 class ResultTableModel(TableModel):
     """Result Table Model
 
@@ -1117,4 +1246,5 @@ class ResultTableModel(TableModel):
         finish = record.value(self.FINISH)
 
         self.modeldb.racer_table_model.set_racer_finish(bib, finish)
+        self.modeldb.racer_table_model.set_racer_status(bib, 'local')
         self.removeRow(row)

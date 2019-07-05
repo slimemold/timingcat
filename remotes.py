@@ -268,8 +268,16 @@ class OnTheDayRemote(Remote):
         self.auth = None
         self.race = None
         self.timer = None
+
+        # For results processing.
         self.pending_queue = []
         self.pending_queue_lock = threading.Lock()
+
+        # For changes updates from remote.
+        self.changes_list = []
+        self.changes_list_lock = threading.Lock()
+
+        # Thread that performs all ontheday.net network (REST) transactions.
         self.thread = OnTheDayThread(self)
 
         self.journal = Journal(modeldb.journal_table_model, 'ontheday')
@@ -402,6 +410,8 @@ class OnTheDayRemote(Remote):
         # Process all done requests (by marking the status column).
         self.process_result_responses()
 
+        self.process_remote_changes()
+
     def collect_result_submits(self):
         """Go through the racer table and find stuff that needs submitting.
 
@@ -495,6 +505,44 @@ class OnTheDayRemote(Remote):
                 else:
                     self.pending_queue.append(result)
 
+    def process_remote_changes(self):
+        """Update our views with a list of remote changes.
+
+        A change dict is of the form:
+            category_name: Name of the changed category.
+            category_start: Collective start time for the category (or None).
+            entry_list_checksum: The checksum of the field that changed.
+            entry_list: The list of ontheday entry records in that field.
+        """
+        with self.changes_list_lock:
+            ontheday_changes = self.changes_list
+            self.changes_list = []
+
+        field_table_model = self.modeldb.field_table_model
+        racer_table_model = self.modeldb.racer_table_model
+
+        for ontheday_change in ontheday_changes:
+            for ontheday_entry in ontheday_change['entry_list']:
+                bib = ontheday_entry['race_number']
+                racer_metadata = json.loads(racer_table_model.get_racer_metadata(bib))
+
+                if (('checksum' in racer_metadata['ontheday']) and
+                    (racer_metadata['ontheday']['checksum'] == ontheday_entry['checksum'])):
+                    continue
+
+                racer_metadata['ontheday']['checksum'] = ontheday_entry['checksum']
+
+                ontheday.add_racer_to_modeldb(self.modeldb, ontheday_entry,
+                                              ontheday_change['category_name'],
+                                              ontheday_change['category_start'],
+                                              update=True)
+
+            field_metadata = json.loads(
+                field_table_model.get_field_metadata(ontheday_change['category_name']))
+            field_metadata['ontheday']['checksum'] = ontheday_change['entry_list_checksum']
+            field_table_model.set_field_metadata(ontheday_change['category_name'],
+                                                 json.dumps(field_metadata))
+
 class OnTheDayThread(threading.Thread):
     """OnTheDay.net worker actually does the REST call to submit a result.
 
@@ -511,26 +559,41 @@ class OnTheDayThread(threading.Thread):
         self.remote = remote
 
     def run(self):
-        """Submit a batch of results to OnTheDay.net."""
+        """Dispatch a bunch of costly ontheday.net stuff."""
         while self.should_run:
-            ontheday_results_list = None
-            limit = self.remote.race['bulk_update_limit']
-
-            with self.remote.pending_queue_lock:
-                ontheday_results_list = list(map(lambda result: result['ontheday'],
-                                                 self.remote.pending_queue[0:limit]))
-            if ontheday_results_list:
-                try:
-                    ontheday.submit_results(self.remote.auth, self.remote.race,
-                                            ontheday_results_list)
-
-                    for ontheday_result in ontheday_results_list:
-                        ontheday_result['submitted'] = True
-
-                    self.remote.set_status(Status.Ok)
-                except requests.exceptions.HTTPError:
-                    self.remote.set_status(Status.Rejected)
-                except requests.exceptions.ConnectionError:
-                    self.remote.set_status(Status.TimedOut)
+            self.submit_results()
+            self.collect_remote_changes()
 
             time.sleep(1)
+
+    def submit_results(self):
+        """Submit a batch of results to OnTheDay.net."""
+        ontheday_results_list = None
+        limit = self.remote.race['bulk_update_limit']
+
+        with self.remote.pending_queue_lock:
+            ontheday_results_list = list(map(lambda result: result['ontheday'],
+                                             self.remote.pending_queue[0:limit]))
+        if ontheday_results_list:
+            try:
+                ontheday.submit_results(self.remote.auth, self.remote.race,
+                                        ontheday_results_list)
+
+                for ontheday_result in ontheday_results_list:
+                    ontheday_result['submitted'] = True
+
+                self.remote.set_status(Status.Ok)
+            except requests.exceptions.HTTPError:
+                self.remote.set_status(Status.Rejected)
+            except requests.exceptions.ConnectionError:
+                self.remote.set_status(Status.TimedOut)
+
+    def collect_remote_changes(self):
+        """Collect OnTheDay.net changes (from website, other clients, etc.)"""
+        ontheday_changes = ontheday.get_changes(self.remote.auth, self.remote.modeldb)
+
+        if not ontheday_changes:
+            return
+
+        with self.remote.changes_list_lock:
+            self.remote.changes_list += ontheday_changes
