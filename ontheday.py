@@ -219,11 +219,20 @@ def import_race(modeldb, auth, race):
     also set the race name and date.
     """
     # Import racers (fields will be implicitly imported).
+    field_table_model = modeldb.field_table_model
     racer_table_model = modeldb.racer_table_model
 
     field_list = get_field_list(auth, race)
 
     for field in field_list:
+        # Add the field here. In case there are no racers in the field, we want the field added
+        # anyway.
+        # Also, we need to keep field metadata (especially the checksum, which we will use to
+        # check if there are any changes in the field).
+        metadata = {'ontheday': {'url': field['category_entry_list_url'],
+                                 'checksum': field['entry_list_checksum']}}
+        field_table_model.add_field(field['name'], '', json.dumps(metadata))
+
         # This is wall clock, date of today, which is what the reference clock
         # is by default (before it's set to something else).
         reference_clock = modeldb.race_table_model.get_reference_clock_datetime()
@@ -239,6 +248,11 @@ def import_race(modeldb, auth, race):
         racer_list = get_racer_list(auth, field)
 
         for racer in racer_list:
+            # Racers without a tt_finish_time_url are placeholder entries and should not show
+            # up in our racer list.
+            if not 'tt_finish_time_url' in racer:
+                continue
+
             metadata = {'ontheday': {'id': racer['id'],
                                      'tt_finish_time_url': racer['tt_finish_time_url']}}
 
