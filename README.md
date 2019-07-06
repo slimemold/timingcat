@@ -1,9 +1,17 @@
 # SexyThyme - Time trial timing software with OnTheDay.net integration
 
 # Version History
-1.0.1 - Bug fixes, ontheday.net remote robustness fixes, used for Race to the
-        Observatory 2019
-1.0.0 - Initial release, used for SBHC 2019
+1.0.2
+- Add cheat sheet (help window showing keyboard shortcuts).
+- Reduce NTP clock check noisiness false positives.
+- Add multi-client support.
+        
+1.0.1
+- Bug fixes, ontheday.net remote robustness fixes.
+- Used for Race to the Observatory 2019.
+
+1.0.0
+- Initial release, used for SBHC 2019.
 
 # Prerequisites
 
