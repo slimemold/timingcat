@@ -237,6 +237,9 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.submit_button.clicked.connect(self.handle_result_submit)
 
         # Signals/slots for keyboard shortcuts.
+        shortcut = QShortcut(QKeySequence(QKeySequence.HelpContents), self)
+        shortcut.activated.connect(self.handle_cheat_sheet_shortcut)
+
         shortcut = QShortcut(QKeySequence('CTRL+S'), self)
         shortcut.activated.connect(self.handle_submit_shortcut)
 
@@ -251,9 +254,6 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         shortcut = QShortcut(QKeySequence('CTRL+F'), self)
         shortcut.activated.connect(self.handle_field_shortcut)
-
-        shortcut = QShortcut(QKeySequence('CTRL+H'), self)
-        shortcut.activated.connect(self.handle_cheat_sheet_shortcut)
 
         shortcut = QShortcut(QKeySequence('CTRL+J'), self)
         shortcut.activated.connect(self.handle_journal_shortcut)
