@@ -6,7 +6,6 @@ This module implements the cheat sheet widget, which shows help information
 such as keyboard shortcuts, etc.
 """
 
-import textwrap
 from PyQt5.QtCore import QSettings, Qt, pyqtSignal
 from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import QLabel

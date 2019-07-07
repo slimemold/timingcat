@@ -15,7 +15,6 @@ various table classes don't operate independently from one another...there are i
 and they get to sibling tables via the ModelDatabase instance.
 """
 
-import json
 import os
 import sys
 from PyQt5.QtCore import QDate, QDateTime, QModelIndex, QObject, Qt, QTime
@@ -885,9 +884,9 @@ class RacerTableModel(TableModel):
 
         self.insertRecord(-1, record)
 
-    def update_racer(self, bib, first_name, last_name, field, category, team, age,
+    def update_racer(self, bib, first_name, last_name, field, category, team, age, #pylint: disable=too-many-branches
                      start=MSECS_UNINITIALIZED, finish=MSECS_UNINITIALIZED, status='',
-                     metadata=EMPTY_JSON): #pylint: disable=too-many-branches
+                     metadata=EMPTY_JSON):
         """Update a row in the racer database table.
 
         Do some validation.
