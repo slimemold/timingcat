@@ -8,6 +8,7 @@ such as keyboard shortcuts, etc.
 
 import textwrap
 from PyQt5.QtCore import QSettings, Qt, pyqtSignal
+from PyQt5.QtGui import QKeySequence
 from PyQt5.QtWidgets import QLabel
 import defaults
 
@@ -24,22 +25,21 @@ class CheatSheet(QLabel):
         self.setAttribute(Qt.WA_ShowWithoutActivating)
         self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
-        self.setText(textwrap.dedent('''\
-            Window Toggling Shortcuts:
-            CTRL+H\tToggle help
-            CTRL+R\tToggle racer list
-            CTRL+F\tToggle field list
-            CTRL+L\tToggle log
-
-            Results Window Shortcuts:
-            CTRL+S\tSubmit result(s)
-            CTRL+A\tSelect all results
-            CTRL+D\tDeselect all results
-
-            Miscellaneous:
-            CTRL+T\tToggle reference/wall time shown
-            CTRL+B\tLaunch race builder
-            '''))
+        self.setText(
+            'Window Toggling Shortcuts:\n' +
+            QKeySequence.toString(QKeySequence(QKeySequence.HelpContents)) + '\tToggle help\n' +
+            QKeySequence.toString(QKeySequence('CTRL+R')) + '\tToggle racer list\n' +
+            QKeySequence.toString(QKeySequence('CTRL+F')) + '\tToggle field list\n' +
+            QKeySequence.toString(QKeySequence('CTRL+L')) + '\tToggle log\n' +
+            '\n' +
+            'Results Window Shortcuts:\n' +
+            QKeySequence.toString(QKeySequence('CTRL+S')) + '\tSubmit result(s)\n' +
+            QKeySequence.toString(QKeySequence('CTRL+A')) + '\tSelect all results\n' +
+            QKeySequence.toString(QKeySequence('CTRL+D')) + '\tDeselect all results\n' +
+            '\n' +
+            'Miscellaneous:\n' +
+            QKeySequence.toString(QKeySequence('CTRL+T')) + '\tToggle reference/wall time shown\n' +
+            QKeySequence.toString(QKeySequence('CTRL+B')) + '\tLaunch race builder\n')
 
         self.read_settings()
 
