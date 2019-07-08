@@ -418,10 +418,8 @@ class MainCentralWidget(QWidget, CentralWidget):
 
     def connect_preferences(self, preferences):
         """Connect preferences signals to the various slots that care."""
-        preferences.digital_clock_checkbox.stateChanged.connect(self.digital_clock.setVisible)
-        self.digital_clock.setVisible(preferences.digital_clock_checkbox.checkState())
-        preferences.wall_times_checkbox.stateChanged.connect(self.digital_clock.update)
-
+        print('connect_preferences')
+        self.digital_clock.connect_preferences(preferences)
         self.field_table_view.connect_preferences(preferences)
         self.racer_table_view.connect_preferences(preferences)
         self.result_table_view.connect_preferences(preferences)

@@ -128,3 +128,11 @@ class DigitalClock(QLCDNumber):
                    "(cellphone) time is used.\n\nYOU HAVE BEEN WARNED!")
 
         QMessageBox.warning(self, 'Warning', message)
+
+    def connect_preferences(self, preferences):
+        """Connect preferences signals to the various slots that care."""
+        self.preferences = preferences
+
+        preferences.digital_clock_checkbox.stateChanged.connect(self.setVisible)
+        self.setVisible(preferences.digital_clock_checkbox.checkState())
+        preferences.wall_times_checkbox.stateChanged.connect(self.update)
