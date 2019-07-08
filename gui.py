@@ -449,6 +449,9 @@ class SexyThymeMainWindow(QMainWindow):
         self.preferences_window = PreferencesWindow()
         self.connect_preferences(self.preferences_window)
 
+        shortcut = QShortcut(QKeySequence('CTRL+T'), self)
+        shortcut.activated.connect(self.preferences_window.wall_times_checkbox.toggle)
+
         self.reports_window = None
 
         if filename:
