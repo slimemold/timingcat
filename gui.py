@@ -418,7 +418,6 @@ class MainCentralWidget(QWidget, CentralWidget):
 
     def connect_preferences(self, preferences):
         """Connect preferences signals to the various slots that care."""
-        print('connect_preferences')
         self.digital_clock.connect_preferences(preferences)
         self.field_table_view.connect_preferences(preferences)
         self.racer_table_view.connect_preferences(preferences)
