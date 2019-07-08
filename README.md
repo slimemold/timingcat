@@ -5,6 +5,9 @@
 - Add cheat sheet (help window showing keyboard shortcuts).
 - Reduce NTP clock check noisiness false positives.
 - Add multi-client support.
+- Add support for ontheday.net day-of registration (racers added after initial
+  import).
+- Add shortcut key to toggle wall/reference time.
         
 1.0.1
 - Bug fixes, ontheday.net remote robustness fixes.
