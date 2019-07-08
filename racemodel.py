@@ -981,6 +981,13 @@ class RacerTableModel(TableModel):
 
         self.removeRow(index.row())
 
+    def racer_exists(self, bib):
+        """Returns True if racer exists, otherwise False."""
+        index_list = self.match(self.index(0, self.bib_column),
+                                Qt.DisplayRole, bib, 1, Qt.MatchExactly)
+
+        return bool(index_list)
+
     def get_racer_metadata(self, bib):
         """Returns the metadata of the racer identified by "bib"."""
         index_list = self.match(self.index(0, self.bib_column),

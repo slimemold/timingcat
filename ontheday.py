@@ -264,12 +264,8 @@ def import_race(modeldb, auth, race):
     notes = 'Imported from OnTheDay.net on %s.' % QDateTime.currentDateTime().toString(Qt.ISODate)
     race_table_model.set_race_property(race_table_model.NOTES, notes)
 
-def add_racer_to_modeldb(modeldb, racer, field_name, field_start, **kwargs): #pylint: disable=too-many-branches
+def add_racer_to_modeldb(modeldb, racer, field_name, field_start): #pylint: disable=too-many-branches
     """Adds a racer to the model, or updates an existing racer."""
-    update = kwargs.pop('update', False)
-    if kwargs:
-        raise TypeError('Unknown arguments: %s' % kwargs.keys())
-
     # Racers without a tt_finish_time_url are placeholder entries and should not show
     # up in our racer list.
     if not 'tt_finish_time_url' in racer:
@@ -309,8 +305,8 @@ def add_racer_to_modeldb(modeldb, racer, field_name, field_start, **kwargs): #py
                                 QTime.fromString(racer['watch_start_time'], Qt.ISODateWithMs))
         start = QDateTime(QDate.currentDate()).msecsTo(start_clock)
 
-    if update:
-        modeldb.racer_table_model.update_racer(str(racer['race_number']),
+    if modeldb.racer_table_model.racer_exists(str(racer['race_number'])):
+        modeldb.racer_table_model.update_racer(racer['race_number'],
                                                racer['firstname'],
                                                racer['lastname'],
                                                field_name,
@@ -322,7 +318,7 @@ def add_racer_to_modeldb(modeldb, racer, field_name, field_start, **kwargs): #py
                                                status,
                                                json.dumps(metadata))
     else:
-        modeldb.racer_table_model.add_racer(str(racer['race_number']),
+        modeldb.racer_table_model.add_racer(racer['race_number'],
                                             racer['firstname'],
                                             racer['lastname'],
                                             field_name,

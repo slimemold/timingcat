@@ -534,8 +534,7 @@ class OnTheDayRemote(Remote):
 
                 ontheday.add_racer_to_modeldb(self.modeldb, ontheday_entry,
                                               ontheday_change['category_name'],
-                                              ontheday_change['category_start'],
-                                              update=True)
+                                              ontheday_change['category_start'])
 
             field_metadata = json.loads(
                 field_table_model.get_field_metadata(ontheday_change['category_name']))
