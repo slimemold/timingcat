@@ -8,10 +8,9 @@ such as keyboard shortcuts, etc.
 
 from PyQt5.QtCore import QSettings, Qt, pyqtSignal
 from PyQt5.QtGui import QKeySequence
-from PyQt5.QtWidgets import QLabel
-import defaults
+from PyQt5.QtWidgets import QLabel, QLayout, QVBoxLayout, QWidget
 
-class CheatSheet(QLabel):
+class CheatSheet(QWidget):
     """Cheat sheet class.
 
     Just a widget that holds help information.
@@ -22,25 +21,37 @@ class CheatSheet(QLabel):
 
         self.setWindowTitle('Help')
         self.setAttribute(Qt.WA_ShowWithoutActivating)
-        self.setAlignment(Qt.AlignLeft | Qt.AlignTop)
 
-        self.setText(
+        self.setLayout(QVBoxLayout())
+        self.layout().setSizeConstraint(QLayout.SetFixedSize)
+
+        label = QLabel()
+        label.setAlignment(Qt.AlignLeft | Qt.AlignTop)
+
+        label.setText(
             'Window Toggling Shortcuts:\n' +
-            QKeySequence.toString(QKeySequence(QKeySequence.HelpContents)) + '\tToggle help\n' +
-            QKeySequence.toString(QKeySequence('CTRL+R')) + '\tToggle racer list\n' +
-            QKeySequence.toString(QKeySequence('CTRL+F')) + '\tToggle field list\n' +
-            QKeySequence.toString(QKeySequence('CTRL+L')) + '\tToggle log\n' +
+            self.shortcut_help_to_string(QKeySequence.HelpContents, 'Toggle help') +
+            self.shortcut_help_to_string('CTRL+R', 'Toggle racer list') +
+            self.shortcut_help_to_string('CTRL+F', 'Toggle field list') +
+            self.shortcut_help_to_string('CTRL+L', 'Toggle log') +
             '\n' +
             'Results Window Shortcuts:\n' +
-            QKeySequence.toString(QKeySequence('CTRL+S')) + '\tSubmit result(s)\n' +
-            QKeySequence.toString(QKeySequence('CTRL+A')) + '\tSelect all results\n' +
-            QKeySequence.toString(QKeySequence('CTRL+D')) + '\tDeselect all results\n' +
+            self.shortcut_help_to_string('CTRL+S', 'Submit result(s)') +
+            self.shortcut_help_to_string('CTRL+A', 'Select all results') +
+            self.shortcut_help_to_string('CTRL+D', 'Deselect all results') +
             '\n' +
             'Miscellaneous:\n' +
-            QKeySequence.toString(QKeySequence('CTRL+T')) + '\tToggle reference/wall time shown\n' +
-            QKeySequence.toString(QKeySequence('CTRL+B')) + '\tLaunch race builder\n')
+            self.shortcut_help_to_string('CTRL+T', 'Toggle reference/wall time shown') +
+            self.shortcut_help_to_string('CTRL+B', 'Launch race builder'))
+
+        self.layout().addWidget(label)
 
         self.read_settings()
+
+    def shortcut_help_to_string(self, shortcut, help_text):
+        """Formats a shortcut string and help text."""
+        return (QKeySequence.toString(QKeySequence(shortcut), QKeySequence.NativeText) +
+                '\t' + help_text + '\n')
 
     def hideEvent(self, event): #pylint: disable=invalid-name
         """Handle hide event."""
@@ -54,8 +65,6 @@ class CheatSheet(QLabel):
         settings = QSettings()
         settings.beginGroup(group_name)
 
-        self.resize(settings.value('size', defaults.CHEAT_SHEET_SIZE))
-
         if settings.contains('pos'):
             self.move(settings.value('pos'))
 
@@ -67,7 +76,6 @@ class CheatSheet(QLabel):
         settings = QSettings()
         settings.beginGroup(group_name)
 
-        settings.setValue('size', self.size())
         settings.setValue('pos', self.pos())
 
         settings.endGroup()

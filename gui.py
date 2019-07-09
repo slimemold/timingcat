@@ -83,31 +83,32 @@ class AboutDialog(QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
 
+        self.setLayout(QVBoxLayout())
+        self.layout().setSizeConstraint(QLayout.SetFixedSize)
+
         application_label = QLabel('<h1>%s</h1>' % common.APPLICATION_NAME)
         application_label.setAlignment(Qt.AlignCenter)
+        self.layout().addWidget(application_label)
 
         version_label = QLabel('<h2>Version %s</h2>' % __version__)
         version_label.setAlignment(Qt.AlignCenter)
+        self.layout().addWidget(version_label)
 
-        build_label = QLabel('<h3>Build %s</h3>' % common.BUILD)
-        build_label.setAlignment(Qt.AlignCenter)
+        if common.BUILD:
+            build_label = QLabel('<h3>Build %s</h3>' % common.BUILD)
+            build_label.setAlignment(Qt.AlignCenter)
+            self.layout().addWidget(build_label)
 
         copyright_label = QLabel(__copyright__)
+        self.layout().addWidget(copyright_label)
 
         contact_label = QLabel('    For support, contact %s <%s>.' % (__maintainer__, __email__))
+        self.layout().addWidget(contact_label)
 
         button_box = QDialogButtonBox(QDialogButtonBox.Ok)
         button_box.setCenterButtons(True)
         button_box.accepted.connect(self.accept)
-
-        self.setLayout(QVBoxLayout())
-        self.layout().addWidget(application_label)
-        self.layout().addWidget(version_label)
-        self.layout().addWidget(build_label)
-        self.layout().addWidget(copyright_label)
-        self.layout().addWidget(contact_label)
         self.layout().addWidget(button_box)
-        self.layout().setSizeConstraint(QLayout.SetFixedSize)
 
 class CentralWidget(QObject):
     """Central Widget base class.
