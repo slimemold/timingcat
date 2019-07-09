@@ -12,6 +12,12 @@ import sys
 from PyQt5.QtCore import QSettings, QStandardPaths
 from PyQt5.QtWidgets import QFileDialog
 
+try:
+    import build
+    BUILD = build.build
+except ImportError:
+    BUILD = None
+
 ORGANIZATION_NAME = '5rcc'
 ORGANIZATION_DOMAIN = '5rcc.com'
 APPLICATION_NAME = 'SexyThyme'

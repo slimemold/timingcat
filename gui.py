@@ -89,6 +89,9 @@ class AboutDialog(QDialog):
         version_label = QLabel('<h2>Version %s</h2>' % __version__)
         version_label.setAlignment(Qt.AlignCenter)
 
+        build_label = QLabel('<h3>Build %s</h3>' % common.BUILD)
+        build_label.setAlignment(Qt.AlignCenter)
+
         copyright_label = QLabel(__copyright__)
 
         contact_label = QLabel('    For support, contact %s <%s>.' % (__maintainer__, __email__))
@@ -100,6 +103,7 @@ class AboutDialog(QDialog):
         self.setLayout(QVBoxLayout())
         self.layout().addWidget(application_label)
         self.layout().addWidget(version_label)
+        self.layout().addWidget(build_label)
         self.layout().addWidget(copyright_label)
         self.layout().addWidget(contact_label)
         self.layout().addWidget(button_box)
