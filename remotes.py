@@ -18,7 +18,7 @@ import keyring
 import requests
 import common
 import ontheday
-from racemodel import Journal, msecs_is_valid, MSECS_DNF, MSECS_DNP
+from racemodel import InputError, Journal, msecs_is_valid, MSECS_DNF, MSECS_DNP
 
 __copyright__ = '''
     Copyright (C) 2018-2019 Andrew Chew
@@ -524,7 +524,15 @@ class OnTheDayRemote(Remote):
         for ontheday_change in ontheday_changes:
             for ontheday_entry in ontheday_change['entry_list']:
                 bib = ontheday_entry['race_number']
-                racer_metadata = json.loads(racer_table_model.get_racer_metadata(bib))
+
+                # We may not find this racer (if it was added after registration).
+                try:
+                    racer_metadata = json.loads(racer_table_model.get_racer_metadata(bib))
+                except InputError:
+                    ontheday.add_racer_to_modeldb(self.modeldb, ontheday_entry,
+                                                  ontheday_change['category_name'],
+                                                  ontheday_change['category_start'])
+                    continue
 
                 if (('checksum' in racer_metadata['ontheday']) and
                     (racer_metadata['ontheday']['checksum'] == ontheday_entry['checksum'])):
@@ -532,6 +540,7 @@ class OnTheDayRemote(Remote):
 
                 racer_metadata['ontheday']['checksum'] = ontheday_entry['checksum']
 
+                # Adding an already existing racer will just update its entry.
                 ontheday.add_racer_to_modeldb(self.modeldb, ontheday_entry,
                                               ontheday_change['category_name'],
                                               ontheday_change['category_start'])
