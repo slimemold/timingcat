@@ -42,16 +42,15 @@ def excepthook(exc_type, exc_value, exc_traceback):
 
     Also, call the old except hook to get the normal behavior as well.
     """
-    if _old_excepthook:
-        _old_excepthook(exc_type, exc_value, exc_traceback)
-
     exception_str = ''.join(traceback.format_exception(exc_type, exc_value, exc_traceback))
     QMessageBox.critical(None, exc_type.__name__,
                          'Unhandled exception (please send to %s)!\n\n%s' % (common.EMAIL,
-                                                                              exception_str))
+                                                                             exception_str))
+
+    sys.excepthook = sys.__excepthook__
+    sys.excepthook(exc_type, exc_value, exc_traceback)
 
 # Install our custom exception hook.
-_old_excepthook = sys.excepthook #pylint: disable=invalid-name
 sys.excepthook = excepthook
 
 def main():
