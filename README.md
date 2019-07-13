@@ -37,6 +37,14 @@ pipreqs
 
 ## TODO
 - Implement 12-hour time.
+- Show elapsed time and field in submit window.
+- Allow changing start time. For OnTheDay.net synchronization (which doesn't
+  allow changing start time), adjust by tweaking finish time.
+- DNS submissions seem to get submitted, but not marked green.
+- Make a noise when a time is entered.
+- When entering time manually, entry not marked "local". Had to do that
+  manually.
+- Log submit window transactions, not just submitted results.
 
 ## Known Bugs
 - Clear button on result_input doesn't always erase text. (OS X)
