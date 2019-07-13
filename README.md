@@ -11,6 +11,7 @@
 - Fix exception handling so that application exits on exception (rather than
   repeatedly throwing the same exception over and over again if the exception
   was unhandled).
+- Used for the Calaveras Time Trial 2019.
         
 1.0.1
 - Bug fixes, ontheday.net remote robustness fixes.
