@@ -56,7 +56,7 @@ INPUT_TEXT_POINT_SIZE = 32
 
 # Widget Instance Hierarchy
 #
-# SexyThymeMainWindow
+# TimingCatMainWindow
 #     StartCentralWidget
 #     MainCentralWidget
 #         button_row
@@ -437,7 +437,7 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.racer_table_view.connect_preferences(preferences)
         self.result_table_view.connect_preferences(preferences)
 
-class SexyThymeMainWindow(QMainWindow):
+class TimingCatMainWindow(QMainWindow):
     """Main Application Window.
 
     This is the top-level window of the app. Dismissing it closes the app. The window has a
@@ -448,7 +448,7 @@ class SexyThymeMainWindow(QMainWindow):
     """
 
     def __init__(self, filename=None, parent=None):
-        """Initialize the SexyThymeMainWindow instance."""
+        """Initialize the TimingCatMainWindow instance."""
         super().__init__(parent=parent)
 
         self.read_settings()

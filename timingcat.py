@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 
-"""SexyThyme launch script
+"""TimingCat launch script
 
 This is the execution entry point for the app.
 """
@@ -11,7 +11,7 @@ import sys
 import traceback
 from PyQt5.QtWidgets import QApplication, QMessageBox
 import common
-from gui import SexyThymeMainWindow
+from gui import TimingCatMainWindow
 
 __copyright__ = '''
     Copyright (C) 2018-2019 Andrew Chew
@@ -74,7 +74,7 @@ def main():
     # which is always wrong. Therefore, always just start it off at somewhere sane and writable.
     os.chdir(common.get_documents_dir())
 
-    main_window = SexyThymeMainWindow(filename=args.racefile)
+    main_window = TimingCatMainWindow(filename=args.racefile)
     main_window.show()
 
     sys.exit(app.exec_())

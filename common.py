@@ -20,7 +20,7 @@ except ImportError:
 
 ORGANIZATION_NAME = '5rcc'
 ORGANIZATION_DOMAIN = '5rcc.com'
-APPLICATION_NAME = 'SexyThyme'
+APPLICATION_NAME = 'Timing Cat'
 AUTHOR = 'Andrew Chew'
 CREDITS = ['Andrew Chew', 'Colleen Chew', 'Richard Brockie']
 LICENSE = 'GPLv3'

@@ -1,6 +1,11 @@
-# SexyThyme - Time trial timing software with OnTheDay.net integration
+# Timing Cat - Time trial timing software with OnTheDay.net integration
 
 # Version History
+1.0.3
+- Application renamed to Timing Cat.
+- Added sound effect on latching a time.
+- Updated python3 modules.
+
 1.0.2
 - Add cheat sheet (help window showing keyboard shortcuts).
 - Reduce NTP clock check noisiness false positives.

@@ -58,7 +58,8 @@ __email__ = common.EMAIL
 __status__ = common.STATUS
 
 URL = 'https://ontheday.net'
-HEADERS = {'User-Agent': '%s/%s' % (common.APPLICATION_NAME, common.VERSION)}
+HEADERS = {'User-Agent': '%s/%s' % (common.APPLICATION_NAME.replace(' ', ''),
+                                    common.VERSION)}
 KEYRING_SERVICE = 'ontheday.net'
 QSETTINGS_GROUP = 'ontheday'
 QSETTINGS_KEY_USERNAME = 'username'
