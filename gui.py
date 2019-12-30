@@ -183,6 +183,10 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.button_row.layout().addWidget(self.button_row.racer_button)
         self.button_row.layout().addWidget(self.button_row.field_button)
 
+        # Wall times/reference times label.
+        self.wall_times_label = QLabel()
+        self.wall_times_label.setAlignment(Qt.AlignCenter)
+
         # Digital clock.
         self.digital_clock = DigitalClock(self.modeldb)
 
@@ -203,6 +207,7 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Add to top-level layout.
         self.layout().addWidget(self.button_row)
+        self.layout().addWidget(self.wall_times_label)
         self.layout().addWidget(self.digital_clock)
         self.layout().addWidget(self.result_table_view)
         self.layout().addWidget(self.result_input)
@@ -297,6 +302,13 @@ class MainCentralWidget(QWidget, CentralWidget):
     def has_model(self):
         """Return whether we have a race model."""
         return self.modeldb is not None
+
+    def wall_times_checkbox_changed(self, state):
+        """Slot for when the wall times check box state changes."""
+        if state:
+            self.wall_times_label.setText('Wall Clock')
+        else:
+            self.wall_times_label.setText('Reference Clock')
 
     def field_model_changed(self, top_left, bottom_right, roles):
         """Handle field table model change.
@@ -436,6 +448,10 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.field_table_view.connect_preferences(preferences)
         self.racer_table_view.connect_preferences(preferences)
         self.result_table_view.connect_preferences(preferences)
+
+        # Signals/slots for wall times/reference times label.
+        preferences.wall_times_checkbox.stateChanged.connect(self.wall_times_checkbox_changed)
+        self.wall_times_checkbox_changed(preferences.wall_times_checkbox.checkState())
 
 class TimingCatMainWindow(QMainWindow):
     """Main Application Window.

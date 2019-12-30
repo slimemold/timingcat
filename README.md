@@ -6,6 +6,7 @@
 - Added sound effect on latching a time.
 - Updated python3 modules.
 - Changed ontheday.net polling interval to 15 seconds.
+- Add wall clock/reference clock label above the main window digital clock.
 
 1.0.2
 - Add cheat sheet (help window showing keyboard shortcuts).
