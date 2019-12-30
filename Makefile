@@ -10,7 +10,7 @@ BUILD := $(shell date +"%Y%m%d%H%M%S")
 
 ifeq ($(UNAME), Darwin)
     APP_FILE := $(APP_NAME).app
-    ICON_FILE := osx/sexythyme.icns
+    ICON_FILE := $(PROJECT_DIR)/osx/sexythyme.icns
     PACKAGE_FILE := $(VERSION) b$(BUILD).zip
 endif
 
