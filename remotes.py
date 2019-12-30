@@ -572,7 +572,7 @@ class OnTheDayThread(threading.Thread):
             self.submit_results()
             self.collect_remote_changes()
 
-            time.sleep(1)
+            time.sleep(ontheday.POLLING_INTERVAL_SECS)
 
     def submit_results(self):
         """Submit a batch of results to OnTheDay.net."""
