@@ -6,6 +6,7 @@ This module contains constants for various application defaults. They are provid
 central location for tweaking.
 """
 
+import os
 from PyQt5.QtCore import QSize
 import common
 
@@ -49,3 +50,7 @@ DIGITAL_CLOCK = True
 WALL_TIMES = True
 REQUESTS_TIMEOUT_SECS = 60
 NTP_SERVER_NUM_CHECKS = 5
+
+RESOURCES_FOLDER = 'resources'
+SPLASH_GRAPHIC_FILE = os.path.join(RESOURCES_FOLDER, 'thyme.jpg')
+RESULT_INPUT_SOUND_EFFECT_FILE = os.path.join(RESOURCES_FOLDER, 'beep-short-01.wav')

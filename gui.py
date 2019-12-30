@@ -7,8 +7,9 @@ central widget, status and menu bars, etc.
 """
 
 import os
-from PyQt5.QtCore import QDateTime, QItemSelection, QObject, QRegExp, QSettings, Qt
+from PyQt5.QtCore import QDateTime, QItemSelection, QObject, QRegExp, QSettings, Qt, QUrl
 from PyQt5.QtGui import QKeySequence, QPixmap, QRegExpValidator
+from PyQt5.QtMultimedia import QSoundEffect
 from PyQt5.QtWidgets import QLabel, QLineEdit, QMenuBar, QPushButton, QShortcut, QStatusBar, QWidget
 from PyQt5.QtWidgets import QLayout, QHBoxLayout, QVBoxLayout
 from PyQt5.QtWidgets import QDialog, QDialogButtonBox, QFileDialog, QMessageBox
@@ -144,7 +145,7 @@ class StartCentralWidget(QLabel, CentralWidget):
         """
         super().__init__(parent=parent)
 
-        self.setPixmap(QPixmap(os.path.join(common.app_path(), 'resources', 'thyme.jpg')))
+        self.setPixmap(QPixmap(os.path.join(common.app_path(), defaults.SPLASH_GRAPHIC_FILE)))
 
 class MainCentralWidget(QWidget, CentralWidget):
     """Main Central Widget.
@@ -152,6 +153,9 @@ class MainCentralWidget(QWidget, CentralWidget):
     This is the main race operations window. It presents the results input box, and manages the
     various "floater" windows like racer and field table views.
     """
+
+    RESULT_INPUT_SOUND_EFFECT_SOURCE = QUrl.fromLocalFile(
+        os.path.join(common.app_path(), defaults.RESULT_INPUT_SOUND_EFFECT_FILE))
 
     def __init__(self, modeldb, parent=None):
         """Initialize the MainCentralWidget instance."""
@@ -211,6 +215,10 @@ class MainCentralWidget(QWidget, CentralWidget):
         self.cheat_sheet = CheatSheet()
         self.journal_table_view = JournalTableView(self.modeldb)
 
+        # Sound effects.
+        self.result_input_sound_effect = QSoundEffect()
+        self.result_input_sound_effect.setSource(self.RESULT_INPUT_SOUND_EFFECT_SOURCE)
+
         # Try to keep focus on the result input.
         self.setFocusPolicy(Qt.StrongFocus)
         self.setFocusProxy(self.result_input)
@@ -237,6 +245,7 @@ class MainCentralWidget(QWidget, CentralWidget):
 
         # Signals/slots for result input.
         self.result_input.returnPressed.connect(self.new_result)
+        self.result_input.returnPressed.connect(self.result_input_sound_effect.play)
 
         # Signals/slots for submit button.
         self.submit_button.clicked.connect(self.handle_result_submit)
