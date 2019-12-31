@@ -8,6 +8,9 @@
 - Changed ontheday.net polling interval to 15 seconds.
 - Add wall clock/reference clock label above the main window digital clock.
 - For wall clock, show 12-hour time.
+- Fix bug in the new remote state pulling code (introduced for the Calaveras
+  Time Trial), where we weren't handling the field's "time_start" correctly
+  (i.e. for mass-start time trials).
 
 1.0.2
 - Add cheat sheet (help window showing keyboard shortcuts).

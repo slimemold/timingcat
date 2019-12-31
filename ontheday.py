@@ -244,19 +244,10 @@ def import_race(modeldb, auth, race):
 
         # This is start time expressed as wall time, from OnTheDay.net.
         # i.e. start_clock is the actual start time (not relative to reference).
-        if field['time_start']:
-            start_clock = QDateTime(QDate.currentDate(),
-                                    QTime.fromString(field['time_start'], Qt.ISODateWithMs))
-
-            # Delta msecs from reference clock.
-            start = reference_clock.msecsTo(start_clock)
-        else:
-            start = None
-
         racer_list = get_racer_list(auth, field)
 
         for racer in racer_list:
-            add_racer_to_modeldb(modeldb, racer, field['name'], start)
+            add_racer_to_modeldb(modeldb, racer, field['name'], field['time_start'])
 
     # Set race data.
     race_table_model = modeldb.race_table_model
@@ -268,7 +259,10 @@ def import_race(modeldb, auth, race):
     race_table_model.set_race_property(race_table_model.NOTES, notes)
 
 def add_racer_to_modeldb(modeldb, racer, field_name, field_start): #pylint: disable=too-many-branches
-    """Adds a racer to the model, or updates an existing racer."""
+    """Adds a racer to the model, or updates an existing racer.
+
+    field_start is expressed as a string (i.e. "10:16:00")
+    """
     # Racers without a tt_finish_time_url are placeholder entries and should not show
     # up in our racer list.
     if not 'tt_finish_time_url' in racer:
@@ -302,11 +296,13 @@ def add_racer_to_modeldb(modeldb, racer, field_name, field_start): #pylint: disa
         status = 'remote'
 
     if field_start:
-        start = field_start
+        start_clock = QDateTime(QDate.currentDate(),
+                                QTime.fromString(field_start, Qt.ISODateWithMs))
     else:
         start_clock = QDateTime(QDate.currentDate(),
                                 QTime.fromString(racer['watch_start_time'], Qt.ISODateWithMs))
-        start = QDateTime(QDate.currentDate()).msecsTo(start_clock)
+
+    start = QDateTime(QDate.currentDate()).msecsTo(start_clock)
 
     if modeldb.racer_table_model.racer_exists(str(racer['race_number'])):
         modeldb.racer_table_model.update_racer(racer['race_number'],
