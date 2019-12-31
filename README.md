@@ -7,6 +7,7 @@
 - Updated python3 modules.
 - Changed ontheday.net polling interval to 15 seconds.
 - Add wall clock/reference clock label above the main window digital clock.
+- For wall clock, show 12-hour time.
 
 1.0.2
 - Add cheat sheet (help window showing keyboard shortcuts).
@@ -43,7 +44,6 @@ pylint
 pipreqs
 
 ## TODO
-- Implement 12-hour time.
 - Show elapsed time and field in submit window.
 - Allow changing start time. For OnTheDay.net synchronization (which doesn't
   allow changing start time), adjust by tweaking finish time.

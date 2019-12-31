@@ -72,16 +72,26 @@ class DigitalClock(QLCDNumber):
         """Update text on the LCD display."""
         race_table_model = self.modeldb.race_table_model
 
+        show_am_pm = False
         if self.preferences and self.preferences.wall_times_checkbox.isChecked():
             msecs = race_table_model.get_wall_time_msecs()
+            show_am_pm = True
         else:
             msecs = race_table_model.get_reference_msecs()
         datetime = QDateTime(QDate(1, 1, 1), QTime(0, 0)).addMSecs(msecs)
 
         if datetime.time().second() % 2:
-            text = datetime.toString('hh:mm ss')
+            datetime_string = 'h:mm ss'
         else:
-            text = datetime.toString('hh:mm:ss')
+            datetime_string = 'h:mm:ss'
+
+        if show_am_pm:
+            self.setDigitCount(11)
+            datetime_string += ' a'
+        else:
+            self.setDigitCount(8)
+
+        text = datetime.toString(datetime_string)
 
         self.display(text)
 
