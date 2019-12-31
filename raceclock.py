@@ -72,10 +72,8 @@ class DigitalClock(QLCDNumber):
         """Update text on the LCD display."""
         race_table_model = self.modeldb.race_table_model
 
-        show_am_pm = False
         if self.preferences and self.preferences.wall_times_checkbox.isChecked():
             msecs = race_table_model.get_wall_time_msecs()
-            show_am_pm = True
         else:
             msecs = race_table_model.get_reference_msecs()
         datetime = QDateTime(QDate(1, 1, 1), QTime(0, 0)).addMSecs(msecs)
@@ -85,7 +83,9 @@ class DigitalClock(QLCDNumber):
         else:
             datetime_string = 'h:mm:ss'
 
-        if show_am_pm:
+        if (self.preferences and
+            self.preferences.wall_times_checkbox.isChecked() and
+            not self.preferences.h24_wall_times_checkbox.isChecked()):
             self.setDigitCount(11)
             datetime_string += ' a'
         else:
@@ -146,3 +146,4 @@ class DigitalClock(QLCDNumber):
         preferences.digital_clock_checkbox.stateChanged.connect(self.setVisible)
         self.setVisible(preferences.digital_clock_checkbox.checkState())
         preferences.wall_times_checkbox.stateChanged.connect(self.update)
+        preferences.h24_wall_times_checkbox.stateChanged.connect(self.update)
