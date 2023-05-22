@@ -1,4 +1,4 @@
-requests==2.22.0
+requests==2.31.0
 keyring==19.0.1
 ntplib==0.3.3
 pylint==2.4.4
